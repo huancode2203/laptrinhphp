@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+#[Fillable(['name', 'district', 'address', 'phone', 'amenities', 'active'])]
+class Branch extends Model
+{
+    use HasFactory;
+
+    protected function casts(): array
+    {
+        return ['amenities' => 'array', 'active' => 'boolean'];
+    }
+
+    public function courts(): HasMany
+    {
+        return $this->hasMany(Court::class);
+    }
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(Service::class);
+    }
+}
