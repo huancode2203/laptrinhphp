@@ -9,10 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['reference', 'request_key', 'user_id', 'court_id', 'starts_at', 'ends_at', 'status', 'court_amount', 'service_amount', 'total_amount', 'paid_amount', 'notes', 'checked_in_at'])]
+#[Fillable(['reference', 'request_key', 'user_id', 'court_id', 'starts_at', 'ends_at', 'status', 'court_amount', 'service_amount', 'total_amount', 'paid_amount', 'notes', 'checked_in_at', 'discount_amount', 'coupon_id', 'coupon_code', 'booking_type', 'series_key'])]
 class Booking extends Model
 {
-    protected $attributes = ['status' => 'confirmed', 'service_amount' => 0, 'paid_amount' => 0];
+    protected $attributes = ['status' => 'confirmed', 'service_amount' => 0, 'paid_amount' => 0, 'discount_amount' => 0, 'booking_type' => 'single'];
 
     use HasFactory;
 

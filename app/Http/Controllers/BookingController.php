@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\BookingService;
+use App\CommerceService;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Ramsey\Uuid\Uuid;
 
 class BookingController extends Controller
 {
@@ -26,7 +29,46 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request, BookingService $engine): BookingResource
     {
-        return new BookingResource($engine->create($request->user(), $request->validated()));
+        return DB::transaction(function () use ($request, $engine): BookingResource {
+            $booking = $engine->create($request->user(), $request->validated());
+            if ($request->boolean('pay_with_wallet')) {
+                app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($request->input('request_key'), 'wallet-payment'));
+            }
+
+            return new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments']));
+        }, 5);
+    }
+
+    public function series(StoreBookingRequest $request, BookingService $engine): JsonResponse
+    {
+        $extra = $request->validate(['occurrences' => ['required', 'integer', 'between:2,12']]);
+        $data = $request->validated();
+        abort_if(! empty($data['coupon_code']), 422, 'Lịch cố định đã giảm 15%, không áp dụng mã ưu đãi.');
+        [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
+        $existingCount = Booking::where('series_key', $data['request_key'])->count();
+        abort_if($existingCount > 0 && $existingCount !== (int) $extra['occurrences'], 409, 'Không thay đổi số tuần của yêu cầu đã tạo.');
+        $rows = DB::transaction(function () use ($engine, $request, $data, $extra, $start, $end): array {
+            $rows = [];
+            for ($i = 0; $i < $extra['occurrences']; $i++) {
+                $item = $data;
+                $item['request_key'] = (string) Uuid::uuid5($data['request_key'], 'week-'.$i);
+                $item['starts_at'] = $start->addWeeks($i)->toIso8601String();
+                $item['ends_at'] = $end->addWeeks($i)->toIso8601String();
+                $item['_fixed'] = $data['request_key'];
+                if ($i > 0) {
+                    unset($item['hold_id']);
+                }
+                $booking = $engine->create($request->user(), $item);
+                if ($request->boolean('pay_with_wallet')) {
+                    app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($data['request_key'], 'wallet-payment-'.$i));
+                }
+                $rows[] = new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments']));
+            }
+
+            return $rows;
+        }, 5);
+
+        return response()->json(['data' => $rows], 201);
     }
 
     public function show(Request $request, Booking $booking, BookingService $engine): BookingResource

@@ -22,6 +22,7 @@ class BookingResource extends JsonResource
             'court_amount' => $this->court_amount,
             'service_amount' => $this->service_amount,
             'total_amount' => $this->total_amount,
+            'discount_amount' => $this->discount_amount, 'coupon_code' => $this->coupon_code, 'booking_type' => $this->booking_type, 'series_key' => $this->series_key,
             'paid_amount' => $this->paid_amount,
             'remaining_amount' => $this->status === 'cancelled' ? 0 : max(0, $this->total_amount - $this->paid_amount),
             'refund_pending' => $this->status === 'cancelled' && $this->paid_amount > 0,

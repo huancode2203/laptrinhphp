@@ -1,9 +1,789 @@
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+@import "tailwindcss";
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-
+/* ── Tokens ───────────────────────────────────────────── */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: "Be Vietnam Pro", Arial, sans-serif;
+    --font-display: "Be Vietnam Pro", Arial, sans-serif;
+    --font-mono: "Be Vietnam Pro", Arial, sans-serif;
+
+    --color-navy: #0d1f2d;
+    --color-navy-mid: #152636;
+    --color-navy-soft: #1e3448;
+    --color-green: #16a34a;
+    --color-green-mid: #15803d;
+    --color-green-soft: #dcfce7;
+    --color-lime: #b7ff36;
+    --color-lime-dark: #84b81e;
+    --color-surface: #f3f6f4;
+    --color-border: #dce4dc;
+    --color-muted: #6d8474;
+}
+
+/* ── Base ─────────────────────────────────────────────── */
+@layer base {
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        font-family: "Be Vietnam Pro", Arial, sans-serif;
+        background: #f3f6f4;
+        color: #0d1f2d;
+        -webkit-font-smoothing: antialiased;
+    }
+    button,
+    input,
+    textarea,
+    select {
+        font-family: inherit;
+        cursor: pointer;
+    }
+    button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+    ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #dce4dc;
+        border-radius: 9px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #b0c4b0;
+    }
+    ::selection {
+        background: #b7ff36;
+        color: #0d1f2d;
+    }
+}
+
+/* ── Typography helpers ───────────────────────────────── */
+.font-display,
+.font-mono {
+    font-family: inherit;
+}
+.eyebrow {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+/* ── Court lines background ───────────────────────────── */
+.court-lines {
+    position: absolute;
+    inset: 0;
+    opacity: 0.14;
+    pointer-events: none;
+    background-image:
+        linear-gradient(
+            90deg,
+            transparent 49.7%,
+            #b7ff36 50%,
+            transparent 50.3%
+        ),
+        linear-gradient(0deg, transparent 49.7%, #b7ff36 50%, transparent 50.3%);
+    background-size:
+        320px 100%,
+        100% 160px;
+    transform: perspective(450px) rotateX(38deg) scale(1.3) translateY(22%);
+    transform-origin: bottom;
+}
+
+/* ── Status chips ─────────────────────────────────────── */
+.status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+}
+.status b {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+.status-available {
+    color: #16a34a;
+}
+.status-booked {
+    color: #dc2626;
+}
+.status-playing {
+    color: #d97706;
+}
+.status-upcoming {
+    color: #d97706;
+}
+.status-maintenance {
+    color: #ea580c;
+}
+.status-locked {
+    color: #64748b;
+}
+.status-fixed {
+    color: #2563eb;
+}
+.status-event {
+    color: #7c3aed;
+}
+.status-cancelled {
+    color: #94a3b8;
+}
+.status-pending {
+    color: #f59e0b;
+}
+.status-completed {
+    color: #16a34a;
+}
+
+/* ── Booking field ────────────────────────────────────── */
+.field {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1.5px solid #dce4dc;
+    border-radius: 0.875rem;
+    padding: 0.7rem 0.9rem;
+    min-height: 60px;
+    background: white;
+    transition: border-color 0.15s;
+}
+.field:focus-within {
+    border-color: #16a34a;
+}
+.field > .fi {
+    color: #16a34a;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+.field small {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #6d8474;
+    text-transform: uppercase;
+}
+.field strong,
+.field select {
+    display: block;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #0d1f2d;
+    font-size: 0.825rem;
+    font-weight: 700;
+    outline: 0;
+    max-width: 210px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Court card (customer) ────────────────────────────── */
+.court-card {
+    position: relative;
+    min-height: 185px;
+    overflow: hidden;
+    border: 1.5px solid #dce4dc;
+    border-radius: 14px;
+    padding: 13px;
+    text-align: left;
+    background: #fff;
+    transition: 0.18s ease;
+}
+.court-card.available:hover,
+.court-card.selected {
+    border-color: #16a34a;
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px #16a34a1a;
+}
+.court-card.booked {
+    background: #fff5f4;
+}
+.court-card.playing {
+    background: #fffbea;
+}
+.court-card.maintenance {
+    background: #fff5ed;
+    opacity: 0.75;
+}
+.court-card.fixed {
+    background: #eff6ff;
+}
+.court-number {
+    position: relative;
+    z-index: 1;
+    font-family: inherit;
+    font-size: 26px;
+    font-weight: 900;
+}
+.court-card .status {
+    position: absolute;
+    right: 13px;
+    top: 15px;
+}
+.court-card em {
+    position: absolute;
+    bottom: 13px;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 800;
+    color: #16a34a;
+}
+.court-visual {
+    position: absolute;
+    inset: 52px 16px 32px;
+    border: 1.5px solid #8cca73;
+    border-radius: 4px;
+    background: repeating-linear-gradient(
+        90deg,
+        #f0faea 0 18px,
+        #e4f5d8 18px 36px
+    );
+}
+.court-visual::before,
+.court-visual::after {
+    content: "";
+    position: absolute;
+    background: #8cca73;
+}
+.court-visual::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1.5px;
+}
+.court-visual::after {
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1.5px;
+}
+.court-visual i {
+    position: absolute;
+    left: 50%;
+    width: 34%;
+    height: 22%;
+    border: 1px solid #8cca73;
+    transform: translateX(-50%);
+}
+.court-visual i:first-child {
+    top: 0;
+    border-top: 0;
+}
+.court-visual i:last-child {
+    bottom: 0;
+    border-bottom: 0;
+}
+
+/* ── Matrix cell (manager timeline) ──────────────────── */
+.mx-cell {
+    height: 52px;
+    min-width: 88px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: 0.12s;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 4px 7px;
+    gap: 2px;
+    font-size: 10px;
+    line-height: 1.3;
+    flex-shrink: 0;
+}
+.mx-empty {
+    background: #f0faea;
+    border-color: #c6e8c1;
+}
+.mx-empty:hover {
+    background: #d4f7c8;
+    border-color: #8cca73;
+}
+.mx-booked {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+.mx-playing {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+.mx-upcoming {
+    background: #fef9c3;
+    border-color: #fde047;
+    color: #713f12;
+}
+.mx-fixed {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e3a8a;
+}
+.mx-maintenance {
+    background: #ffedd5;
+    border-color: #fdba74;
+    color: #9a3412;
+}
+.mx-locked {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+.mx-event {
+    background: #ede9fe;
+    border-color: #c4b5fd;
+    color: #4c1d95;
+}
+
+/* ── POS product card ─────────────────────────────────── */
+.pos-product {
+    border: 1.5px solid #e5eddf;
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: 0.15s;
+    background: white;
+    text-align: left;
+}
+.pos-product:hover {
+    border-color: #16a34a;
+    box-shadow: 0 4px 14px #16a34a14;
+}
+.pos-product.out-of-stock {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ── Data table ───────────────────────────────────────── */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.data-table th {
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6d8474;
+    text-align: left;
+    border-bottom: 1.5px solid #dce4dc;
+    white-space: nowrap;
+}
+.data-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f0f4f0;
+    vertical-align: middle;
+}
+.data-table tr:last-child td {
+    border-bottom: 0;
+}
+.data-table tbody tr:hover td {
+    background: #f8fbf7;
+}
+
+/* ── Badge ────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+}
+.badge-green {
+    background: #dcfce7;
+    color: #15803d;
+}
+.badge-red {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+.badge-yellow {
+    background: #fef9c3;
+    color: #92400e;
+}
+.badge-blue {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+.badge-orange {
+    background: #ffedd5;
+    color: #c2410c;
+}
+.badge-gray {
+    background: #f1f5f9;
+    color: #475569;
+}
+.badge-purple {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+.badge-lime {
+    background: #ecfccb;
+    color: #3f6212;
+}
+
+/* ── Nav sidebar ──────────────────────────────────────── */
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    transition: 0.15s;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.85);
+}
+.sidebar-link.active {
+    background: #b7ff36;
+    color: #0d1f2d;
+}
+.sidebar-link .icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+/* ── Community card ───────────────────────────────────── */
+.community-card {
+    border: 1px solid #ffffff1a;
+    border-radius: 14px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    transition: 0.15s;
+}
+.community-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.community-card span {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #b7ff36;
+}
+.community-card h3 {
+    margin-top: 20px;
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 700;
+}
+.community-card p {
+    margin-top: 5px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+.community-card.lime {
+    background: #b7ff36;
+    color: #0d1f2d;
+}
+.community-card.lime span {
+    color: #3d6b1b;
+}
+.community-card.lime p {
+    color: #3d6b1b;
+}
+
+/* ── Toast ────────────────────────────────────────────── */
+.toast {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 999;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border-radius: 14px;
+    background: #0d1f2d;
+    padding: 14px 16px;
+    color: white;
+    box-shadow: 0 14px 36px #0d1f2d55;
+    animation: slideUp 0.25s ease;
+}
+.toast > .ti {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #b7ff36;
+    color: #0d1f2d;
+    font-weight: 800;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.toast b {
+    font-size: 13px;
+}
+.toast p {
+    margin-top: 2px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+}
+.toast .tc {
+    margin-left: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    align-self: flex-start;
+}
+
+/* ── Step indicator ───────────────────────────────────── */
+.step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    border: 2px solid #dce4dc;
+    color: #6d8474;
+    background: white;
+    transition: 0.2s;
+}
+.step-dot.done {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: white;
+}
+.step-dot.active {
+    background: #0d1f2d;
+    border-color: #0d1f2d;
+    color: white;
+}
+
+/* ── KPI card ─────────────────────────────────────────── */
+.kpi-card {
+    border-radius: 14px;
+    border: 1.5px solid #e5eddf;
+    padding: 16px 18px;
+    background: white;
+}
+.kpi-card .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6d8474;
+    letter-spacing: 0.04em;
+}
+.kpi-card .kpi-value {
+    font-family: inherit;
+    font-size: 30px;
+    font-weight: 800;
+    margin-top: 4px;
+    line-height: 1;
+}
+.kpi-card .kpi-delta {
+    font-size: 11px;
+    font-weight: 700;
+}
+.kpi-card .kpi-delta.up {
+    color: #16a34a;
+}
+.kpi-card .kpi-delta.down {
+    color: #dc2626;
+}
+
+/* ── Modal overlay ────────────────────────────────────── */
+.modal-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(13, 31, 45, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.modal-box {
+    background: white;
+    border-radius: 20px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+    animation: popIn 0.22s ease;
+}
+
+/* ── Animations ───────────────────────────────────────── */
+@keyframes slideUp {
+    from {
+        transform: translateY(12px);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+@keyframes popIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+.animate-pulse {
+    animation: pulse 1.8s ease infinite;
+}
+
+/* ── Input / Select ───────────────────────────────────── */
+.input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #dce4dc;
+    border-radius: 9px;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    background: white;
+    transition: border-color 0.15s;
+}
+.input:focus {
+    border-color: #16a34a;
+}
+.input::placeholder {
+    color: #9db8a8;
+}
+label.lbl {
+    font-size: 12px;
+    font-weight: 700;
+    color: #3d5a47;
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────── */
+.tab-strip {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: #edf2ed;
+    border-radius: 11px;
+}
+.tab-btn {
+    padding: 7px 14px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6d8474;
+    transition: 0.15s;
+}
+.tab-btn.active {
+    background: white;
+    color: #0d1f2d;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.09);
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 700px) {
+    .court-lines {
+        opacity: 0.08;
+    }
+    .toast {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+    }
+    .modal-box {
+        border-radius: 14px;
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center rounded-xl bg-[#16a34a] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#15803d] disabled:cursor-not-allowed disabled:opacity-40;
+    }
+    .btn-outline {
+        @apply inline-flex items-center justify-center rounded-xl border border-[#dce4dc] px-4 py-2.5 text-sm font-bold text-[#0d1f2d] transition hover:border-[#16a34a] disabled:cursor-not-allowed disabled:opacity-40;
+    }
+    .slot {
+        @apply rounded border border-white px-2 py-2 text-xs;
+        background: #edf0ef;
+        color: #89978e;
+    }
+    .slot.available {
+        background: #dcfce7;
+        color: #15803d;
+    }
+    .slot.reserved {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+    .slot.held {
+        background: #fef9c3;
+        color: #a16207;
+    }
+    .slot.event {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+    .slot.maintenance {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+}
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .print-receipt,
+    .print-receipt * {
+        visibility: visible;
+    }
+    .print-receipt {
+        position: absolute;
+        inset: 0;
+        background: white;
+    }
+    .modal-bg {
+        position: static;
+        display: block;
+        background: white;
+    }
+    .modal-box {
+        overflow: visible;
+        max-height: none;
+        box-shadow: none;
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CourtHold;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:30'],
+            'skill_level' => ['sometimes', 'string', 'max:40'], 'public_profile' => ['sometimes', 'boolean'],
             'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'],
         ]);
         $user = User::create($data);
@@ -32,8 +34,8 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
-        $data = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string', 'max:72']]);
-        if (! Auth::attempt($data)) {
+        $data = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string', 'max:72'], 'remember' => ['sometimes', 'boolean']]);
+        if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password'], 'active' => true], $data['remember'] ?? false)) {
             throw ValidationException::withMessages(['email' => 'Email hoặc mật khẩu không đúng.']);
         }
         $request->session()->regenerate();
@@ -48,6 +50,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        CourtHold::where('user_id', $request->user()->id)->where('released', false)->update(['released' => true]);
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

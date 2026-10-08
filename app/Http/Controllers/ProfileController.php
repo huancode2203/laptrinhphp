@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\BookingService;
+use App\Models\AuthCode;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($request->user()->id)],
             'phone' => ['nullable', 'string', 'max:30'],
-            'current_password' => ['sometimes', 'string', 'max:72'],
+            'skill_level' => ['sometimes', 'string', 'max:40'], 'public_profile' => ['sometimes', 'boolean'],
+            'current_password' => ['nullable', 'string', 'max:72'],
         ]);
 
         $user = DB::transaction(function () use ($request, $data, $engine): User {
@@ -30,6 +32,7 @@ class ProfileController extends Controller
                     throw ValidationException::withMessages(['current_password' => 'Nhập đúng mật khẩu hiện tại để đổi email.']);
                 }
                 $user->email_verified_at = null;
+                AuthCode::where('user_id', $user->id)->whereNull('used_at')->update(['used_at' => now()]);
             }
             $user->fill(collect($data)->except('current_password')->all())->save();
             $engine->audit($user, 'profile.updated', $user->id, [], 'user');

@@ -28,7 +28,7 @@ class ManagementController extends Controller
     private function scope(Builder $query, Request $request, string $column = 'branch_id'): Builder
     {
         $request->validate(['branch_id' => ['sometimes', 'integer', 'exists:branches,id']]);
-        if ($request->user()->role === 'manager') {
+        if ($request->user()->role !== 'admin') {
             $query->where($column, $request->user()->branch_id ?? 0);
         } elseif ($request->filled('branch_id')) {
             $query->where($column, $request->integer('branch_id'));
@@ -101,6 +101,9 @@ class ManagementController extends Controller
                 }
                 if ($data['status'] !== 'active' && $court->bookings()->whereIn('status', ['confirmed', 'checked_in'])->where('ends_at', '>', now())->lockForUpdate()->first()) {
                     throw ValidationException::withMessages(['status' => 'Sân còn lịch đặt. Xử lý các lịch trước khi khóa sân, hoặc tạo lịch bảo trì theo khung giờ.']);
+                }
+                if ($data['status'] !== 'active' && ($court->blocks()->where('active', true)->where('ends_at', '>', now())->exists() || $court->holds()->where('released', false)->where('expires_at', '>', now())->exists())) {
+                    throw ValidationException::withMessages(['status' => 'Sân còn sự kiện hoặc đang giữ chỗ. Xử lý các lịch này trước khi khóa sân.']);
                 }
             } else {
                 $court = new Court;
@@ -192,7 +195,7 @@ class ManagementController extends Controller
     {
         $data = $request->validate(['search' => ['required', 'string', 'min:3', 'max:100']]);
         $term = str_replace(['%', '_', '\\'], '', $data['search']);
-        $customers = User::query()->where('role', 'customer')->where(fn ($query) => $query->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%'))->limit(20)->get(['id', 'name', 'email', 'phone']);
+        $customers = User::query()->where('role', 'customer')->where('active', true)->where(fn ($query) => $query->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%'))->limit(20)->get(['id', 'name', 'email', 'phone']);
 
         return response()->json(['data' => $customers]);
     }
@@ -229,10 +232,10 @@ class ManagementController extends Controller
     {
         abort_if($user->id === $request->user()->id, 422, 'Không tự thay đổi quyền tài khoản đang đăng nhập.');
         $data = $request->validate([
-            'role' => ['required', Rule::in(['customer', 'manager', 'admin'])],
-            'branch_id' => ['nullable', 'required_if:role,manager', 'integer', 'exists:branches,id'],
+            'role' => ['required', Rule::in(['customer', 'manager', 'staff', 'cashier', 'admin'])],
+            'branch_id' => ['nullable', 'required_if:role,manager,staff,cashier', 'integer', 'exists:branches,id'],
         ]);
-        $user->forceFill(['role' => $data['role'], 'branch_id' => $data['role'] === 'manager' ? $data['branch_id'] : null])->save();
+        $user->forceFill(['role' => $data['role'], 'branch_id' => in_array($data['role'], ['manager', 'staff', 'cashier'], true) ? $data['branch_id'] : null])->save();
         $this->engine->audit($request->user(), 'user.role_changed', $user->id, $data, 'user');
 
         return response()->json(['data' => $user]);

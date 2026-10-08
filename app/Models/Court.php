@@ -27,4 +27,14 @@ class Court extends Model
     {
         return $this->hasMany(Maintenance::class);
     }
+
+    public function holds(): HasMany
+    {
+        return $this->hasMany(CourtHold::class);
+    }
+
+    public function blocks(): HasMany
+    {
+        return $this->hasMany(CourtBlock::class);
+    }
 }

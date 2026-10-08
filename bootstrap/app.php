@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['role' => EnsureRole::class]);
+        $middleware->appendToGroup('web', EnsureActiveAccount::class);
+        $middleware->validateCsrfTokens(except: ['api/v1/payments/momo/ipn']);
+        $middleware->trimStrings(except: [fn (Request $r) => $r->is('api/v1/payments/momo/ipn')]);
+        $middleware->convertEmptyStringsToNull(except: [fn (Request $r) => $r->is('api/v1/payments/momo/ipn')]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Branch;
 use App\Models\Court;
+use App\Models\MembershipPlan;
+use App\Models\Product;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -38,17 +40,27 @@ class DatabaseSeeder extends Seeder
                 $branch = Branch::firstOrCreate(['district' => $district], [
                     'name' => 'Badminton Hub – '.$district, 'address' => $address, 'amenities' => ['Parking', 'Shower', 'Cafe', 'WiFi'], 'active' => true,
                 ]);
+                if (! $branch->phone) {
+                    $phones = ['Quận 1' => '028 3822 1108', 'Quận 3' => '028 3930 8847', 'Bình Thạnh' => '028 3514 2233', 'Phú Nhuận' => '028 3845 7762', 'Gò Vấp' => '028 3894 5521', 'Tân Bình' => '028 3812 3340', 'Thủ Đức' => '028 3720 8811', 'Quận 7' => '028 5416 9203'];
+                    $branch->update(['phone' => $phones[$district]]);
+                }
                 for ($number = 1; $number <= $count; $number++) {
                     Court::firstOrCreate(['branch_id' => $branch->id, 'name' => sprintf('Sân %02d', $number)], ['status' => 'active', 'hourly_rate' => $rate, 'peak_rate' => 180000, 'weekend_rate' => 200000]);
                 }
                 foreach ($services as [$name, $unit, $price]) {
                     Service::firstOrCreate(['branch_id' => $branch->id, 'name' => $name], ['unit' => $unit, 'price' => $price, 'active' => true]);
                 }
+                foreach ([['WTR-001', 'Aquafina 500ml', 'Nước uống', '💧', 10000, 48], ['WTR-002', 'Pocari Sweat 500ml', 'Nước uống', '🥤', 15000, 24], ['SHT-001', 'Yonex AS-30 (12 quả)', 'Cầu lông', '🏸', 120000, 15], ['SHT-003', 'RSL Tourney (6 quả)', 'Cầu lông', '🏸', 55000, 30], ['RAC-001', 'Vợt Yonex Astrox 88S', 'Vợt', '🎾', 2800000, 3], ['ACC-001', 'Grip cuộn Yonex AC102', 'Phụ kiện', '🎀', 35000, 42]] as [$sku,$name,$category,$icon,$price,$stock]) {
+                    Product::firstOrCreate(['branch_id' => $branch->id, 'sku' => $sku], compact('name', 'category', 'icon', 'price', 'stock') + ['active' => true]);
+                }
+            }
+            foreach ([['Silver', 199000, 5], ['Gold', 399000, 10], ['VIP', 799000, 20]] as [$name,$price,$discount]) {
+                MembershipPlan::firstOrCreate(['name' => $name], ['price' => $price, 'discount_percent' => $discount, 'duration_days' => 30, 'active' => true]);
             }
             $managerBranch = Branch::where('district', 'Bình Thạnh')->firstOrFail();
-            foreach ([['admin', 'Quản trị viên'], ['manager', 'Quản lý Bình Thạnh'], ['customer', 'Khách hàng mẫu']] as [$role, $name]) {
+            foreach ([['admin', 'Quản trị viên'], ['manager', 'Quản lý Bình Thạnh'], ['staff', 'Nhân viên Bình Thạnh'], ['cashier', 'Thu ngân Bình Thạnh'], ['customer', 'Khách hàng mẫu']] as [$role, $name]) {
                 $user = User::firstOrCreate(['email' => $role.'@badminton.test'], ['name' => $name, 'password' => 'Demo@12345']);
-                $user->forceFill(['role' => $role, 'branch_id' => $role === 'manager' ? $managerBranch->id : null])->save();
+                $user->forceFill(['role' => $role, 'branch_id' => in_array($role, ['manager', 'staff', 'cashier'], true) ? $managerBranch->id : null])->save();
             }
         });
     }
