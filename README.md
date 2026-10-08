@@ -4,7 +4,7 @@
 Trang `/` hiện vẫn là trang chào mặc định của Laravel. Đây chưa phải website hoàn thiện để bàn giao cho khách hàng.
 
 Thiết kế: [Sân cầu của Huấn Rose](https://www.figma.com/make/8hdgt0w0TDycN12gVlnouv/).
-Kết nối Figma trả danh sách tệp App.tsx, CustomerHome.tsx, BookingFlow.tsx, ManagerApp.tsx… nhưng không đọc được nội dung nguồn (Unknown resource). Phần giao diện chỉ được triển khai từ phản hồi chi tiết của `get_design_context` theo yêu cầu của chủ dự án. Cần khắc phục việc đọc tài nguyên Figma Make hoặc cung cấp liên kết khung màn hình Figma Design để lấy được phản hồi này, sau đó chuyển sang Blade/HTML/CSS và nối với backend bên dưới.
+Kết nối Figma trả danh sách tệp App.tsx, CustomerHome.tsx, BookingFlow.tsx, ManagerApp.tsx… nhưng không đọc được nội dung nguồn (Unknown resource). Chủ dự án đã cho phép sử dụng ZIP mã nguồn xuất từ Figma Make. Hiện đang chờ ZIP này để chuyển đầy đủ giao diện sang Blade/HTML/CSS, xác định các chức năng còn lại và nối với backend bên dưới.
 
 ## Trên máy hiện tại
 
@@ -32,9 +32,14 @@ Dữ liệu mẫu lấy tên, địa chỉ và số sân từ bản xem thử th
 ## Chức năng backend đã triển khai
 
 - Đăng ký, đăng nhập, đăng xuất bằng session; mật khẩu được băm.
+- Cập nhật hồ sơ; đổi email yêu cầu mật khẩu hiện tại. Đổi mật khẩu kết thúc các phiên đăng nhập khác.
+- Thông báo được lưu vào MySQL khi đặt/đổi/hủy lịch, check-in, hoàn tất, thu hoặc hoàn tiền; xem và đánh dấu đã đọc theo tài khoản.
 - Khách hàng không tự gán quyền quản trị hay tạo booking cho người khác.
 - Liệt kê chi nhánh, sân, dịch vụ; kiểm tra sân trống theo thời gian.
 - Đặt sân theo bước 30 phút, tối đa 6 giờ, trong cùng một ngày.
+- Lịch sân công khai theo ngày với 40 khung giờ mỗi sân, trạng thái trống/đã đặt/bảo trì/đã qua và giá từng khung, không lộ thông tin khách.
+- Đổi giờ của lịch chưa trả tiền và chưa bắt đầu; kiểm tra trùng lịch và tính lại giá trong transaction.
+- Lọc lịch cá nhân theo trạng thái; phiếu đặt sân gồm các khoản thu/hoàn tiền, giới hạn theo chủ lịch hoặc quản lý đúng chi nhánh.
 - Giá được tính tại PHP theo từng nửa giờ; không tin giá hoặc trạng thái do trình duyệt gửi lên.
 - Transaction và khóa dòng sân trước khi kiểm tra lịch đặt/bảo trì.
 - Lưu giá và tên dịch vụ tại thời điểm đặt; đổi giá sau đó không sửa hóa đơn cũ.
@@ -67,13 +72,21 @@ Frontend cần gửi cookie session và `Accept: application/json`.
 | POST | /login | Đăng nhập |
 | POST | /logout | Đăng xuất |
 | GET | /me | Tài khoản đang đăng nhập |
+| PATCH | /me | Hồ sơ: name, email, phone?; current_password khi đổi email |
+| PUT | /me/password | current_password, password, password_confirmation |
+| GET | /notifications | Thông báo cá nhân, phân trang; unread=1? |
+| PATCH | /notifications/read-all | Đánh dấu tất cả thông báo của mình đã đọc |
+| PATCH | /notifications/{uuid}/read | Đánh dấu một thông báo của mình đã đọc |
 | GET | /branches | Chi nhánh đang hoạt động; district? |
 | GET | /branches/{id} | Sân và dịch vụ của chi nhánh |
 | GET | /branches/{id}/availability | starts_at và ends_at |
+| GET | /branches/{id}/schedule | date=YYYY-MM-DD, từ hôm nay đến 90 ngày tới |
 | POST | /courts/{id}/quote | Báo giá với starts_at, ends_at, services? |
-| GET | /bookings | Lịch đặt của tài khoản hiện tại, phân trang |
+| GET | /bookings | Lịch đặt của tài khoản hiện tại, phân trang; status? |
 | POST | /bookings | Đặt sân; payload bên dưới |
 | GET | /bookings/{id} | Chi tiết booking được phép xem |
+| GET | /bookings/{id}/receipt | Phiếu đặt sân và tổng thu/hoàn tiền được phép xem |
+| PATCH | /bookings/{id}/reschedule | starts_at, ends_at; giữ cùng sân, lịch chưa thanh toán |
 | PATCH | /bookings/{id}/status | status: cancelled, checked_in hoặc completed |
 | GET | /manage/calendar | date=YYYY-MM-DD, branch_id?, status? |
 | GET | /manage/booking-search | reference=BH-... |
@@ -133,4 +146,4 @@ Tệp `database/badminton_hub.sql` là bản cấu trúc và dữ liệu mẫu �
 php artisan test --compact
 ```
 
-23 bài kiểm thử, 105 assertions, đã đạt trên SQLite và database MySQL thử riêng `badminton_hub_codex_test_20261008`. Database thật của project không bị dùng để chạy RefreshDatabase. Các kiểm thử bao phủ chồng lịch, giá, dịch vụ khác chi nhánh, dữ liệu riêng tư, phân quyền, CSRF, giới hạn đăng nhập, thu tiền lặp, trả thừa, hoàn tiền, báo cáo và bảo trì.
+34 bài kiểm thử, 194 assertions, đã đạt trên SQLite và database MySQL thử riêng `badminton_hub_codex_test_20261008`. Database thật của project không bị dùng để chạy RefreshDatabase. Các kiểm thử bao phủ chồng/đổi lịch, giá, dịch vụ khác chi nhánh, dữ liệu riêng tư, phân quyền, CSRF, giới hạn đăng nhập, hồ sơ/mật khẩu, phiên đăng nhập, thông báo, thu tiền lặp, trả thừa, hoàn tiền, báo cáo và bảo trì.

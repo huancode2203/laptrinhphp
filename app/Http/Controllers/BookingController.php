@@ -15,7 +15,13 @@ class BookingController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        return BookingResource::collection(Booking::query()->where('user_id', $request->user()->id)->with(['court.branch', 'services', 'payments'])->orderByDesc('starts_at')->paginate(20));
+        $data = $request->validate(['status' => ['sometimes', Rule::in(['confirmed', 'checked_in', 'completed', 'cancelled'])]]);
+        $query = Booking::query()->where('user_id', $request->user()->id);
+        if (isset($data['status'])) {
+            $query->where('status', $data['status']);
+        }
+
+        return BookingResource::collection($query->with(['court.branch', 'services', 'payments'])->orderByDesc('starts_at')->paginate(20));
     }
 
     public function store(StoreBookingRequest $request, BookingService $engine): BookingResource
@@ -39,6 +45,28 @@ class BookingController extends Controller
         $data = $request->validate(['status' => ['required', Rule::in(['cancelled', 'checked_in', 'completed'])]]);
 
         return new BookingResource($engine->changeStatus($request->user(), $booking, $data['status']));
+    }
+
+    public function reschedule(Request $request, Booking $booking, BookingService $engine): BookingResource
+    {
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at']]);
+
+        return new BookingResource($engine->reschedule($request->user(), $booking, $data));
+    }
+
+    public function receipt(Request $request, Booking $booking, BookingService $engine): JsonResponse
+    {
+        $this->show($request, $booking, $engine);
+        $booking->load('user');
+
+        return response()->json(['data' => [
+            'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',
+            'customer' => ['name' => $booking->user->name, 'phone' => $booking->user->phone],
+            'branch' => ['name' => $booking->court->branch->name, 'address' => $booking->court->branch->address],
+            'booking' => new BookingResource($booking),
+            'collected' => $booking->payments->where('kind', 'payment')->sum('amount'),
+            'refunded' => $booking->payments->where('kind', 'refund')->sum('amount'),
+        ]]);
     }
 
     public function payment(Request $request, Booking $booking, BookingService $engine): JsonResponse

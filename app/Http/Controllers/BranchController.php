@@ -6,6 +6,7 @@ use App\BookingService;
 use App\Http\Resources\BranchResource;
 use App\Models\Branch;
 use App\Models\Court;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -59,5 +60,36 @@ class BranchController extends Controller
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
 
         return response()->json(['data' => $engine->quote($court, $start, $end, $data['services'] ?? []), 'currency' => 'VND']);
+    }
+
+    public function schedule(Request $request, Branch $branch, BookingService $engine): JsonResponse
+    {
+        abort_unless($branch->active, 404);
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
+        $day = CarbonImmutable::parse($data['date'], config('app.timezone'))->startOfDay();
+        abort_if($day->lt(now()->startOfDay()) || $day->gt(now()->addDays(90)->startOfDay()), 422, 'Chọn ngày từ hôm nay đến 90 ngày tới.');
+        $courts = $branch->courts()->with([
+            'bookings' => fn ($query) => $query->where('status', '!=', 'cancelled')->where('starts_at', '<', $day->addDay())->where('ends_at', '>', $day),
+            'maintenances' => fn ($query) => $query->where('status', 'scheduled')->where('starts_at', '<', $day->addDay())->where('ends_at', '>', $day),
+        ])->orderBy('id')->get();
+        $schedule = $courts->map(function (Court $court) use ($day, $engine): array {
+            $slots = [];
+            for ($start = $day->setTime(3, 0); $start->lt($day->setTime(23, 0)); $start = $start->addMinutes(30)) {
+                $end = $start->addMinutes(30);
+                $state = $court->status === 'active' ? 'available' : $court->status;
+                if ($start->lt(now()->startOfMinute())) {
+                    $state = 'past';
+                } elseif ($court->maintenances->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {
+                    $state = 'maintenance';
+                } elseif ($court->bookings->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {
+                    $state = 'reserved';
+                }
+                $slots[] = ['starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'state' => $state, 'available' => $state === 'available', 'court_amount' => $engine->quote($court, $start, $end)['court_amount']];
+            }
+
+            return ['id' => $court->id, 'name' => $court->name, 'status' => $court->status, 'slots' => $slots];
+        });
+
+        return response()->json(['data' => ['branch_id' => $branch->id, 'date' => $day->toDateString(), 'slot_minutes' => 30, 'courts' => $schedule], 'currency' => 'VND']);
     }
 }

@@ -23,7 +23,7 @@ class BookingResource extends JsonResource
             'service_amount' => $this->service_amount,
             'total_amount' => $this->total_amount,
             'paid_amount' => $this->paid_amount,
-            'remaining_amount' => max(0, $this->total_amount - $this->paid_amount),
+            'remaining_amount' => $this->status === 'cancelled' ? 0 : max(0, $this->total_amount - $this->paid_amount),
             'refund_pending' => $this->status === 'cancelled' && $this->paid_amount > 0,
             'notes' => $this->notes,
             'services' => $this->whenLoaded('services', fn () => $this->services->map(fn ($service) => ['id' => $service->id, 'name' => $service->pivot->name, 'quantity' => $service->pivot->quantity, 'unit_price' => $service->pivot->unit_price, 'amount' => $service->pivot->amount])),

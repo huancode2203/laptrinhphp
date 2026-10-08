@@ -175,6 +175,9 @@ class ManagementController extends Controller
             $court = Court::query()->lockForUpdate()->findOrFail($maintenance->court_id);
             $this->engine->assertManage($request->user(), $court->branch_id);
             $maintenance = Maintenance::query()->lockForUpdate()->findOrFail($maintenance->id);
+            if ($maintenance->status !== 'scheduled' && $maintenance->status !== $data['status']) {
+                throw ValidationException::withMessages(['status' => 'Lịch bảo trì đã kết thúc hoặc đã hủy.']);
+            }
             if ($data['status'] === 'completed' && now()->lt($maintenance->ends_at)) {
                 throw ValidationException::withMessages(['status' => 'Chỉ hoàn tất khi đã hết thời gian bảo trì.']);
             }

@@ -7,6 +7,7 @@ use App\Models\Court;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
+use App\Notifications\HubNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,7 @@ class BookingService
                 ]);
                 $booking->services()->attach($quote['items']);
                 $this->audit($actor, 'booking.created', $booking->id, ['reference' => $booking->reference, 'total_amount' => $booking->total_amount]);
+                $this->notifyBooking($booking, 'created', 'Đặt sân thành công', 'Lịch '.$booking->reference.' đã được xác nhận.');
 
                 return $booking->load(['court.branch', 'services', 'payments']);
             }, 5);
@@ -115,13 +117,47 @@ class BookingService
         }
     }
 
-    public function assertAvailable(Court $court, CarbonImmutable $start, CarbonImmutable $end): void
+    public function assertAvailable(Court $court, CarbonImmutable $start, CarbonImmutable $end, ?int $exceptBookingId = null): void
     {
-        $booking = $court->bookings()->where('status', '!=', 'cancelled')->where('starts_at', '<', $end)->where('ends_at', '>', $start)->lockForUpdate()->first();
+        $booking = $court->bookings()->where('status', '!=', 'cancelled')->when($exceptBookingId, fn ($query) => $query->where('id', '!=', $exceptBookingId))->where('starts_at', '<', $end)->where('ends_at', '>', $start)->lockForUpdate()->first();
         $maintenance = $court->maintenances()->where('status', 'scheduled')->where('starts_at', '<', $end)->where('ends_at', '>', $start)->lockForUpdate()->first();
         if ($booking || $maintenance) {
             throw ValidationException::withMessages(['starts_at' => 'Sân đã có lịch đặt hoặc lịch bảo trì trong khung giờ này.']);
         }
+    }
+
+    public function reschedule(User $actor, Booking $booking, array $data): Booking
+    {
+        [$start, $end] = $this->window($data['starts_at'], $data['ends_at']);
+
+        return DB::transaction(function () use ($actor, $booking, $start, $end): Booking {
+            $court = Court::query()->lockForUpdate()->findOrFail($booking->court_id);
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($actor->role === 'customer') {
+                abort_unless($booking->user_id === $actor->id, 403);
+            } else {
+                $this->assertManage($actor, $court->branch_id);
+            }
+            if ($booking->status !== 'confirmed' || $booking->paid_amount > 0 || $booking->starts_at->lte(now())) {
+                throw ValidationException::withMessages(['starts_at' => 'Chỉ đổi lịch chưa thanh toán, chưa bắt đầu và đang xác nhận.']);
+            }
+            if ($court->status !== 'active' || ! $court->branch->active) {
+                throw ValidationException::withMessages(['court_id' => 'Sân hiện không nhận đổi lịch.']);
+            }
+            if ($booking->starts_at->eq($start) && $booking->ends_at->eq($end)) {
+                return $booking->load(['court.branch', 'services', 'payments']);
+            }
+            $this->assertAvailable($court, $start, $end, $booking->id);
+            $services = $booking->services->map(fn (Service $service) => ['id' => $service->id, 'quantity' => $service->pivot->quantity])->all();
+            $quote = $this->quote($court, $start, $end, $services);
+            $previous = ['starts_at' => $booking->starts_at->toIso8601String(), 'ends_at' => $booking->ends_at->toIso8601String(), 'total_amount' => $booking->total_amount];
+            $booking->fill(['starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $quote['total_amount']])->save();
+            $booking->services()->sync($quote['items']);
+            $this->audit($actor, 'booking.rescheduled', $booking->id, ['previous' => $previous, 'starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'total_amount' => $booking->total_amount]);
+            $this->notifyBooking($booking, 'rescheduled', 'Đã đổi lịch sân', 'Lịch '.$booking->reference.' đã được cập nhật.');
+
+            return $booking->load(['court.branch', 'services', 'payments']);
+        }, 5);
     }
 
     public function changeStatus(User $actor, Booking $booking, string $status): Booking
@@ -151,6 +187,8 @@ class BookingService
             }
             $booking->save();
             $this->audit($actor, 'booking.'.$status, $booking->id, ['paid_amount' => $booking->paid_amount]);
+            $titles = ['cancelled' => 'Đã hủy lịch sân', 'checked_in' => 'Đã nhận sân', 'completed' => 'Buổi chơi đã hoàn tất'];
+            $this->notifyBooking($booking, $status, $titles[$status], 'Trạng thái lịch '.$booking->reference.' đã được cập nhật.');
 
             return $booking->load(['court.branch', 'services', 'payments']);
         }, 5);
@@ -193,9 +231,15 @@ class BookingService
             ]);
             $booking->save();
             $this->audit($actor, 'booking.'.$kind, $booking->id, ['amount' => $amount, 'method' => $data['method'], 'payment_id' => $payment->id]);
+            $this->notifyBooking($booking, $kind, $kind === 'refund' ? 'Đã hoàn tiền' : 'Đã ghi nhận thanh toán', 'Lịch '.$booking->reference.': '.number_format($amount, 0, ',', '.').' đồng.');
 
             return $payment;
         }, 5);
+    }
+
+    private function notifyBooking(Booking $booking, string $action, string $title, string $body): void
+    {
+        $booking->user->notify(new HubNotification(['type' => 'booking.'.$action, 'title' => $title, 'body' => $body, 'booking_id' => $booking->id, 'reference' => $booking->reference]));
     }
 
     public function audit(User $actor, string $action, int $subjectId, array $details, string $subjectType = 'booking'): void

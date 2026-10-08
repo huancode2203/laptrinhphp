@@ -1,3 +1,8 @@
+-- MySQL dump 10.13  Distrib 8.4.3, for Win64 (x86_64)
+--
+-- Host: 127.0.0.1    Database: badminton_hub_20261008
+-- ------------------------------------------------------
+-- Server version	8.4.3
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -9,6 +14,11 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `audit_logs`
+--
+
 DROP TABLE IF EXISTS `audit_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -26,10 +36,10 @@ CREATE TABLE `audit_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `audit_logs` WRITE;
-/*!40000 ALTER TABLE `audit_logs` DISABLE KEYS */;
-/*!40000 ALTER TABLE `audit_logs` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `booking_services`
+--
+
 DROP TABLE IF EXISTS `booking_services`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -49,10 +59,10 @@ CREATE TABLE `booking_services` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `booking_services` WRITE;
-/*!40000 ALTER TABLE `booking_services` DISABLE KEYS */;
-/*!40000 ALTER TABLE `booking_services` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `bookings`
+--
+
 DROP TABLE IF EXISTS `bookings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -83,10 +93,10 @@ CREATE TABLE `bookings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `bookings` WRITE;
-/*!40000 ALTER TABLE `bookings` DISABLE KEYS */;
-/*!40000 ALTER TABLE `bookings` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `branches`
+--
+
 DROP TABLE IF EXISTS `branches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -104,11 +114,10 @@ CREATE TABLE `branches` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `branches` WRITE;
-/*!40000 ALTER TABLE `branches` DISABLE KEYS */;
-INSERT INTO `branches` VALUES (1,'Badminton Hub – Quận 1','Quận 1','18 Nguyễn Bỉnh Khiêm, Q.1',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(2,'Badminton Hub – Quận 3','Quận 3','210 Võ Văn Tần, Q.3',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(3,'Badminton Hub – Bình Thạnh','Bình Thạnh','72 Điện Biên Phủ, Bình Thạnh',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(4,'Badminton Hub – Phú Nhuận','Phú Nhuận','93 Phan Xích Long, Phú Nhuận',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(5,'Badminton Hub – Gò Vấp','Gò Vấp','45 Quang Trung, Gò Vấp',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(6,'Badminton Hub – Tân Bình','Tân Bình','110 Cộng Hòa, Tân Bình',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(7,'Badminton Hub – Thủ Đức','Thủ Đức','52 Võ Văn Ngân, Thủ Đức',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(8,'Badminton Hub – Quận 7','Quận 7','88 Nguyễn Hữu Thọ, Q.7',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59');
-/*!40000 ALTER TABLE `branches` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `cache`
+--
+
 DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -121,10 +130,10 @@ CREATE TABLE `cache` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `cache` WRITE;
-/*!40000 ALTER TABLE `cache` DISABLE KEYS */;
-/*!40000 ALTER TABLE `cache` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `cache_locks`
+--
+
 DROP TABLE IF EXISTS `cache_locks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -137,10 +146,10 @@ CREATE TABLE `cache_locks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `cache_locks` WRITE;
-/*!40000 ALTER TABLE `cache_locks` DISABLE KEYS */;
-/*!40000 ALTER TABLE `cache_locks` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `courts`
+--
+
 DROP TABLE IF EXISTS `courts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -160,11 +169,10 @@ CREATE TABLE `courts` (
 ) ENGINE=InnoDB AUTO_INCREMENT=78 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `courts` WRITE;
-/*!40000 ALTER TABLE `courts` DISABLE KEYS */;
-INSERT INTO `courts` VALUES (1,1,'Sân 01','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(2,1,'Sân 02','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(3,1,'Sân 03','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(4,1,'Sân 04','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(5,1,'Sân 05','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(6,1,'Sân 06','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(7,2,'Sân 01','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(8,2,'Sân 02','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(9,2,'Sân 03','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(10,2,'Sân 04','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(11,2,'Sân 05','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(12,2,'Sân 06','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(13,2,'Sân 07','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(14,2,'Sân 08','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(15,3,'Sân 01','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(16,3,'Sân 02','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(17,3,'Sân 03','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(18,3,'Sân 04','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(19,3,'Sân 05','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(20,3,'Sân 06','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(21,3,'Sân 07','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(22,3,'Sân 08','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(23,3,'Sân 09','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(24,3,'Sân 10','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(25,3,'Sân 11','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(26,3,'Sân 12','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(27,4,'Sân 01','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(28,4,'Sân 02','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(29,4,'Sân 03','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(30,4,'Sân 04','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(31,4,'Sân 05','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(32,4,'Sân 06','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(33,4,'Sân 07','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(34,5,'Sân 01','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(35,5,'Sân 02','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(36,5,'Sân 03','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(37,5,'Sân 04','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(38,5,'Sân 05','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(39,5,'Sân 06','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(40,5,'Sân 07','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(41,5,'Sân 08','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(42,5,'Sân 09','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(43,5,'Sân 10','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(44,6,'Sân 01','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(45,6,'Sân 02','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(46,6,'Sân 03','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(47,6,'Sân 04','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(48,6,'Sân 05','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(49,6,'Sân 06','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(50,6,'Sân 07','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(51,6,'Sân 08','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(52,6,'Sân 09','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(53,7,'Sân 01','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(54,7,'Sân 02','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(55,7,'Sân 03','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(56,7,'Sân 04','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(57,7,'Sân 05','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(58,7,'Sân 06','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(59,7,'Sân 07','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(60,7,'Sân 08','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(61,7,'Sân 09','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(62,7,'Sân 10','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(63,7,'Sân 11','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(64,7,'Sân 12','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(65,7,'Sân 13','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(66,7,'Sân 14','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(67,8,'Sân 01','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(68,8,'Sân 02','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(69,8,'Sân 03','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(70,8,'Sân 04','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(71,8,'Sân 05','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(72,8,'Sân 06','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(73,8,'Sân 07','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(74,8,'Sân 08','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(75,8,'Sân 09','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(76,8,'Sân 10','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(77,8,'Sân 11','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59');
-/*!40000 ALTER TABLE `courts` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `failed_jobs`
+--
+
 DROP TABLE IF EXISTS `failed_jobs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -182,10 +190,10 @@ CREATE TABLE `failed_jobs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `failed_jobs` WRITE;
-/*!40000 ALTER TABLE `failed_jobs` DISABLE KEYS */;
-/*!40000 ALTER TABLE `failed_jobs` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `job_batches`
+--
+
 DROP TABLE IF EXISTS `job_batches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -204,10 +212,10 @@ CREATE TABLE `job_batches` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `job_batches` WRITE;
-/*!40000 ALTER TABLE `job_batches` DISABLE KEYS */;
-/*!40000 ALTER TABLE `job_batches` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `jobs`
+--
+
 DROP TABLE IF EXISTS `jobs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -224,10 +232,10 @@ CREATE TABLE `jobs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `jobs` WRITE;
-/*!40000 ALTER TABLE `jobs` DISABLE KEYS */;
-/*!40000 ALTER TABLE `jobs` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `maintenances`
+--
+
 DROP TABLE IF EXISTS `maintenances`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -246,10 +254,10 @@ CREATE TABLE `maintenances` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `maintenances` WRITE;
-/*!40000 ALTER TABLE `maintenances` DISABLE KEYS */;
-/*!40000 ALTER TABLE `maintenances` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `migrations`
+--
+
 DROP TABLE IF EXISTS `migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -258,14 +266,34 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `migrations` WRITE;
-/*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_10_08_080648_create_badminton_tables',1);
-/*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `notifications`
+--
+
+DROP TABLE IF EXISTS `notifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notifications` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_id` bigint unsigned NOT NULL,
+  `data` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `notifications_notifiable_type_notifiable_id_index` (`notifiable_type`,`notifiable_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `password_reset_tokens`
+--
+
 DROP TABLE IF EXISTS `password_reset_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -277,10 +305,10 @@ CREATE TABLE `password_reset_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `password_reset_tokens` WRITE;
-/*!40000 ALTER TABLE `password_reset_tokens` DISABLE KEYS */;
-/*!40000 ALTER TABLE `password_reset_tokens` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `payments`
+--
+
 DROP TABLE IF EXISTS `payments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -304,10 +332,10 @@ CREATE TABLE `payments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `payments` WRITE;
-/*!40000 ALTER TABLE `payments` DISABLE KEYS */;
-/*!40000 ALTER TABLE `payments` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `services`
+--
+
 DROP TABLE IF EXISTS `services`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -326,11 +354,10 @@ CREATE TABLE `services` (
 ) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `services` WRITE;
-/*!40000 ALTER TABLE `services` DISABLE KEYS */;
-INSERT INTO `services` VALUES (1,1,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(2,1,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(3,1,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(4,1,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(5,1,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(6,1,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(7,1,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(8,1,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(9,2,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(10,2,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(11,2,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(12,2,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(13,2,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(14,2,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(15,2,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(16,2,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(17,3,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(18,3,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(19,3,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(20,3,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(21,3,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(22,3,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(23,3,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(24,3,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(25,4,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(26,4,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(27,4,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(28,4,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(29,4,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(30,4,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(31,4,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(32,4,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(33,5,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(34,5,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(35,5,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(36,5,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(37,5,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(38,5,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(39,5,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(40,5,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(41,6,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(42,6,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(43,6,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(44,6,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(45,6,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(46,6,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(47,6,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(48,6,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(49,7,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(50,7,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(51,7,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(52,7,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(53,7,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(54,7,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(55,7,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(56,7,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(57,8,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(58,8,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(59,8,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(60,8,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(61,8,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(62,8,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(63,8,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(64,8,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59');
-/*!40000 ALTER TABLE `services` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `sessions`
+--
+
 DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -347,10 +374,10 @@ CREATE TABLE `sessions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-LOCK TABLES `sessions` WRITE;
-/*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
-UNLOCK TABLES;
+--
+-- Table structure for table `users`
+--
+
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -373,11 +400,83 @@ CREATE TABLE `users` (
   CONSTRAINT `users_branch_id_foreign` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-10-08 17:42:52
+
+-- MySQL dump 10.13  Distrib 8.4.3, for Win64 (x86_64)
+--
+-- Host: 127.0.0.1    Database: badminton_hub_20261008
+-- ------------------------------------------------------
+-- Server version	8.4.3
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `migrations`
+--
+
+LOCK TABLES `migrations` WRITE;
+/*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
+INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_10_08_080648_create_badminton_tables',1),(5,'2026_10_08_173715_create_notifications_table',2);
+/*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `branches`
+--
+
+LOCK TABLES `branches` WRITE;
+/*!40000 ALTER TABLE `branches` DISABLE KEYS */;
+INSERT INTO `branches` VALUES (1,'Badminton Hub – Quận 1','Quận 1','18 Nguyễn Bỉnh Khiêm, Q.1',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(2,'Badminton Hub – Quận 3','Quận 3','210 Võ Văn Tần, Q.3',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(3,'Badminton Hub – Bình Thạnh','Bình Thạnh','72 Điện Biên Phủ, Bình Thạnh',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(4,'Badminton Hub – Phú Nhuận','Phú Nhuận','93 Phan Xích Long, Phú Nhuận',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(5,'Badminton Hub – Gò Vấp','Gò Vấp','45 Quang Trung, Gò Vấp',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(6,'Badminton Hub – Tân Bình','Tân Bình','110 Cộng Hòa, Tân Bình',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(7,'Badminton Hub – Thủ Đức','Thủ Đức','52 Võ Văn Ngân, Thủ Đức',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(8,'Badminton Hub – Quận 7','Quận 7','88 Nguyễn Hữu Thọ, Q.7',NULL,'[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-08 08:14:59','2026-10-08 08:14:59');
+/*!40000 ALTER TABLE `branches` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `users`
+--
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` VALUES (1,'Quản trị viên','admin@badminton.test',NULL,'$2y$12$6335hNLevZtd4KoowiTnsujKmRHHbIYD1RiJbRnqKdD4uXL0asysS',NULL,'2026-10-08 08:14:59','2026-10-08 08:14:59','admin',NULL,NULL),(2,'Quản lý Bình Thạnh','manager@badminton.test',NULL,'$2y$12$q/SmHkdiNgGMv.AGBDgUQuzyFNFipdlNOYrMnSv3541/EbnFwa9NG',NULL,'2026-10-08 08:14:59','2026-10-08 08:14:59','manager',NULL,3),(3,'Khách hàng mẫu','customer@badminton.test',NULL,'$2y$12$43eWwjnvLIbub1CMiX4Il.1yGwHxLfDtEAJMUS3X8ZDbV/LkaKJcO',NULL,'2026-10-08 08:14:59','2026-10-08 08:14:59','customer',NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `courts`
+--
+
+LOCK TABLES `courts` WRITE;
+/*!40000 ALTER TABLE `courts` DISABLE KEYS */;
+INSERT INTO `courts` VALUES (1,1,'Sân 01','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(2,1,'Sân 02','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(3,1,'Sân 03','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(4,1,'Sân 04','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(5,1,'Sân 05','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(6,1,'Sân 06','active',120000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(7,2,'Sân 01','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(8,2,'Sân 02','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(9,2,'Sân 03','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(10,2,'Sân 04','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(11,2,'Sân 05','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(12,2,'Sân 06','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(13,2,'Sân 07','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(14,2,'Sân 08','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(15,3,'Sân 01','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(16,3,'Sân 02','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(17,3,'Sân 03','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(18,3,'Sân 04','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(19,3,'Sân 05','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(20,3,'Sân 06','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(21,3,'Sân 07','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(22,3,'Sân 08','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(23,3,'Sân 09','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(24,3,'Sân 10','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(25,3,'Sân 11','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(26,3,'Sân 12','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(27,4,'Sân 01','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(28,4,'Sân 02','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(29,4,'Sân 03','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(30,4,'Sân 04','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(31,4,'Sân 05','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(32,4,'Sân 06','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(33,4,'Sân 07','active',110000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(34,5,'Sân 01','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(35,5,'Sân 02','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(36,5,'Sân 03','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(37,5,'Sân 04','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(38,5,'Sân 05','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(39,5,'Sân 06','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(40,5,'Sân 07','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(41,5,'Sân 08','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(42,5,'Sân 09','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(43,5,'Sân 10','active',95000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(44,6,'Sân 01','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(45,6,'Sân 02','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(46,6,'Sân 03','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(47,6,'Sân 04','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(48,6,'Sân 05','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(49,6,'Sân 06','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(50,6,'Sân 07','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(51,6,'Sân 08','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(52,6,'Sân 09','active',100000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(53,7,'Sân 01','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(54,7,'Sân 02','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(55,7,'Sân 03','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(56,7,'Sân 04','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(57,7,'Sân 05','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(58,7,'Sân 06','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(59,7,'Sân 07','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(60,7,'Sân 08','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(61,7,'Sân 09','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(62,7,'Sân 10','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(63,7,'Sân 11','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(64,7,'Sân 12','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(65,7,'Sân 13','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(66,7,'Sân 14','active',90000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(67,8,'Sân 01','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(68,8,'Sân 02','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(69,8,'Sân 03','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(70,8,'Sân 04','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(71,8,'Sân 05','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(72,8,'Sân 06','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(73,8,'Sân 07','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(74,8,'Sân 08','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(75,8,'Sân 09','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(76,8,'Sân 10','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(77,8,'Sân 11','active',105000,180000,200000,'2026-10-08 08:14:59','2026-10-08 08:14:59');
+/*!40000 ALTER TABLE `courts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `services`
+--
+
+LOCK TABLES `services` WRITE;
+/*!40000 ALTER TABLE `services` DISABLE KEYS */;
+INSERT INTO `services` VALUES (1,1,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(2,1,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(3,1,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(4,1,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(5,1,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(6,1,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(7,1,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(8,1,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(9,2,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(10,2,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(11,2,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(12,2,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(13,2,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(14,2,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(15,2,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(16,2,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(17,3,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(18,3,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(19,3,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(20,3,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(21,3,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(22,3,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(23,3,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(24,3,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(25,4,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(26,4,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(27,4,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(28,4,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(29,4,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(30,4,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(31,4,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(32,4,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(33,5,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(34,5,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(35,5,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(36,5,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(37,5,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(38,5,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(39,5,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(40,5,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(41,6,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(42,6,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(43,6,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(44,6,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(45,6,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(46,6,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(47,6,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(48,6,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(49,7,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(50,7,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(51,7,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(52,7,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(53,7,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(54,7,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(55,7,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(56,7,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(57,8,'Thuê vợt','buổi',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(58,8,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(59,8,'Nước suối','chai',10000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(60,8,'Pocari Sweat','chai',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(61,8,'Thuê giày','buổi',25000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(62,8,'Locker','buổi',15000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(63,8,'Shower','lần',30000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59'),(64,8,'Huấn luyện viên','buổi',200000,1,'2026-10-08 08:14:59','2026-10-08 08:14:59');
+/*!40000 ALTER TABLE `services` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -389,3 +488,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+-- Dump completed on 2026-10-08 17:42:52
