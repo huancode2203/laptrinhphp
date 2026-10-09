@@ -161,7 +161,48 @@ export function EventDetail({
             ))}
             {e.matches.length > 0 && (
                 <>
-                    <h3 className="my-4 font-bold">Nhánh đấu</h3>
+                    <h3 className="my-4 font-bold">Lịch thi đấu</h3>
+                    {e.tournament_format !== "single_elimination" &&
+                        e.standings?.length > 0 && (
+                            <div className="mb-5 overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th className="p-2">Hạng</th>
+                                            <th>Vận động viên</th>
+                                            <th>Trận</th>
+                                            <th>Thắng</th>
+                                            <th>Điểm</th>
+                                            <th>Hiệu số</th>
+                                            <th>Buchholz</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {e.standings.map(
+                                            (s: Row, i: number) => (
+                                                <tr
+                                                    key={s.id}
+                                                    className="border-t border-slate-200"
+                                                >
+                                                    <td className="p-2">
+                                                        {i + 1}
+                                                    </td>
+                                                    <td>{s.name}</td>
+                                                    <td>{s.played}</td>
+                                                    <td>{s.wins}</td>
+                                                    <td>{s.points}</td>
+                                                    <td>
+                                                        {s.score_for -
+                                                            s.score_against}
+                                                    </td>
+                                                    <td>{s.buchholz}</td>
+                                                </tr>
+                                            ),
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     {Array.from(
                         new Set(e.matches.map((m: Row) => m.round)),
                     ).map((round) => (
@@ -235,7 +276,7 @@ export function EventDetail({
                     }
                 >
                     {form === "draw"
-                        ? "Bốc thăm loại trực tiếp từ các vé đã xác nhận. Không thay đổi nhánh đấu sau khi tạo."
+                        ? "Tạo lịch theo thể thức đã chọn từ các vé đã xác nhận. Danh sách vận động viên được chốt khi tạo."
                         : form === "cancel"
                           ? "Hủy sự kiện và giải phóng sân; tiền ví tự hoàn, các phương thức khác chờ quầy xử lý."
                           : form === "withdraw"

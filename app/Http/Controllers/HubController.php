@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\AccessService;
 use App\BookingService;
+use App\FeatureService;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BranchResource;
 use App\Models\Booking;
@@ -35,12 +37,13 @@ class HubController extends Controller
 {
     public function bootstrap(Request $r): JsonResponse
     {
+        app(FeatureService::class)->expireBookings();
         $branches = Branch::where('active', true)->with(['courts', 'services' => fn ($q) => $q->where('active', true)])->withCount('courts')->get();
         $ratings = DB::table('reviews')->where('visible', true)->selectRaw('branch_id, AVG(rating) AS rating, COUNT(*) AS count')->groupBy('branch_id')->get()->keyBy('branch_id');
         $today = Booking::whereDate('starts_at', now()->toDateString())->where('status', '!=', 'cancelled')->get(['status', 'starts_at']);
         $stats = ['members' => User::where('role', 'customer')->where('active', true)->count(), 'bookings' => $today->count(), 'checkins' => $today->whereIn('status', ['checked_in', 'completed'])->count(), 'playing' => $today->where('status', 'checked_in')->count(), 'hours' => collect(range(6, 19))->map(fn ($h) => $today->filter(fn ($b) => $b->starts_at->hour === $h)->count())->all()];
 
-        return response()->json(['data' => ['stats' => $stats, 'user' => $r->user(), 'branches' => BranchResource::collection($branches), 'plans' => MembershipPlan::where('active', true)->get(), 'ratings' => $ratings, 'momo_enabled' => app(MomoService::class)->enabled(), 'membership' => $r->user() ? Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first() : null]]);
+        return response()->json(['data' => ['stats' => $stats, 'user' => $r->user(), 'branches' => BranchResource::collection($branches), 'plans' => MembershipPlan::where('active', true)->get(), 'ratings' => $ratings, 'momo_enabled' => app(MomoService::class)->enabled(), 'google_enabled' => (bool) config('integrations.google.client_id'), 'sms_enabled' => (bool) config('integrations.sms.enabled'), 'bank' => config('integrations.bank.enabled') ? collect(config('integrations.bank'))->only(['account', 'name', 'bank_bin'])->all() : null, 'permissions' => $r->user() ? collect(AccessService::PERMISSIONS)->mapWithKeys(fn ($p) => [$p => app(AccessService::class)->allows($r->user(), $p)])->all() : [], 'managed_branch_ids' => $r->user() ? app(AccessService::class)->branches($r->user()) : [], 'membership' => $r->user() ? Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first() : null]]);
     }
 
     public function account(Request $r): JsonResponse
@@ -57,7 +60,10 @@ class HubController extends Controller
     {
         $r->validate(['branch_id' => ['sometimes', 'integer', 'exists:branches,id']]);
         if ($r->user()->role !== 'admin') {
-            return $r->user()->branch_id ?? 0;
+            $id = $r->integer('branch_id', $r->user()->branch_id ?? 0);
+            abort_unless(app(AccessService::class)->manages($r->user(), $id), 403);
+
+            return $id;
         }
 
         return $r->filled('branch_id') ? $r->integer('branch_id') : null;
@@ -69,9 +75,10 @@ class HubController extends Controller
         $branch = $this->branch($r);
         $date = $r->input('date', now()->toDateString());
         $scope = fn ($q) => $q->when($branch !== null, fn ($q) => $q->where('branch_id', $branch));
+        $access = app(AccessService::class);
         $bookings = Booking::whereDate('starts_at', $date)->whereHas('court', $scope)->with(['user', 'court.branch', 'services', 'payments'])->orderBy('starts_at')->get();
 
-        return response()->json(['data' => ['branches' => BranchResource::collection(Branch::query()->when($branch !== null, fn ($q) => $q->where('id', $branch))->get()), 'bookings' => BookingResource::collection($bookings), 'courts' => $scope(Court::with('branch'))->get(), 'services' => $scope(Service::query())->get(), 'products' => $scope(Product::query())->get(), 'sales' => $scope(Sale::with('items'))->latest('id')->limit(100)->get(), 'maintenances' => Maintenance::whereHas('court', $scope)->with('court')->latest('id')->limit(100)->get(), 'events' => $scope(GameEvent::query())->with('blocks')->withCount('registrations')->orderByDesc('starts_at')->limit(100)->get()]]);
+        return response()->json(['data' => ['branches' => BranchResource::collection(Branch::query()->when($branch !== null, fn ($q) => $q->where('id', $branch))->get()), 'bookings' => $access->allows($r->user(), 'bookings.read') ? BookingResource::collection($bookings) : [], 'courts' => $scope(Court::with('branch'))->get(), 'services' => $scope(Service::query())->get(), 'products' => $scope(Product::query())->get(), 'sales' => $access->allows($r->user(), 'pos.read') ? $scope(Sale::with('items'))->latest('id')->limit(100)->get() : [], 'maintenances' => Maintenance::whereHas('court', $scope)->with('court')->latest('id')->limit(100)->get(), 'events' => $scope(GameEvent::query())->with('blocks')->withCount('registrations')->orderByDesc('starts_at')->limit(100)->get()]]);
     }
 
     public function report(Request $r): JsonResponse

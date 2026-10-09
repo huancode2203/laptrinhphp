@@ -1,3 +1,4 @@
+import MediaPicker from "./MediaPicker";
 import { useState, type ReactNode } from "react";
 import { key, useHub } from "./hub";
 import type { Row } from "./data";
@@ -87,7 +88,12 @@ export function Editor({
                 {fields.map((f) => (
                     <label className="block text-sm font-semibold" key={f.name}>
                         {f.label}
-                        {f.type === "checkbox" ? (
+                        {f.type === "images" ? (
+                            <MediaPicker
+                                value={d[f.name] ?? []}
+                                onChange={(v) => set({ ...d, [f.name]: v })}
+                            />
+                        ) : f.type === "checkbox" ? (
                             <input
                                 type="checkbox"
                                 className="ml-3"

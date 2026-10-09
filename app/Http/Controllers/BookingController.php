@@ -7,6 +7,7 @@ use App\CommerceService;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
+use App\Models\PaymentAttempt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -32,7 +33,7 @@ class BookingController extends Controller
         return DB::transaction(function () use ($request, $engine): BookingResource {
             $booking = $engine->create($request->user(), $request->validated());
             if ($request->boolean('pay_with_wallet')) {
-                app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($request->input('request_key'), 'wallet-payment'));
+                app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($request->input('request_key'), 'wallet-payment'), $request->boolean('deposit_only'));
             }
 
             return new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments']));
@@ -60,7 +61,7 @@ class BookingController extends Controller
                 }
                 $booking = $engine->create($request->user(), $item);
                 if ($request->boolean('pay_with_wallet')) {
-                    app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($data['request_key'], 'wallet-payment-'.$i));
+                    app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($data['request_key'], 'wallet-payment-'.$i), $request->boolean('deposit_only'));
                 }
                 $rows[] = new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments']));
             }
@@ -91,7 +92,7 @@ class BookingController extends Controller
 
     public function reschedule(Request $request, Booking $booking, BookingService $engine): BookingResource
     {
-        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at']]);
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id']);
 
         return new BookingResource($engine->reschedule($request->user(), $booking, $data));
     }
@@ -102,6 +103,7 @@ class BookingController extends Controller
         $booking->load('user');
 
         return response()->json(['data' => [
+            'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
             'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',
             'customer' => ['name' => $booking->user->name, 'phone' => $booking->user->phone],
             'branch' => ['name' => $booking->court->branch->name, 'address' => $booking->court->branch->address],

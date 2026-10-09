@@ -29,5 +29,7 @@ if not exist "public\build\manifest.json" (
 )
 echo Bật MySQL trong Laragon trước khi chạy.
 echo Website: http://127.0.0.1:8088
+set "HUB_TASK_DIR=%~dp0"
+powershell -NoProfile -WindowStyle Hidden -Command "$taskDir=$env:HUB_TASK_DIR; $taskArtisan=Join-Path $taskDir 'artisan'; $taskWorker=Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'php.exe' -and $_.CommandLine -like ('*'+$taskArtisan+'*schedule:work*') }; if(-not $taskWorker) { Start-Process -FilePath $env:HUB_PHP -ArgumentList ([char]34+$taskArtisan+[char]34),'schedule:work' -WorkingDirectory $taskDir -WindowStyle Hidden }"
 "%HUB_PHP%" artisan serve --host=127.0.0.1 --port=8088
 pause

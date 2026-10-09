@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\BookingService;
 use App\CommerceService;
+use App\FeatureService;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\Coupon;
@@ -32,6 +33,7 @@ class CommerceController extends Controller
             $court = Court::query()->lockForUpdate()->findOrFail($data['court_id']);
             $actor = User::query()->lockForUpdate()->findOrFail($request->user()->id);
             abort_unless($court->status === 'active' && $court->branch->active, 422);
+            $engine->assertOpen($court, $start, $end, $request->user());
             if ($actor->role !== 'customer') {
                 $engine->assertManage($actor, $court->branch_id);
             }
@@ -66,9 +68,10 @@ class CommerceController extends Controller
 
     public function walletPay(Request $request, Booking $booking, CommerceService $commerce): JsonResponse
     {
-        $data = $request->validate(['request_key' => ['required', 'uuid']]);
+        app(FeatureService::class)->expireBookings();
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'deposit_only' => 'sometimes|boolean']);
 
-        return response()->json(['data' => $commerce->payBooking($request->user(), $booking, $data['request_key'])]);
+        return response()->json(['data' => $commerce->payBooking($request->user(), $booking, $data['request_key'], $data['deposit_only'] ?? false)]);
     }
 
     public function topup(Request $request, User $user, CommerceService $commerce, BookingService $engine): JsonResponse
@@ -82,6 +85,7 @@ class CommerceController extends Controller
 
     public function buyMembership(Request $request, MembershipPlan $plan, CommerceService $commerce): JsonResponse
     {
+        abort_if($plan->points_threshold > $request->user()->earned_points, 422, 'Chưa đủ điểm để nhận hạng hội viên này.');
         $data = $request->validate(['request_key' => ['required', 'uuid']]);
         $data['method'] = 'wallet';
 
@@ -151,7 +155,7 @@ class CommerceController extends Controller
 
     public function savePlan(Request $request, ?MembershipPlan $plan = null): JsonResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:50', Rule::unique('membership_plans')->ignore($plan?->id)], 'price' => ['required', 'integer', 'min:0', 'max:10000000'], 'discount_percent' => ['required', 'integer', 'between:0,50'], 'duration_days' => ['required', 'integer', 'between:1,365'], 'active' => ['required', 'boolean']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:50', Rule::unique('membership_plans')->ignore($plan?->id)], 'price' => ['required', 'integer', 'min:0', 'max:10000000'], 'discount_percent' => ['required', 'integer', 'between:0,50'], 'duration_days' => ['required', 'integer', 'between:1,365'], 'early_days' => 'sometimes|integer|between:0,90', 'points_threshold' => 'sometimes|integer|between:0,1000000', 'active' => ['required', 'boolean']]);
         $plan ??= new MembershipPlan;
         $plan->fill($data)->save();
         app(BookingService::class)->audit($request->user(), 'membership_plan.saved', $plan->id, $data, 'membership_plan');
@@ -176,7 +180,8 @@ class CommerceController extends Controller
     public function review(Request $request, Booking $booking): JsonResponse
     {
         abort_unless($booking->user_id === $request->user()->id && $booking->status === 'completed', 403);
-        $data = $request->validate(['rating' => ['required', 'integer', 'between:1,5'], 'content' => ['required', 'string', 'max:2000']]);
+        $data = $request->validate(['rating' => ['required', 'integer', 'between:1,5'], 'content' => ['required', 'string', 'max:2000'], 'images' => 'sometimes|array|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
+        app(FeatureService::class)->media($data['images'] ?? [], $request->user());
         $review = Review::updateOrCreate(['booking_id' => $booking->id], $data + ['user_id' => $request->user()->id, 'branch_id' => $booking->court->branch_id]);
 
         return response()->json(['data' => $review]);
@@ -188,6 +193,7 @@ class CommerceController extends Controller
         [$start,$end] = $engine->window($data['starts_at'], $data['ends_at']);
         $court = Court::findOrFail($data['court_id']);
         abort_unless($court->status === 'active' && $court->branch->active, 422);
+        $engine->assertOpen($court, $start, $end, $request->user());
         $entry = WaitlistEntry::updateOrCreate(['court_id' => $court->id, 'user_id' => $request->user()->id, 'starts_at' => $start, 'ends_at' => $end], ['status' => 'waiting']);
 
         return response()->json(['data' => $entry], 201);

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'price', 'discount_percent', 'duration_days', 'active'])]
+#[Fillable(['name', 'price', 'discount_percent', 'duration_days', 'active', 'early_days', 'points_threshold'])]
 
 class MembershipPlan extends Model
 {

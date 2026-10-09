@@ -53,7 +53,7 @@ class CommerceService
 
     public function discounts(?User $user, int $courtAmount, int $branchId, ?string $code = null): array
     {
-        $membership = $user ? Membership::with('plan')->where('user_id', $user->id)->where('starts_at', '<=', now())->where('expires_at', '>', now())->latest('id')->first() : null;
+        $membership = $user ? Membership::with('plan')->where('user_id', $user->id)->where('starts_at', '<=', now())->where('expires_at', '>', now())->get()->sortByDesc(fn ($m) => $m->plan->discount_percent)->first() : null;
         $discount = $membership ? (int) floor($courtAmount * $membership->plan->discount_percent / 100) : 0;
         $coupon = null;
         if ($code) {
@@ -68,25 +68,26 @@ class CommerceService
         return ['discount_amount' => $discount, 'coupon_id' => $coupon?->id, 'membership' => $membership?->plan->name ?? 'Basic'];
     }
 
-    public function payBooking(User $actor, Booking $booking, string $key): Payment
+    public function payBooking(User $actor, Booking $booking, string $key, bool $depositOnly = false): Payment
     {
-        return DB::transaction(function () use ($actor, $booking, $key): Payment {
+        return DB::transaction(function () use ($actor, $booking, $key, $depositOnly): Payment {
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
             if ($actor->id !== $booking->user_id) {
                 app(BookingService::class)->assertManage($actor, $booking->court->branch_id);
             }
             $existing = Payment::where('request_key', $key)->first();
             if ($existing) {
-                abort_unless($existing->booking_id === $booking->id && $existing->method === 'wallet', 422);
+                abort_unless($existing->booking_id === $booking->id && $existing->method === 'wallet' && (($existing->notes === 'Đặt cọc qua ví') === $depositOnly), 422);
 
                 return $existing;
             }
             if ($booking->status !== 'confirmed' || $booking->total_amount <= $booking->paid_amount) {
                 throw ValidationException::withMessages(['booking' => 'Lịch không còn khoản cần thanh toán.']);
             }
-            $amount = $booking->total_amount - $booking->paid_amount;
+            $amount = ($depositOnly ? $booking->deposit_amount : $booking->total_amount) - $booking->paid_amount;
+            abort_if($amount <= 0, 422, 'Đã thanh toán đủ phần đặt cọc.');
             $this->wallet($actor, $booking->user, -$amount, 'booking', $key, 'Thanh toán '.$booking->reference, $booking->court->branch_id, 'booking', $booking->id);
-            $payment = Payment::create(['request_key' => $key, 'booking_id' => $booking->id, 'received_by' => $actor->id, 'kind' => 'payment', 'method' => 'wallet', 'amount' => $amount]);
+            $payment = Payment::create(['request_key' => $key, 'booking_id' => $booking->id, 'received_by' => $actor->id, 'kind' => 'payment', 'method' => 'wallet', 'amount' => $amount, 'notes' => $depositOnly ? 'Đặt cọc qua ví' : null]);
             $booking->paid_amount += $amount;
             $booking->save();
             app(BookingService::class)->audit($actor, 'booking.payment', $booking->id, ['amount' => $amount, 'method' => 'wallet']);
@@ -174,6 +175,10 @@ class CommerceService
             }
             $this->payment($actor, $owner, 'sale', $sale->id, $total, $data['method'], $sale->branch_id);
             app(BookingService::class)->audit($actor, 'sale.created', $sale->id, ['reference' => $sale->reference, 'total' => $total], 'sale');
+
+            if (isset($data['user_id'])) {
+                app(LoyaltyService::class)->award($owner, $total, 'sale-'.$sale->id, 'Mua hàng '.$sale->reference);
+            }
 
             return $sale->load(['items', 'branch']);
         }, 5);

@@ -18,6 +18,10 @@ class EnsureActiveAccount
             abort_if($request->is('api/*'), 403, 'Tài khoản đang bị khóa.');
         }
 
+        if ($request->user() && (! $request->user()->last_seen_at || $request->user()->last_seen_at->lt(now()->subMinute()))) {
+            $request->user()->forceFill(['last_seen_at' => now()])->save();
+        }
+
         return $next($request);
     }
 }

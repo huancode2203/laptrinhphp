@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(FeatureDefaultsSeeder::class);
         if (! app()->environment(['local', 'testing'])) {
             throw new RuntimeException('Dữ liệu mẫu chỉ dành cho môi trường local hoặc testing.');
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AccessService;
 use App\BookingService;
 use App\CommerceService;
 use App\Models\Court;
@@ -9,6 +10,7 @@ use App\Models\EventRegistration;
 use App\Models\GameEvent;
 use App\Models\TournamentMatch;
 use App\Notifications\HubNotification;
+use App\TournamentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,7 +36,7 @@ class EventController extends Controller
 
     public function show(Request $request, GameEvent $event): JsonResponse
     {
-        $staff = $request->user() && ($request->user()->role === 'admin' || (in_array($request->user()->role, ['manager', 'staff', 'cashier'], true) && $request->user()->branch_id === $event->branch_id));
+        $staff = $request->user() && app(AccessService::class)->manages($request->user(), $event->branch_id);
         abort_unless($event->status !== 'cancelled' || $staff || $event->registrations()->where('user_id', $request->user()?->id ?? 0)->exists(), 404);
         $event->load('branch')->loadCount(['registrations as confirmed_count' => fn ($q) => $q->where('status', 'confirmed')]);
         $data = $event->toArray();
@@ -42,6 +44,8 @@ class EventController extends Controller
         $regs = $event->registrations()->with('user:id,name,skill_level')->where($staff ? fn ($q) => $q : fn ($q) => $q->where('status', 'confirmed'))->get();
         $data['registrations'] = $staff ? $regs->toArray() : $regs->map(fn ($reg) => ['id' => $reg->id, 'user' => $reg->user])->all();
         $data['matches'] = $event->matches()->with(['a:id,name', 'b:id,name'])->orderBy('round')->orderBy('position')->get();
+        $data['standings'] = app(TournamentService::class)->standings($event);
+        $data['tournament_format'] = app(TournamentService::class)->format($event);
         $data['court_ids'] = DB::table('court_blocks')->where('game_event_id', $event->id)->pluck('court_id');
 
         return response()->json(['data' => $data]);
@@ -54,7 +58,8 @@ class EventController extends Controller
         $event = DB::transaction(function () use ($request, $event, $data, $engine): GameEvent {
             $start = CarbonImmutable::parse($data['starts_at'], config('app.timezone'))->setTimezone(config('app.timezone'));
             $end = CarbonImmutable::parse($data['ends_at'], config('app.timezone'))->setTimezone(config('app.timezone'));
-            abort_if(! $start->isSameDay($end) || $start->hour < 3 || $end->gt($start->setTime(23, 0)), 422, 'Sự kiện phải nằm trong giờ mở cửa và trong cùng ngày.');
+            abort_if(! $start->isSameDay($end), 422, 'Sự kiện phải nằm trong giờ mở cửa và trong cùng ngày.');
+            $engine->assertOpen(Court::findOrFail($data['court_ids'][0]), $start, $end, $request->user());
             $oldIds = [];
             if ($event) {
                 $event = GameEvent::query()->lockForUpdate()->findOrFail($event->id);
@@ -226,6 +231,12 @@ class EventController extends Controller
             abort_unless($event->type === 'league' && $event->status === 'published' && ! $event->matches()->exists(), 422);
             $players = $event->registrations()->where('status', 'confirmed')->pluck('user_id')->shuffle()->all();
             abort_if(count($players) < 2 || count($players) > 64, 422, 'Cần từ 2 đến 64 người đã xác nhận.');
+            if (app(TournamentService::class)->format($event) !== 'single_elimination') {
+                app(TournamentService::class)->draw($event, $players);
+                $engine->audit($request->user(), 'event.drawn', $event->id, ['format' => $event->format], 'event');
+
+                return;
+            }
             $size = 2;
             while ($size < count($players)) {
                 $size *= 2;
@@ -245,7 +256,7 @@ class EventController extends Controller
             $engine->audit($request->user(), 'event.bracket_drawn', $event->id, ['players' => $players], 'event');
         }, 5);
 
-        return response()->json(['message' => 'Đã tạo nhánh đấu loại trực tiếp.']);
+        return response()->json(['message' => 'Đã tạo lịch thi đấu.']);
     }
 
     public function score(Request $request, TournamentMatch $match, BookingService $engine): JsonResponse
@@ -262,7 +273,11 @@ class EventController extends Controller
             $match->fill($data);
             $match->winner_id = $data['score_a'] > $data['score_b'] ? $match->player_a : $match->player_b;
             $match->save();
-            $this->advance($match);
+            if (app(TournamentService::class)->format($event) === 'single_elimination') {
+                $this->advance($match);
+            } elseif (app(TournamentService::class)->format($event) === 'swiss') {
+                app(TournamentService::class)->nextSwiss($event);
+            }
             $engine->audit($request->user(), 'event.score_recorded', $match->id, $data, 'match');
         }, 5);
 

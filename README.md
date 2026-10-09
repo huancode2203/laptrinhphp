@@ -1,46 +1,63 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
-Website quản lý sân cầu lông, chuyển từ mã nguồn Figma Make do chủ dự án cung cấp. Giao diện sử dụng HTML/CSS được dựng từ React của bản xuất Figma; Laravel/PHP xử lý nghiệp vụ, phân quyền và toàn bộ giao dịch MySQL.
+Website quản lý sân cầu lông: Laravel/PHP xử lý nghiệp vụ, MySQL lưu dữ liệu, React/HTML/CSS dựng giao diện. Bản nâng cấp có tìm sân bằng ngôn ngữ tự nhiên, duyệt bài bán tự động và các chức năng vận hành.
 
-Nguồn giao diện: [SNCUCAHuNRose](https://github.com/huancode2203/SNCUCAHuNRose), commit `ae1c406618c1f60590640dce41f7a3c17d709ed7`. Thiết kế: [Sân cầu của Huấn Rose](https://www.figma.com/make/8hdgt0w0TDycN12gVlnouv/). Trang chủ giữ bố cục, màu sắc, hình ảnh và CSS của nguồn; các màn hình nghiệp vụ được nối lại với dữ liệu thật. Số liệu, đánh giá, chat, hóa đơn và trạng thái thanh toán không dùng dữ liệu giả của prototype.
+Nguồn giao diện do chủ dự án cung cấp: [SNCUCAHuNRose](https://github.com/huancode2203/SNCUCAHuNRose), commit `ae1c406618c1f60590640dce41f7a3c17d709ed7`, từ [Figma Make](https://www.figma.com/make/8hdgt0w0TDycN12gVlnouv/). Theo yêu cầu mới, giao diện được điều chỉnh theo phong cách thể thao, xanh đậm/lime. Lịch trống, giá, hóa đơn, điểm, chat và trạng thái thanh toán đọc/tính từ máy chủ.
 
 ## Chạy trên Laragon
 
-Yêu cầu PHP **8.3 trở lên**, MySQL **8.0 trở lên**, Composer 2, Node **22.12 trở lên** hoặc Node 24. Bản này đã chạy với PHP 8.3.33, MySQL 8.4.3, Laravel 13.35.0 và Node 24.
+Yêu cầu PHP **8.3+**, MySQL **8.0+**, Composer 2, Node **22.12+** hoặc Node 24. Bật PHP `pdo_mysql`, `pdo_sqlite`, `mbstring`, `openssl`, `curl`, `fileinfo`, `dom`, `gd`, **`zip`**. Đã kiểm tra với PHP 8.3.33, MySQL 8.4.3, Laravel 13.35.0 và Node 24.
 
-1. Bật MySQL trong Laragon. Mở **Terminal của Laragon** tại thư mục project.
-2. Cài thư viện và tạo cấu hình:
+1. Bật MySQL của Laragon, mở Terminal tại project.
+2. Cài thư viện, tạo cấu hình nếu chưa có:
+
    ```powershell
    composer install
    Copy-Item .env.example .env
    php artisan key:generate
    ```
-   Nếu đã có `.env`, giữ cấu hình hiện có. Chỉnh DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD theo MySQL của bạn.
-3. Tạo database:
+
+   Giữ `.env` hiện có khi nâng cấp. Điền `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`.
+
+3. Tạo database trống:
+
    ```sql
    CREATE DATABASE badminton_hub_20261008 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
-4. Tạo bảng, dữ liệu danh mục và tài khoản dùng thử:
+
+4. Cài bảng và danh mục, biên dịch giao diện:
+
    ```powershell
    php artisan migrate --seed
    npm ci
    npm run build
    ```
-5. Chạy:
+
+5. Chạy trong hai Terminal:
+
    ```powershell
    php artisan serve --host=127.0.0.1 --port=8088
    ```
-   Mở **http://127.0.0.1:8088**. Có thể nhấp đúp `chay-website.bat` sau khi cài thư viện. Khi dùng Apache của Laragon, DocumentRoot phải trỏ vào **public**, APP_URL trùng với tên miền local.
 
-Bản ZIP bàn giao có sẵn `public/build`; sau `composer install` và cấu hình database, có thể bỏ qua bước npm nếu không sửa giao diện. Repository Git lưu mã nguồn, cần `npm ci` và `npm run build` khi clone mới.
+   ```powershell
+   php artisan schedule:work
+   ```
 
-File `database/badminton_hub.sql` là bản MySQL đầy đủ cấu trúc và dữ liệu danh mục sạch. Có thể import vào database trống để thay cho bước `migrate --seed`; không import đè lên dữ liệu đang sử dụng. Migration là cách cài đặt và nâng cấp được khuyến nghị.
+   Mở **http://127.0.0.1:8088**. `chay-website.bat` tự khởi động lịch tác vụ ẩn rồi mở website. Với Apache Laragon, DocumentRoot phải là **public**, `APP_URL` trùng địa chỉ truy cập. Khởi động lại Apache sau khi đổi extension PHP.
 
-## Tài khoản mẫu
+Scheduler chạy mỗi phút để hủy lịch quá hạn cọc, giải phóng sân, báo danh sách chờ và nhắc trước giờ chơi. Nhắc lịch hiện gửi trong tài khoản, chưa qua SMS/email. Trên server cấu hình gọi `php artisan schedule:run` mỗi phút.
 
-Mật khẩu chung: **Demo@12345**. Seeder chỉ chạy trong local/testing. Chỉ tạo các tài khoản và danh mục chưa tồn tại; không nạp tiền hoặc tạo doanh thu mẫu.
+Nâng cấp hệ thống đang có dữ liệu: sao lưu database, chạy `composer install`, `php artisan migrate`, `php artisan db:seed --class=FeatureDefaultsSeeder`, `npm ci`, `npm run build`, `php artisan optimize:clear`. Không chạy lại seeder tài khoản mẫu trên hệ thống đang vận hành.
 
-| Email | Quyền |
+ZIP có sẵn `public/build` nên có thể bỏ npm nếu không sửa giao diện. Git lưu mã nguồn, clone mới cần biên dịch. `database/badminton_hub.sql` có cấu trúc và dữ liệu mẫu sạch, có thể import vào database **trống** thay cho `migrate --seed`.
+
+## Tài khoản và dữ liệu thử
+
+Seeder tạo 8 chi nhánh, 77 sân, 64 dịch vụ, 48 sản phẩm, gói hội viên, 3 hạng điểm, 2 phần thưởng và hướng dẫn. Đây là **danh mục thử từ thiết kế**, chưa phải xác nhận thông tin sân đang kinh doanh. Khi vận hành, cập nhật địa chỉ, điện thoại, giá, giờ mở và tồn kho thật. Không tạo doanh thu, nạp ví, huấn luyện viên hoặc bài quảng cáo giả.
+
+Mật khẩu dùng thử: **Demo@12345**.
+
+| Email | Vai trò |
 | --- | --- |
 | admin@badminton.test | Quản trị toàn hệ thống |
 | manager@badminton.test | Quản lý Bình Thạnh |
@@ -48,32 +65,68 @@ Mật khẩu chung: **Demo@12345**. Seeder chỉ chạy trong local/testing. Ch�
 | cashier@badminton.test | Thu ngân Bình Thạnh |
 | customer@badminton.test | Khách hàng |
 
-Quản trị tạo tài khoản nhân viên tại **Quản lý → Tài khoản & quyền**. Khách tự đăng ký. Đổi mật khẩu các tài khoản dùng thử khi dùng dữ liệu thực.
+Seeder tài khoản chỉ dành cho local/testing. Quản trị tạo nhân sự trong **Tài khoản & quyền**, phân nhiều chi nhánh và chỉnh ma trận quyền trong **Vận hành & nội dung**.
 
-## Chức năng đã triển khai
+## Chức năng
 
-- Trang chủ, chi nhánh, dịch vụ, lịch sân theo từng ô 30 phút, xem trên điện thoại và máy tính.
-- Đăng ký, đăng nhập bằng session, hồ sơ, đổi mật khẩu, xác nhận email và quên mật khẩu bằng mã dùng một lần.
-- Đặt sân từ 03:00–23:00, tối đa 6 giờ/lịch và 90 ngày tới. Giá thường, cao điểm, cuối tuần, hội viên, mã ưu đãi và dịch vụ được tính lại ở PHP.
-- Giữ chỗ 5 phút, một giữ chỗ đang hoạt động/tài khoản, tối đa 2 lần/30 phút. Đặt trùng booking, bảo trì, giữ chỗ của người khác hoặc sự kiện bị từ chối.
-- Đặt cố định cùng sân/giờ hàng tuần từ 2–12 tuần, giảm 15% phí sân. Tạo cả chuỗi và thanh toán bằng ví trong một transaction; có một tuần bị trùng hoặc ví không đủ thì toàn bộ yêu cầu được hoàn tác.
-- Lịch cá nhân, hóa đơn từ dữ liệu thật, đổi lịch chưa thanh toán, hủy, đánh giá sau khi hoàn tất, danh sách chờ có thông báo khi sân được giải phóng.
-- Ví HUB có sổ giao dịch, nạp tiền tại quầy hoặc MoMo, mua hội viên, trả tiền sân/POS/sự kiện. Gửi lại cùng UUID không thu hoặc cộng tiền lần nữa.
-- QR nhận sân được mã hóa ở máy chủ. Nhân viên quét/dán nội dung QR tại trang quản lý; mã không thay thế kiểm tra quyền, giờ chơi và thanh toán.
-- Thu tiền mặt, xác nhận chuyển khoản đã nhận, thu phần còn thiếu, hoàn tiền lịch đã hủy, check-in và hoàn tất.
-- Quản lý sân/giá, dịch vụ, bảo trì, khách hàng, sản phẩm/SKU, nhập/xuất kho, POS và in hóa đơn. Không bán quá tồn; tên và giá bán được lưu tại thời điểm giao dịch.
-- Bảng tin cộng đồng, tìm người chơi theo hồ sơ công khai/trình độ, xin vào đội, người tổ chức duyệt đúng sức chứa, thích, bình luận, báo cáo nội dung và kiểm duyệt.
-- Chat riêng và chat đội: chỉ thành viên đọc/gửi được, lưu MySQL, cập nhật định kỳ, thu hồi tin của chính mình.
-- Sự kiện giao lưu, lớp học, workshop, giải đấu: khóa sân, kiểm tra sức chứa, vé ví/tại quầy, xác nhận thu tiền, hủy/hoàn. Vé chờ trả tại quầy giữ chỗ 30 phút.
-- Giải đấu **loại trực tiếp đơn**, 2–64 người đã xác nhận: bốc thăm, miễn đấu khi lẻ, nhập tỷ số và chuyển người thắng vào vòng sau. Chưa có Swiss/vòng tròn hay hệ thống trọng tài tự động.
-- Quản trị chi nhánh, tài khoản/vai trò/trạng thái, hội viên, mã ưu đãi, bài bị báo cáo, đánh giá và nhật ký. Nhân viên/thu ngân chỉ thao tác quầy, quản lý được sửa danh mục của chi nhánh được giao.
-- Báo cáo tiền thu/hoàn/doanh thu ròng/công nợ theo khoảng ngày và chi nhánh, gồm lịch sân, POS, hội viên, vé sự kiện; tải CSV. Nạp ví là tăng nghĩa vụ ví, không cộng thành doanh thu bán hàng.
+- Tìm sân bằng tiếng Việt hoặc ngày/giờ/khu vực/ngân sách; kết quả có sân trống, giá, cọc và chuyển thẳng sang đặt đúng sân.
+- Giờ mở, thời hạn đặt trước, cao điểm, giá theo ngày/thứ/sân, giảm lịch cố định cấu hình theo chi nhánh. PHP tính lại phí, hội viên, coupon và dịch vụ.
+- Giữ chỗ 5 phút, chống trùng lịch/giữ chỗ/bảo trì/sự kiện. Đặt 30 phút–6 giờ trong một ngày; chuỗi cố định 2–12 tuần được tạo trong transaction.
+- Cọc/thu đủ, hạn thanh toán, hủy quá hạn; ví/MoMo/ngân hàng khi đã cấu hình. Đổi lịch chưa trả sang sân cùng chi nhánh, tính lại giá/hạn cọc.
+- Lịch cá nhân, hóa đơn PDF, QR nhận sân, hủy/hoàn, đánh giá ảnh và phản hồi chi nhánh, danh sách chờ, chat theo lịch đặt.
+- Ví có sổ giao dịch; nạp tại quầy/MoMo, trả sân/POS/hội viên/vé. UUID chống thu, hoàn và cộng điểm lặp.
+- Tích 1 điểm/10.000đ đủ điều kiện khi hoàn tất lịch sân hoặc POS; xét hạng theo tổng điểm, đổi quà bằng số dư điểm. Không mua hạng điểm để bỏ qua điều kiện.
+- Hồ sơ, avatar, đăng nhập email/điện thoại đã xác thực/Google, OTP email, quên/đổi mật khẩu, xử lý phiên hết hạn.
+- Sân yêu thích, bài đã lưu, chặn người dùng, bài ảnh, thích/chia sẻ, bình luận trả lời, tìm đồng đội và duyệt thành viên theo sức chứa.
+- Kiểm duyệt model/bộ lọc: bài nghi vi phạm chờ quản trị, lưu lý do/nhãn/độ tin cậy; sửa bài phải kiểm tra lại; bình luận không phù hợp bị từ chối.
+- Chat riêng/đội/theo lịch, ảnh/PDF, đang nhập/đã xem/trạng thái hoạt động, thu hồi. SSE cập nhật/kết nối lại; máy chủ kiểm tra thành viên, chi nhánh và chặn.
+- Huấn luyện viên có hồ sơ, giá, lịch; đặt buổi tập kiểm tra trùng người dạy/sân. Quản lý cần tạo hồ sơ thật trước khi khách đặt.
+- Sự kiện/lớp/giao lưu/giải: vé, sức chứa, khóa sân, hủy/hoàn, bốc thăm/tỷ số. Loại trực tiếp, vòng tròn và Swiss có xếp hạng, tránh lặp cặp Swiss.
+- Ma trận sân 30 phút, lịch tuần/tháng, kéo lịch chưa trả sang ngày/sân và xác nhận lại; nhận sân bằng QR nhập/dán hoặc camera khi người dùng cho phép.
+- Nhiều chi nhánh, sân, dịch vụ, bảo trì, SKU, nhập/xuất kho, POS, khách nhanh tại quầy, thu/hoàn, quyền theo vai trò.
+- Phiếu hỗ trợ/trả lời, FAQ/giới thiệu; blog/tuyển dụng/nhượng quyền do quản trị xuất bản. Chưa có nội dung thì hiển thị trạng thái trống.
+- Báo cáo thu/hoàn/doanh thu ròng/công nợ, theo sân/chi nhánh/dịch vụ/sản phẩm, công suất, nguồn đặt, giờ phổ biến; biểu đồ/PDF/XLSX/CSV. Nạp ví không tính là doanh thu bán hàng.
+- Nhật ký quản trị, đối soát chuyển khoản sai nội dung, xem và kiểm tra lại yêu cầu hoàn MoMo.
 
-Khách tự hủy lịch chưa thanh toán trước giờ chơi. Lịch trả hoàn toàn bằng ví được tự hoàn ví khi hủy trước tối thiểu 4 giờ. Tiền mặt, ngân hàng và MoMo được nhân viên xử lý hoàn tại quầy, lưu sổ giao dịch. Không tự chuyển tiền ngân hàng hoặc gọi API hoàn tiền MoMo.
+Lịch trả hoàn toàn bằng ví được tự hoàn phần còn lại khi đủ điều kiện hủy. Tiền mặt/ngân hàng do quầy xử lý; MoMo có API hoàn. Không tự chuyển tiền ra ngân hàng.
 
-## Cấu hình MoMo
+## OpenAI và Ollama
 
-Mặc định **tắt**. Có thể dùng các chức năng khác ngay. Khi có merchant, điền **trên máy/server của bạn** vào `.env`:
+Hai tác vụ có provider/model **độc lập**, khóa chỉ ở server. Mặc định `local` là bộ phân tích/bộ lọc quy tắc, **không phải model AI đang chạy**.
+
+Ollama cho cả hai tác vụ:
+
+```dotenv
+AI_SEARCH_PROVIDER=ollama
+AI_SEARCH_MODEL=qwen3:4b
+AI_MODERATION_PROVIDER=ollama
+AI_MODERATION_MODEL=qwen3:4b
+OLLAMA_URL=http://127.0.0.1:11434
+AI_TIMEOUT=60
+AI_AUTO_APPROVE=true
+```
+
+Cài [Ollama Windows](https://docs.ollama.com/windows), tải model bằng `ollama pull qwen3:4b` hoặc model phù hợp bộ nhớ máy. Model phải hỗ trợ chat và JSON schema. Adapter gọi [Ollama /api/chat](https://docs.ollama.com/api/chat), `stream=false`, `think=false`. Ollama/model **không kèm ZIP và chưa cài ở máy này**.
+
+Ví dụ tìm sân OpenAI, duyệt bài Ollama:
+
+```dotenv
+OPENAI_API_KEY=
+AI_SEARCH_PROVIDER=openai
+AI_SEARCH_MODEL=gpt-4.1-mini
+AI_MODERATION_PROVIDER=ollama
+AI_MODERATION_MODEL=qwen3:4b
+```
+
+Có thể đặt `AI_MODERATION_PROVIDER=openai` và `AI_MODERATION_MODEL=gpt-4.1-mini` hoặc model khác hỗ trợ Structured Outputs. Adapter dùng Responses, JSON schema, `store=false`. [GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini) hỗ trợ Responses/Structured Outputs. Sau khi sửa `.env` chạy `php artisan optimize:clear`.
+
+Tìm sân gửi câu hỏi và khu vực cho model trích xuất tiêu chí. Model không truy cập SQL hoặc tạo sân/giá; Laravel kiểm tra MySQL, lịch, bảo trì, giữ chỗ, phí và ưu đãi. Model lỗi thì tìm sân dùng bộ phân tích hiện có; kiểm duyệt giữ chờ. Kết quả mơ hồ hoặc độ tin cậy dưới 0,8 cần người duyệt.
+
+Kiểm duyệt gửi nội dung bài/bình luận cho provider đã chọn. `AI_AUTO_APPROVE=false` giữ mọi bài chờ người duyệt; `true` cho đăng bài được đánh giá phù hợp. Không bảo đảm phát hiện mọi cách viết xúc phạm/spam.
+
+## MoMo và chuyển khoản
+
+MoMo mặc định tắt. Điền merchant vào `.env` riêng:
 
 ```dotenv
 MOMO_ENABLED=true
@@ -85,21 +138,35 @@ MOMO_REDIRECT_URL=https://ten-mien-cua-ban/#account
 MOMO_IPN_URL=https://ten-mien-cua-ban/api/v1/payments/momo/ipn
 ```
 
-Sau đó chạy `php artisan optimize:clear`. Production sử dụng endpoint `https://payment.momo.vn/v2/gateway/api/create` với cấu hình merchant production. MoMo cần HTTPS công khai để gửi IPN; địa chỉ 127.0.0.1 của Laragon không nhận được callback từ bên ngoài.
+Production dùng `https://payment.momo.vn/v2/gateway/api/create` và merchant production. IPN cần HTTPS công khai, localhost không nhận callback ngoài. Số tiền cọc do server tính; kiểm tra chữ ký/merchant/order/request/amount/extraData/transId. Redirect không tự ghi thanh toán; 9000 chưa coi là hoàn tất. Tiền đến muộn vào ví nếu lịch không còn hiệu lực.
 
-Máy chủ tạo orderId/requestId, ký HMAC-SHA256 và tính số tiền từ booking. IPN xác minh chữ ký cùng merchant/order/request/amount/extraData; giao dịch và transId có khóa chống xử lý lại. Kết quả 9000 chưa được coi là thanh toán hoàn tất. Trang redirect không tự ghi thanh toán. Nếu tiền đến sau khi lịch bị hủy/thay đổi/đã trả bằng cách khác, hệ thống cộng vào ví và lưu trạng thái `credited` thay vì trả sai lịch.
+API hoàn giới hạn theo khoản gốc và phần chưa hoàn. Retry chỉ truy vấn kết quả, không gửi khoản hoàn thứ hai. Timeout/từ chối/chưa rõ giữ trạng thái chờ và chặn hoàn trùng; cần đối soát merchant trước khi xử lý tiếp. Không coi lỗi mạng là đã hoàn.
 
-Tài khoản có thể xem giao dịch MoMo và kiểm tra trạng thái ở tab Ví HUB. Kiểm thử MoMo trong project dùng HTTP giả lập; merchant thực và đường IPN thực **chưa được kiểm thử end-to-end** khi chưa có cấu hình. Đối soát bên merchant theo orderId/transId khi cần.
+[MoMo thanh toán](https://developers.momo.vn/v3/vi/docs/payment/api/wallet/onetime/), [IPN](https://developers.momo.vn/v3/vi/docs/payment/api/result-handling/notification/), [hoàn tiền](https://developers.momo.vn/v3/docs/payment/api/payment-api/refund/).
 
-Tài liệu sử dụng: [MoMo – thanh toán thông thường](https://developers.momo.vn/v3/vi/docs/payment/api/wallet/onetime/) và [MoMo – thông báo kết quả](https://developers.momo.vn/v3/vi/docs/payment/api/result-handling/notification/).
+Chuyển khoản qua [SePay webhook](https://docs.sepay.vn/tich-hop-webhooks.html):
 
-Không commit `.env`, access key hoặc secret key.
+```dotenv
+SEPAY_ENABLED=true
+SEPAY_WEBHOOK_KEY=
+BANK_ACCOUNT_NUMBER=
+BANK_ACCOUNT_NAME=
+BANK_BIN=
+```
 
-## Email và QR
+SePay gửi tới `https://ten-mien/api/v1/payments/bank/webhook`, header `Authorization: Apikey <khóa riêng>`. Chỉ ghi tiền đến đúng tài khoản, dedupe mã giao dịch, khớp mã lịch `BH-...`, tiền dư/muộn vào ví. Sai nội dung nằm ở hàng đối soát cho quản trị ghép lịch một lần. Quầy vẫn có thể ghi khoản ngân hàng thực nhận bằng thao tác thu tiền.
 
-Mặc định `MAIL_MAILER=log` để thử local; mã email nằm trong `storage/logs/laravel.log`, không gửi ra hộp thư. Để gửi email thật, dùng `MAIL_MAILER=smtp` và điền MAIL_SCHEME, MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM_ADDRESS. Mã hết hạn sau 10 phút, khóa sau 5 lần sai; token đổi mật khẩu chỉ dùng một lần và xóa phiên đăng nhập cũ.
+## Google, SMS, email và camera
 
-QR có thể quét bằng máy quét USB hoặc công cụ quét QR trên điện thoại rồi dán nội dung vào ô check-in. Project chưa truy cập camera trực tiếp trong trình duyệt. Ảnh Unsplash và font Google giữ từ nguồn Figma, cần mạng để tải.
+Google: điền `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, đăng ký callback `/auth/google/callback`. Kiểm tra state/email; tài khoản trùng email cần người đã đăng nhập liên kết. [Google OAuth](https://developers.google.com/identity/protocols/oauth2/web-server).
+
+SMS: `SMS_ENABLED=true`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`. OTP do [Twilio Verify](https://www.twilio.com/docs/verify/api/verification-check) xác nhận; sau đó đăng nhập điện thoại + mật khẩu. Đổi số xóa xác thực cũ. Không giả lập OTP SMS trên giao diện.
+
+Email mặc định `MAIL_MAILER=log`, mã nằm ở `storage/logs/laravel.log`, chưa gửi hộp thư. Cấu hình SMTP để gửi thật. Mã hết hạn 10 phút, khóa sau 5 lần sai; token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
+
+Camera QR chỉ bật sau thao tác quét và cho phép, cần HTTPS hoặc localhost. Vẫn có ô nhập/dán QR. Một số ảnh/font nguồn cần mạng; hình sân ở trang chủ dựng SVG/CSS.
+
+**AI thực, OAuth, SMS, SMTP, SePay và MoMo chưa được chạy với dịch vụ thật** vì chưa có model/khóa/merchant. Chưa xuất bản lên hosting công khai.
 
 ## Phát triển và kiểm thử
 
@@ -108,14 +175,12 @@ npm run dev
 npm run typecheck
 npm run build
 npm run format
-php vendor/bin/pint --dirty
+php vendor/bin/pint --dirty --format agent
 php artisan test --compact
 ```
 
-Test mặc định dùng SQLite in-memory. Để kiểm thử MySQL, tạo database riêng và đặt DB_CONNECTION=mysql, DB_DATABASE vào database test trước khi chạy. Test dùng RefreshDatabase; không trỏ test vào database đang sử dụng.
+Test mặc định SQLite in-memory. MySQL cần database riêng, đặt `DB_CONNECTION=mysql`, `DB_DATABASE=<database test>`, `DB_URL=` trước khi chạy. RefreshDatabase có thể xóa bảng: **không trỏ vào database vận hành**. Kết quả ở `docs/VALIDATION.md`.
 
-Kiểm tra trên MySQL: giá/scope/booking, giữ chỗ, ví/hoàn, hội viên/mã ưu đãi, chuỗi đặt nguyên tử, POS/tồn kho, sức chứa/nhánh đấu, quyền chat, OTP, tài khoản khóa, tạo nhân viên, chữ ký IPN và xử lý lại giao dịch. Kết quả kiểm thử cuối cùng được ghi trong `docs/VALIDATION.md`.
+API `/api/v1` cùng origin, JSON/cookie; GET `/csrf` lấy token, mutation gửi `X-CSRF-TOKEN`. IPN MoMo/SePay miễn CSRF nhưng xác thực riêng. Danh sách API: `php artisan route:list --path=api/v1`.
 
-API cùng origin tại `/api/v1`, JSON và cookie session. Lấy token từ GET `/csrf`; mutation gửi X-CSRF-TOKEN. Chỉ đường IPN MoMo được miễn CSRF và phải có chữ ký hợp lệ. Xem danh sách API bằng `php artisan route:list --path=api/v1`.
-
-Mã nguồn và ZIP không chứa vendor, node_modules, khóa ứng dụng, merchant, session hay nhật ký riêng. Chạy theo các bước cài đặt ở trên. Khi đưa lên máy chủ thật, đặt APP_ENV=production, APP_DEBUG=false, HTTPS, tài khoản MySQL của ứng dụng và cấu hình SMTP/MoMo thực.
+Git/ZIP không chứa `.env`, vendor/node_modules, khóa, session, nhật ký/upload riêng. Server thực dùng HTTPS, `APP_ENV=production`, `APP_DEBUG=false`, quyền database riêng và scheduler.

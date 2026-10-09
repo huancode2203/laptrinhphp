@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'branch_id', 'title', 'content', 'type', 'skill_level', 'starts_at', 'capacity', 'status'])]
+#[Fillable(['user_id', 'branch_id', 'title', 'content', 'type', 'skill_level', 'starts_at', 'capacity', 'status', 'images'])]
 
 class CommunityPost extends Model
 {
@@ -17,7 +17,7 @@ class CommunityPost extends Model
 
     protected function casts(): array
     {
-        return ['starts_at' => 'immutable_datetime'];
+        return ['starts_at' => 'immutable_datetime', 'images' => 'array', 'moderation_result' => 'array', 'moderated_at' => 'immutable_datetime'];
     }
 
     public function user(): BelongsTo

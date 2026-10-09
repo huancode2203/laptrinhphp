@@ -1,3 +1,4 @@
+import MediaPicker from "./MediaPicker";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, stamp, localDateTime, statusText, type Row } from "./data";
@@ -19,6 +20,10 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
         [page, setPage] = useState(1),
         [lastPage, setLastPage] = useState(1);
     const user = data!.user;
+    const [attachments, setAttachments] = useState<number[]>([]),
+        [members, setMembers] = useState<Row[]>([]),
+        [files, setFiles] = useState<Row[]>([]),
+        [reply, setReply] = useState<Row | null>(null);
     async function load() {
         const p = await api(
             "community/posts?" +
@@ -41,12 +46,23 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
         if (user) {
             const c = await api("conversations");
             setConversations(c.data);
+            if (location.hash.startsWith("#community/chat/")) {
+                const id = Number(location.hash.split("/")[2]);
+                setConversation(c.data.find((v: Row) => v.id === id) ?? null);
+                setTab("chat");
+            }
         }
     }
     async function loadPost(id: number) {
         const p = await api("community/posts/" + id);
         setPost(p.data);
     }
+    useEffect(() => {
+        if (location.hash.startsWith("#community/post/"))
+            loadPost(Number(location.hash.split("/")[2])).catch((e) =>
+                toast(e.message),
+            );
+    }, []);
     useEffect(() => {
         load().catch((e) => toast(e.message));
     }, [search, branch, level, page, user?.id]);
@@ -56,18 +72,72 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
         const get = () =>
             api("conversations/" + conversation.id + "/messages")
                 .then((r) => {
-                    if (live) setMessages(r.data);
+                    if (live) {
+                        setMessages(r.data);
+                        setMembers(r.members ?? []);
+                        setFiles(r.attachments ?? []);
+                    }
                 })
                 .catch((e) => {
                     if (live) toast(e.message);
                 });
         get();
-        const t = setInterval(get, 7000);
+        let version = "";
+        const stream = new EventSource(
+            "/api/v1/conversations/" + conversation.id + "/stream",
+        );
+        stream.addEventListener("update", (e) => {
+            const next = JSON.parse((e as MessageEvent).data).version;
+            if (next !== version) {
+                version = next;
+                get();
+            }
+        });
         return () => {
             live = false;
-            clearInterval(t);
+            stream.close();
         };
     }, [conversation?.id]);
+    function renderComments(parent: number | null, depth = 0): React.ReactNode {
+        return post?.comments
+            ?.filter((c: Row) => (c.parent_id ?? null) === parent)
+            .map((c: Row) => (
+                <div
+                    key={c.id}
+                    className="my-2 rounded-xl border-l-2 border-[#dce4dc] bg-slate-50 p-3 text-sm"
+                    style={{ marginLeft: Math.min(depth, 4) * 12 }}
+                >
+                    <b>{c.user.name}</b>
+                    <p className="mt-2 whitespace-pre-wrap">{c.content}</p>
+                    <div className="mt-2 flex gap-3">
+                        <button
+                            className="text-xs font-bold text-[#168449]"
+                            onClick={() => setReply(c)}
+                        >
+                            Trả lời
+                        </button>
+                        {(c.user_id === user?.id || user?.role === "admin") && (
+                            <button
+                                className="text-xs text-red-600"
+                                onClick={() =>
+                                    run(() =>
+                                        changed(() =>
+                                            api(
+                                                "community/comments/" + c.id,
+                                                "DELETE",
+                                            ),
+                                        ),
+                                    )
+                                }
+                            >
+                                Xóa
+                            </button>
+                        )}
+                    </div>
+                    {depth < 20 && renderComments(c.id, depth + 1)}
+                </div>
+            ));
+    }
     function action(fn: () => Promise<void>) {
         if (!user) {
             auth();
@@ -123,6 +193,7 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
             max: 100,
             required: true,
         },
+        { name: "images", label: "Ảnh đính kèm", type: "images" },
         {
             name: "content",
             label: "Nội dung",
@@ -222,6 +293,21 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                     <div className="grid gap-4 md:grid-cols-2">
                         {posts.map((p) => (
                             <Card key={p.id}>
+                                {p.moderation_status !== "approved" && (
+                                    <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">
+                                        {p.moderation_status === "pending"
+                                            ? "Bài của bạn đang chờ duyệt."
+                                            : "Bài chưa được duyệt."}
+                                    </p>
+                                )}
+                                {p.images?.map((id: number) => (
+                                    <img
+                                        key={id}
+                                        src={"/api/v1/media/" + id}
+                                        alt="Ảnh bài viết"
+                                        className="mb-3 max-h-52 w-full rounded-xl object-cover"
+                                    />
+                                ))}
                                 <div className="flex justify-between text-xs text-[#6d8474]">
                                     <span>
                                         {p.user.name} · {p.skill_level}
@@ -257,6 +343,24 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                         }
                                     >
                                         ♥ {p.likes_count}
+                                    </button>
+                                    <button
+                                        className="text-sm font-bold"
+                                        onClick={() =>
+                                            action(() =>
+                                                changed(() =>
+                                                    api(
+                                                        "community/posts/" +
+                                                            p.id +
+                                                            "/saved",
+                                                        "PUT",
+                                                        { active: !p.saved },
+                                                    ),
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        {p.saved ? "Đã lưu" : "Lưu bài"}
                                     </button>
                                     <span className="text-sm">
                                         {p.comments_count} bình luận
@@ -369,6 +473,28 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                     <h2 className="mb-4 font-bold">
                                         {conversation.title}
                                     </h2>
+                                    <p className="mb-3 text-xs text-slate-500">
+                                        {members
+                                            .filter((m) => m.id !== user.id)
+                                            .map(
+                                                (m) =>
+                                                    m.name +
+                                                    (m.pivot?.typing_until &&
+                                                    new Date(
+                                                        m.pivot.typing_until,
+                                                    ).getTime() > Date.now()
+                                                        ? " đang nhập…"
+                                                        : m.last_seen_at &&
+                                                            Date.now() -
+                                                                new Date(
+                                                                    m.last_seen_at,
+                                                                ).getTime() <
+                                                                120000
+                                                          ? " · đang hoạt động"
+                                                          : ""),
+                                            )
+                                            .join(" · ")}
+                                    </p>
                                     <div className="mb-4 max-h-[420px] space-y-3 overflow-y-auto">
                                         {messages.map((m) => (
                                             <div
@@ -387,6 +513,63 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                                 <p className="mt-1 whitespace-pre-wrap break-words">
                                                     {m.content}
                                                 </p>
+                                                {m.attachments?.map(
+                                                    (id: number) => {
+                                                        const f = files.find(
+                                                            (f) => f.id === id,
+                                                        );
+                                                        return (
+                                                            <a
+                                                                key={id}
+                                                                className="mt-2 block font-bold text-[#168449]"
+                                                                href={
+                                                                    "/api/v1/media/" +
+                                                                    id
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                            >
+                                                                {f?.mime.startsWith(
+                                                                    "image/",
+                                                                ) ? (
+                                                                    <img
+                                                                        className="max-h-48 rounded-xl"
+                                                                        alt={
+                                                                            f.name
+                                                                        }
+                                                                        src={
+                                                                            "/api/v1/media/" +
+                                                                            id
+                                                                        }
+                                                                    />
+                                                                ) : (
+                                                                    (f?.name ??
+                                                                    "Tệp đính kèm")
+                                                                )}
+                                                            </a>
+                                                        );
+                                                    },
+                                                )}
+                                                {m.user_id === user.id && (
+                                                    <p className="mt-2 text-xs text-slate-500">
+                                                        {members.some(
+                                                            (p) =>
+                                                                p.id !==
+                                                                    user.id &&
+                                                                p.pivot
+                                                                    ?.read_at &&
+                                                                new Date(
+                                                                    p.pivot
+                                                                        .read_at,
+                                                                ) >=
+                                                                    new Date(
+                                                                        m.created_at,
+                                                                    ),
+                                                        )
+                                                            ? "Đã xem"
+                                                            : "Đã gửi"}
+                                                    </p>
+                                                )}
                                                 {m.user_id === user.id &&
                                                     !m.deleted && (
                                                         <button
@@ -419,6 +602,11 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                             </div>
                                         ))}
                                     </div>
+                                    <MediaPicker
+                                        files
+                                        value={attachments}
+                                        onChange={setAttachments}
+                                    />
                                     <form
                                         className="flex gap-2"
                                         onSubmit={(e) => {
@@ -432,9 +620,12 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                                     {
                                                         request_key: key(),
                                                         content: text,
+                                                        attachments,
                                                     },
                                                 );
                                                 setText("");
+                                                setReply(null);
+                                                setAttachments([]);
                                                 setMessages(
                                                     (
                                                         await api(
@@ -453,9 +644,16 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                             maxLength={2000}
                                             required
                                             value={text}
-                                            onChange={(e) =>
-                                                setText(e.target.value)
-                                            }
+                                            onChange={(e) => {
+                                                setText(e.target.value);
+                                                if (conversation)
+                                                    api(
+                                                        "conversations/" +
+                                                            conversation.id +
+                                                            "/typing",
+                                                        "POST",
+                                                    ).catch(() => {});
+                                            }}
                                         />
                                         <button className="btn">Gửi</button>
                                     </form>
@@ -480,6 +678,76 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                         {statusText(post.status)}
                     </p>
                     <p className="whitespace-pre-wrap">{post.content}</p>
+                    {post.images?.map((id: number) => (
+                        <img
+                            key={id}
+                            className="mt-3 max-h-72 rounded-xl"
+                            src={"/api/v1/media/" + id}
+                            alt="Ảnh trong bài"
+                        />
+                    ))}
+                    <div className="my-4 flex flex-wrap gap-2">
+                        <button
+                            className="btn-outline"
+                            onClick={async () => {
+                                const url =
+                                    location.origin +
+                                    "/#community/post/" +
+                                    post.id;
+                                try {
+                                    if (navigator.share)
+                                        await navigator.share({
+                                            title: post.title,
+                                            url,
+                                        });
+                                    else {
+                                        await navigator.clipboard.writeText(
+                                            url,
+                                        );
+                                        toast("Đã sao chép liên kết.");
+                                    }
+                                } catch {}
+                            }}
+                        >
+                            Chia sẻ
+                        </button>
+                        {user && post.user_id !== user.id && (
+                            <button
+                                className="btn-outline"
+                                onClick={() =>
+                                    action(async () => {
+                                        await api(
+                                            "users/" + post.user_id + "/block",
+                                            "PUT",
+                                            { active: true },
+                                        );
+                                        setPost(null);
+                                        await load();
+                                        toast("Đã chặn tài khoản.");
+                                    })
+                                }
+                            >
+                                Chặn tác giả
+                            </button>
+                        )}
+                        {post.user_id === user?.id && (
+                            <button
+                                className="btn-outline"
+                                onClick={() =>
+                                    action(async () => {
+                                        await api(
+                                            "community/posts/" + post.id,
+                                            "DELETE",
+                                        );
+                                        setPost(null);
+                                        await load();
+                                    })
+                                }
+                            >
+                                Gỡ bài viết
+                            </button>
+                        )}
+                    </div>
                     <div className="my-4 flex flex-wrap gap-2">
                         {post.user_id === user?.id ? (
                             <button
@@ -567,36 +835,18 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                         </div>
                     ))}
                     <h3 className="my-3 font-bold">Bình luận</h3>
-                    {post.comments?.map((c: Row) => (
-                        <div
-                            className="my-2 rounded-lg bg-[#f3f6f4] p-3 text-sm"
-                            key={c.id}
-                        >
-                            <b>{c.user.name}</b>
-                            <p className="mt-1 whitespace-pre-wrap">
-                                {c.content}
-                            </p>
-                            {(c.user_id === user?.id ||
-                                user?.role === "admin") && (
-                                <button
-                                    className="text-xs text-red-600"
-                                    onClick={() =>
-                                        run(() =>
-                                            changed(() =>
-                                                api(
-                                                    "community/comments/" +
-                                                        c.id,
-                                                    "DELETE",
-                                                ),
-                                            ),
-                                        )
-                                    }
-                                >
-                                    Xóa
-                                </button>
-                            )}
-                        </div>
-                    ))}
+                    {renderComments(null)}
+                    {reply && (
+                        <p className="mt-3 text-sm">
+                            Đang trả lời {reply.user.name}{" "}
+                            <button
+                                className="font-bold text-[#168449]"
+                                onClick={() => setReply(null)}
+                            >
+                                Hủy
+                            </button>
+                        </p>
+                    )}
                     <form
                         className="mt-4 flex gap-2"
                         onSubmit={(e) => {
@@ -608,10 +858,14 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                             post.id +
                                             "/comments",
                                         "POST",
-                                        { content: text },
+                                        {
+                                            content: text,
+                                            parent_id: reply?.id ?? null,
+                                        },
                                     ),
                                 );
                                 setText("");
+                                setReply(null);
                             });
                         }}
                     >

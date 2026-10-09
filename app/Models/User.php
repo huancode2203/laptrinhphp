@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'phone', 'skill_level', 'public_profile'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'phone', 'skill_level', 'public_profile', 'avatar_path'])]
+#[Hidden(['password', 'remember_token', 'google_sub'])]
 class User extends Authenticatable
 {
     protected $attributes = ['role' => 'customer', 'active' => true, 'wallet_balance' => 0, 'skill_level' => 'Sơ cấp', 'public_profile' => false];
@@ -27,7 +27,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'branch_id' => 'integer',
+            'branch_id' => 'integer', 'loyalty_points' => 'integer', 'earned_points' => 'integer', 'phone_verified_at' => 'datetime', 'last_seen_at' => 'datetime',
             'active' => 'boolean', 'wallet_balance' => 'integer', 'public_profile' => 'boolean',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',

@@ -27,10 +27,12 @@ class MomoService
     public function create(User $user, array $d): PaymentAttempt
     {
         abort_unless($this->enabled(), 503, 'MoMo chưa được cấu hình.');
+        app(FeatureService::class)->expireBookings();
         $attempt = DB::transaction(function () use ($user, $d): PaymentAttempt {
             $owner = User::lockForUpdate()->findOrFail($user->id);
             $existing = PaymentAttempt::where('request_key', $d['request_key'])->first();
             if ($existing) {
+                abort_unless((json_decode(base64_decode($existing->extra_data), true)['deposit_only'] ?? false) === ($d['deposit_only'] ?? false), 409);
                 abort_unless($existing->user_id === $user->id && $existing->purpose === $d['purpose'] && $existing->booking_id === ($d['booking_id'] ?? null) && ($d['purpose'] === 'booking' || $existing->amount === (int) $d['amount']), 409, 'Khóa giao dịch đã được sử dụng.');
 
                 return $existing;
@@ -41,12 +43,12 @@ class MomoService
                 $booking = Booking::lockForUpdate()->findOrFail($d['booking_id']);
                 abort_unless($booking->user_id === $user->id, 403);
                 abort_unless($booking->status === 'confirmed', 422, 'Lịch đặt không còn chờ thanh toán.');
-                $amount = $booking->total_amount - $booking->paid_amount;
+                $amount = (! empty($d['deposit_only']) ? $booking->deposit_amount : $booking->total_amount) - $booking->paid_amount;
                 abort_if(PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->where('expires_at', '>', now())->exists(), 409, 'Lịch đặt đang có một giao dịch MoMo chờ xác nhận.');
             }
             abort_if($amount < 1000 || $amount > 50000000, 422, 'Số tiền MoMo từ 1.000 đến 50.000.000đ.');
 
-            return PaymentAttempt::create(['request_key' => $d['request_key'], 'order_id' => 'BH-'.str_replace('-', '', $d['request_key']), 'user_id' => $owner->id, 'booking_id' => $booking?->id, 'purpose' => $d['purpose'], 'partner_code' => config('momo.partner_code'), 'amount' => $amount, 'order_info' => $booking ? 'Thanh toan '.$booking->reference : 'Nap vi Badminton Hub', 'extra_data' => base64_encode(json_encode(['purpose' => $d['purpose']])), 'status' => 'pending', 'expires_at' => now()->addMinutes(15)]);
+            return PaymentAttempt::create(['request_key' => $d['request_key'], 'order_id' => 'BH-'.str_replace('-', '', $d['request_key']), 'user_id' => $owner->id, 'booking_id' => $booking?->id, 'purpose' => $d['purpose'], 'partner_code' => config('momo.partner_code'), 'amount' => $amount, 'order_info' => $booking ? 'Thanh toan '.$booking->reference : 'Nap vi Badminton Hub', 'extra_data' => base64_encode(json_encode(['purpose' => $d['purpose'], 'deposit_only' => $d['deposit_only'] ?? false])), 'status' => 'pending', 'expires_at' => now()->addMinutes(15)]);
         }, 5);
         if ($attempt->pay_url || $attempt->status !== 'pending') {
             return $attempt;
@@ -83,6 +85,7 @@ class MomoService
             $fields[$key] = $d[$key];
         }
         abort_unless(config('momo.secret_key') && hash_equals($this->sign($fields), (string) ($d['signature'] ?? '')), 403, 'Chữ ký không hợp lệ.');
+        app(FeatureService::class)->expireBookings();
         DB::transaction(function () use ($d): void {
             $a = PaymentAttempt::where('order_id', $d['orderId'])->lockForUpdate()->firstOrFail();
             abort_unless($a->partner_code === $d['partnerCode'] && $a->request_key === $d['requestId'] && (string) $a->amount === (string) $d['amount'] && $a->extra_data === $d['extraData'] && $a->order_info === $d['orderInfo'], 409, 'Nội dung giao dịch không khớp.');

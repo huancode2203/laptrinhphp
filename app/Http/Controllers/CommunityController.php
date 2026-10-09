@@ -2,30 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\AccessService;
 use App\BookingService;
+use App\FeatureService;
 use App\Models\ChatMessage;
 use App\Models\CommunityPost;
 use App\Models\Conversation;
 use App\Models\PostComment;
 use App\Models\PostJoin;
 use App\Models\User;
+use App\ModerationService;
 use App\Notifications\HubNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CommunityController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate(['branch_id' => ['sometimes', 'integer', 'exists:branches,id'], 'type' => ['sometimes', 'string', 'max:40'], 'search' => ['sometimes', 'string', 'max:100']]);
-        $query = CommunityPost::where(function ($q) use ($request): void {
-            $q->where('status', '!=', 'hidden');
+        $query = CommunityPost::where('status', '!=', 'hidden')->where(function ($q) use ($request): void {
+            $q->where('status', '!=', 'hidden')->where('moderation_status', 'approved');
             if ($request->user()) {
                 $q->orWhere('user_id', $request->user()->id);
             }
         });
+        if ($request->user()) {
+            $blocked = DB::table('blocked_users')->where('user_id', $request->user()->id)->pluck('blocked_id')
+                ->merge(DB::table('blocked_users')->where('blocked_id', $request->user()->id)->pluck('user_id'))->all();
+            $query->whereNotIn('user_id', $blocked);
+        }
         if (isset($data['branch_id'])) {
             $query->where('branch_id', $data['branch_id']);
         }
@@ -39,6 +48,7 @@ class CommunityController extends Controller
         $posts = $query->with(['user:id,name,skill_level', 'branch:id,name,district'])->withCount(['likes', 'comments', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')])->latest()->paginate(20);
         $posts->through(function ($post) use ($request): array {
             $item = $post->toArray();
+            $item['saved'] = $request->user() ? DB::table('saved_posts')->where('user_id', $request->user()->id)->where('community_post_id', $post->id)->exists() : false;
             $item['liked'] = $request->user() ? $post->likes()->where('users.id', $request->user()->id)->exists() : false;
             $item['my_join'] = $request->user() ? $post->joins()->where('user_id', $request->user()->id)->value('status') : null;
 
@@ -50,7 +60,7 @@ class CommunityController extends Controller
 
     public function show(Request $request, CommunityPost $post): JsonResponse
     {
-        abort_if($post->status === 'hidden' && $post->user_id !== $request->user()?->id && $request->user()?->role !== 'admin', 404);
+        abort_if(($post->status === 'hidden' || $post->moderation_status !== 'approved') && $post->user_id !== $request->user()?->id && $request->user()?->role !== 'admin', 404);
         $post->load(['user:id,name,skill_level', 'branch:id,name,district', 'comments.user:id,name'])->loadCount(['likes', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')]);
         $data = $post->toArray();
         $data['joins'] = $post->joins()->with('user:id,name,skill_level')->where(function ($q) use ($request, $post): void {
@@ -69,7 +79,11 @@ class CommunityController extends Controller
             abort_unless($post->user_id === $request->user()->id && $post->status !== 'hidden', 403);
         }
         $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id'], 'title' => ['required', 'string', 'max:150'], 'content' => ['required', 'string', 'max:5000'], 'type' => ['required', Rule::in(['Tìm người đánh', 'Tìm đối thủ', 'Tuyển thành viên', 'Chia sẻ', 'Hỏi đáp', 'Giao lưu'])], 'skill_level' => ['required', 'string', 'max:40'], 'starts_at' => ['required', 'date', 'after:now'], 'capacity' => ['required', 'integer', 'between:1,100'], 'status' => ['sometimes', Rule::in(['open', 'closed'])]]);
-        $post = DB::transaction(function () use ($request, $post, $data): CommunityPost {
+        $images = $request->validate(['images' => 'sometimes|array|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
+        app(FeatureService::class)->media($images['images'] ?? [], $request->user());
+        $data = array_merge($data, $images);
+        $moderation = app(ModerationService::class)->inspect($data['title']."\n".$data['content']);
+        $post = DB::transaction(function () use ($request, $post, $data, $moderation): CommunityPost {
             if ($post) {
                 $post = CommunityPost::query()->lockForUpdate()->findOrFail($post->id);
                 abort_unless($post->user_id === $request->user()->id && $post->status !== 'hidden', 403);
@@ -79,6 +93,7 @@ class CommunityController extends Controller
                 $post->user_id = $request->user()->id;
             }
             $post->fill($data)->save();
+            app(ModerationService::class)->apply($post, $moderation);
             app(BookingService::class)->audit($request->user(), 'community.post_saved', $post->id, [], 'post');
 
             return $post;
@@ -92,7 +107,7 @@ class CommunityController extends Controller
         $join = DB::transaction(function () use ($request, $post): PostJoin {
             $post = CommunityPost::query()->lockForUpdate()->findOrFail($post->id);
             abort_if($post->user_id === $request->user()->id, 422, 'Bạn là người tổ chức.');
-            abort_unless($post->status === 'open' && $post->starts_at->gt(now()), 422, 'Bài đăng đã đóng hoặc buổi chơi đã bắt đầu.');
+            abort_unless($post->status === 'open' && $post->moderation_status === 'approved' && $post->starts_at->gt(now()), 422, 'Bài đăng đã đóng hoặc buổi chơi đã bắt đầu.');
             $existing = $post->joins()->where('user_id', $request->user()->id)->first();
             if ($existing && in_array($existing->status, ['pending', 'accepted'], true)) {
                 return $existing;
@@ -118,7 +133,7 @@ class CommunityController extends Controller
                 return $join;
             }
             if ($data['status'] === 'accepted') {
-                abort_unless($post->status === 'open' && $post->starts_at->gt(now()), 422);
+                abort_unless($post->status === 'open' && $post->moderation_status === 'approved' && $post->starts_at->gt(now()), 422);
                 abort_if($post->joins()->where('status', 'accepted')->where('id', '!=', $join->id)->count() >= $post->capacity, 422, 'Đội đã đủ người.');
                 $conversation = Conversation::firstOrCreate(['community_post_id' => $post->id], ['title' => $post->title]);
                 $conversation->members()->syncWithoutDetaching([$post->user_id, $join->user_id]);
@@ -148,7 +163,7 @@ class CommunityController extends Controller
 
     public function like(Request $request, CommunityPost $post): JsonResponse
     {
-        abort_if($post->status === 'hidden', 404);
+        abort_if($post->status === 'hidden' || $post->moderation_status !== 'approved', 404);
         $data = $request->validate(['liked' => ['required', 'boolean']]);
         DB::transaction(function () use ($request, $post, $data): void {
             $post = CommunityPost::query()->lockForUpdate()->findOrFail($post->id);
@@ -164,8 +179,13 @@ class CommunityController extends Controller
 
     public function comment(Request $request, CommunityPost $post): JsonResponse
     {
-        abort_if($post->status === 'hidden', 404);
-        $data = $request->validate(['content' => ['required', 'string', 'max:2000']]);
+        abort_if($post->status === 'hidden' || $post->moderation_status !== 'approved', 404);
+        $data = $request->validate(['content' => ['required', 'string', 'max:2000'], 'parent_id' => 'nullable|integer|exists:post_comments,id']);
+        if (! empty($data['parent_id'])) {
+            abort_unless(PostComment::findOrFail($data['parent_id'])->community_post_id === $post->id, 422);
+        }
+        $analysis = app(ModerationService::class)->inspect($data['content']);
+        abort_if($analysis['decision'] === 'review', 422, 'Bình luận cần điều chỉnh ngôn từ trước khi gửi.');
         $comment = $post->comments()->create($data + ['user_id' => $request->user()->id]);
 
         return response()->json(['data' => $comment->load('user:id,name')], 201);
@@ -213,7 +233,7 @@ class CommunityController extends Controller
 
     public function conversations(Request $request): JsonResponse
     {
-        $items = Conversation::whereHas('members', fn ($q) => $q->where('users.id', $request->user()->id))->with(['members:id,name,skill_level', 'messages' => fn ($q) => $q->latest('id')->limit(1)])->latest('updated_at')->get();
+        $items = app(AccessService::class)->conversations($request->user())->with(['members:id,name,skill_level,last_seen_at,avatar_path', 'messages' => fn ($q) => $q->latest('id')->limit(1)])->latest('updated_at')->get();
 
         return response()->json(['data' => $items]);
     }
@@ -223,6 +243,7 @@ class CommunityController extends Controller
         $data = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
         abort_if($data['user_id'] == $request->user()->id, 422);
         $peer = User::where('active', true)->where('public_profile', true)->findOrFail($data['user_id']);
+        abort_if(DB::table('blocked_users')->where(fn ($q) => $q->where('user_id', $request->user()->id)->where('blocked_id', $peer->id))->orWhere(fn ($q) => $q->where('user_id', $peer->id)->where('blocked_id', $request->user()->id))->exists(), 403, 'Không thể trò chuyện với tài khoản này.');
         $ids = [$request->user()->id, $peer->id];
         sort($ids);
         $conversation = DB::transaction(function () use ($ids, $peer, $request): Conversation {
@@ -238,7 +259,7 @@ class CommunityController extends Controller
 
     private function assertMember(Request $request, Conversation $conversation): void
     {
-        abort_unless($conversation->members()->where('users.id', $request->user()->id)->exists(), 403);
+        abort_unless(app(AccessService::class)->conversations($request->user())->whereKey($conversation->id)->exists(), 403);
     }
 
     public function messages(Request $request, Conversation $conversation): JsonResponse
@@ -249,19 +270,24 @@ class CommunityController extends Controller
         $messages = isset($data['after']) ? $query->where('id', '>', $data['after'])->orderBy('id')->limit(100)->get() : $query->latest('id')->limit(100)->get()->reverse()->values();
         $conversation->members()->updateExistingPivot($request->user()->id, ['read_at' => now()]);
 
-        return response()->json(['data' => $messages]);
+        return response()->json(['data' => $messages, 'members' => $conversation->members()->get(['users.id', 'name', 'last_seen_at']), 'attachments' => DB::table('media_uploads')->whereIn('id', $messages->flatMap(fn ($m) => $m->attachments ?? []))->get(['id', 'name', 'mime'])]);
     }
 
     public function send(Request $request, Conversation $conversation): JsonResponse
     {
         $this->assertMember($request, $conversation);
-        $data = $request->validate(['request_key' => ['required', 'uuid'], 'content' => ['required', 'string', 'max:2000']]);
+        if (! $conversation->booking_id) {
+            $peers = $conversation->members()->where('users.id', '!=', $request->user()->id)->pluck('users.id');
+            abort_if(DB::table('blocked_users')->where(fn ($q) => $q->where('user_id', $request->user()->id)->whereIn('blocked_id', $peers))->orWhere(fn ($q) => $q->whereIn('user_id', $peers)->where('blocked_id', $request->user()->id))->exists(), 403, 'Không thể gửi tin nhắn cho tài khoản đã chặn.');
+        }
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'content' => ['required', 'string', 'max:2000'], 'attachments' => 'sometimes|array|max:4', 'attachments.*' => 'integer|distinct|exists:media_uploads,id']);
+        app(FeatureService::class)->media($data['attachments'] ?? [], $request->user(), false);
         $message = DB::transaction(function () use ($request, $conversation, $data): ChatMessage {
             $conversation = Conversation::query()->lockForUpdate()->findOrFail($conversation->id);
             $this->assertMember($request, $conversation);
             $existing = ChatMessage::where('request_key', $data['request_key'])->first();
             if ($existing) {
-                abort_unless($existing->conversation_id === $conversation->id && $existing->user_id === $request->user()->id && $existing->content === $data['content'], 422);
+                abort_unless($existing->conversation_id === $conversation->id && $existing->user_id === $request->user()->id && $existing->content === $data['content'] && ($existing->attachments ?? []) === ($data['attachments'] ?? []), 422);
 
                 return $existing;
             }
@@ -274,10 +300,42 @@ class CommunityController extends Controller
         return response()->json(['data' => $message->load('user:id,name')], 201);
     }
 
+    public function typing(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->assertMember($request, $conversation);
+        $conversation->members()->updateExistingPivot($request->user()->id, ['typing_until' => now()->addSeconds(5)]);
+
+        return response()->json(['message' => 'ok']);
+    }
+
+    public function stream(Request $request, Conversation $conversation): StreamedResponse
+    {
+        $this->assertMember($request, $conversation);
+        $request->session()->save();
+
+        return response()->stream(function () use ($conversation): void {
+            $messages = $conversation->messages()->latest('id')->limit(100)->get(['id', 'updated_at', 'deleted']);
+            $members = $conversation->members()->get(['users.id', 'last_seen_at']);
+            echo "event: update\ndata: ".json_encode(['version' => hash('sha256', $messages->toJson().$members->toJson())])."\n\n";
+            if (ob_get_level()) {
+                ob_flush();
+            }
+            flush();
+        }, 200, ['Content-Type' => 'text/event-stream', 'Cache-Control' => 'no-cache', 'X-Accel-Buffering' => 'no']);
+    }
+
+    public function deletePost(Request $request, CommunityPost $post): JsonResponse
+    {
+        abort_unless($post->user_id === $request->user()->id || $request->user()->role === 'admin', 403);
+        $post->update(['status' => 'hidden']);
+
+        return response()->json(['message' => 'Đã gỡ bài viết.']);
+    }
+
     public function retract(Request $request, ChatMessage $message): JsonResponse
     {
         abort_unless($message->user_id === $request->user()->id, 403);
-        $message->update(['content' => '[Tin nhắn đã thu hồi]', 'deleted' => true]);
+        $message->update(['content' => '[Tin nhắn đã thu hồi]', 'deleted' => true, 'attachments' => []]);
 
         return response()->json(['message' => 'Đã thu hồi tin nhắn.']);
     }

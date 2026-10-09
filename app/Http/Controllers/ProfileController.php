@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\BookingService;
+use App\FeatureService;
 use App\Models\AuthCode;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -22,9 +23,16 @@ class ProfileController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($request->user()->id)],
             'phone' => ['nullable', 'string', 'max:30'],
             'skill_level' => ['sometimes', 'string', 'max:40'], 'public_profile' => ['sometimes', 'boolean'],
-            'current_password' => ['nullable', 'string', 'max:72'],
+            'current_password' => ['nullable', 'string', 'max:72'], 'avatar_id' => 'sometimes|nullable|integer',
         ]);
 
+        if (! empty($data['avatar_id'])) {
+            app(FeatureService::class)->media([$data['avatar_id']], $request->user());
+        }
+        if (array_key_exists('avatar_id', $data)) {
+            $data['avatar_path'] = $data['avatar_id'] ? '/api/v1/media/'.$data['avatar_id'] : null;
+            unset($data['avatar_id']);
+        }
         $user = DB::transaction(function () use ($request, $data, $engine): User {
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
             if ($data['email'] !== $user->email) {
@@ -33,6 +41,9 @@ class ProfileController extends Controller
                 }
                 $user->email_verified_at = null;
                 AuthCode::where('user_id', $user->id)->whereNull('used_at')->update(['used_at' => now()]);
+            }
+            if (($data['phone'] ?? null) !== $user->phone) {
+                $user->phone_verified_at = null;
             }
             $user->fill(collect($data)->except('current_password')->all())->save();
             $engine->audit($user, 'profile.updated', $user->id, [], 'user');

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['title', 'direct_key', 'community_post_id'])]
+#[Fillable(['title', 'direct_key', 'community_post_id', 'booking_id'])]
 
 class Conversation extends Model
 {
@@ -21,7 +21,7 @@ class Conversation extends Model
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'conversation_members')->withPivot('read_at');
+        return $this->belongsToMany(User::class, 'conversation_members')->withPivot(['read_at', 'typing_until']);
     }
 
     public function messages(): HasMany

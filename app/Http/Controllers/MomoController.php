@@ -13,7 +13,7 @@ class MomoController extends Controller
 {
     public function create(Request $r, MomoService $m): JsonResponse
     {
-        $d = $r->validate(['request_key' => ['required', 'uuid'], 'purpose' => ['required', Rule::in(['booking', 'wallet'])], 'booking_id' => ['exclude_unless:purpose,booking', 'required', 'integer'], 'amount' => ['exclude_unless:purpose,wallet', 'required', 'integer', 'min:1000', 'max:50000000']]);
+        $d = $r->validate(['deposit_only' => 'sometimes|boolean', 'request_key' => ['required', 'uuid'], 'purpose' => ['required', Rule::in(['booking', 'wallet'])], 'booking_id' => ['exclude_unless:purpose,booking', 'required', 'integer'], 'amount' => ['exclude_unless:purpose,wallet', 'required', 'integer', 'min:1000', 'max:50000000']]);
 
         return response()->json(['data' => $m->create($r->user(), $d)]);
     }

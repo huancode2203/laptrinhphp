@@ -1,3 +1,4 @@
+import { AccountExtras } from "./FeaturePages";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { api, key, useHub } from "./hub";
@@ -55,6 +56,106 @@ export function BookingDetail({
                 Trạng thái: {statusText(booking.status)}{" "}
                 {booking.refund_pending ? "· Chờ quầy hoàn tiền" : ""}
             </p>
+            {booking.deposit_remaining > 0 && booking.payment_expires_at && (
+                <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm">
+                    Cần đặt cọc {money(booking.deposit_remaining)} trước{" "}
+                    {stamp(booking.payment_expires_at)} để giữ lịch.
+                </p>
+            )}
+            {data!.bank &&
+                booking.status === "confirmed" &&
+                booking.remaining_amount > 0 && (
+                    <Card className="mt-4">
+                        <h3 className="font-bold">Chuyển khoản ngân hàng</h3>
+                        <p className="mt-3 text-sm">
+                            {data!.bank.name} · {data!.bank.account}
+                        </p>
+                        <p className="my-2 text-sm">
+                            Số tiền:{" "}
+                            <b>
+                                {money(
+                                    booking.deposit_remaining > 0
+                                        ? booking.deposit_remaining
+                                        : booking.remaining_amount,
+                                )}
+                            </b>
+                        </p>
+                        <p className="text-sm">
+                            Nội dung: <b>{booking.reference}</b>
+                        </p>
+                        <button
+                            className="btn-outline mt-3"
+                            onClick={() =>
+                                navigator.clipboard
+                                    .writeText(booking.reference)
+                                    .then(() =>
+                                        toast(
+                                            "Đã sao chép nội dung chuyển khoản.",
+                                        ),
+                                    )
+                            }
+                        >
+                            Sao chép nội dung
+                        </button>
+                        <p className="mt-3 text-xs text-slate-500">
+                            Chuyển khoản đúng nội dung để tiền được ghi nhận vào
+                            lịch. Bạn có thể làm mới lịch để xem kết quả sau khi
+                            chuyển.
+                        </p>
+                    </Card>
+                )}
+            {data!.user.role !== "customer" &&
+                data!.permissions?.["payments.write"] &&
+                booking.status === "cancelled" &&
+                booking.paid_amount > 0 &&
+                data!.momo_enabled &&
+                receipt?.payment_attempts?.length > 0 && (
+                    <div className="my-4">
+                        <button
+                            className="btn-outline"
+                            onClick={() => setForm("momo-refund")}
+                        >
+                            Hoàn qua MoMo
+                        </button>
+                        {receipt?.refund_requests
+                            ?.filter((v: Row) => v.status === "pending")
+                            .map((v: Row) => (
+                                <button
+                                    key={v.id}
+                                    className="btn-outline ml-2"
+                                    onClick={() =>
+                                        run(async () => {
+                                            await api(
+                                                "manage/bookings/" +
+                                                    booking.id +
+                                                    "/momo-refund",
+                                                "POST",
+                                                {
+                                                    request_key: v.request_key,
+                                                    attempt_id:
+                                                        v.payment_attempt_id,
+                                                    amount: v.amount,
+                                                },
+                                            );
+                                            await refreshBookings();
+                                            setReceipt(
+                                                (
+                                                    await api(
+                                                        "bookings/" +
+                                                            booking.id +
+                                                            "/receipt",
+                                                    )
+                                                ).data,
+                                            );
+                                            toast("Đã kiểm tra kết quả hoàn.");
+                                        })
+                                    }
+                                >
+                                    Kiểm tra hoàn {money(v.amount)}
+                                </button>
+                            ))}
+                    </div>
+                )}
             {qr && (
                 <div className="my-4 text-center">
                     <img src={qr} alt="Mã QR nhận sân" className="mx-auto" />
@@ -62,6 +163,62 @@ export function BookingDetail({
                 </div>
             )}
             <div className="my-4 flex flex-wrap gap-2">
+                <a
+                    className="btn-outline"
+                    href={"/api/v1/bookings/" + booking.id + "/receipt.pdf"}
+                >
+                    Tải phiếu PDF
+                </a>
+                <button
+                    className="btn-outline"
+                    onClick={() =>
+                        run(async () => {
+                            const r = await api(
+                                "bookings/" + booking.id + "/conversation",
+                                "POST",
+                            );
+                            location.hash = "community/chat/" + r.data.id;
+                            close();
+                        })
+                    }
+                >
+                    Nhắn hỗ trợ chi nhánh
+                </button>
+                {booking.deposit_remaining > 0 &&
+                    booking.status === "confirmed" &&
+                    data!.user.id === booking.user_id && (
+                        <button
+                            className="btn-outline"
+                            onClick={() => setForm("wallet-deposit")}
+                        >
+                            Đặt cọc bằng ví
+                        </button>
+                    )}
+                {booking.deposit_remaining > 0 &&
+                    booking.status === "confirmed" &&
+                    data!.momo_enabled &&
+                    data!.user.id === booking.user_id && (
+                        <button
+                            className="btn-outline"
+                            onClick={() =>
+                                run(async () => {
+                                    const r = await api(
+                                        "payments/momo",
+                                        "POST",
+                                        {
+                                            request_key: key(),
+                                            purpose: "booking",
+                                            booking_id: booking.id,
+                                            deposit_only: true,
+                                        },
+                                    );
+                                    location.assign(r.data.pay_url);
+                                })
+                            }
+                        >
+                            Đặt cọc MoMo
+                        </button>
+                    )}
                 {booking.status === "confirmed" && (
                     <>
                         {booking.remaining_amount > 0 && (
@@ -153,23 +310,87 @@ export function BookingDetail({
                     ))}
                 </div>
             )}
-            {form === "wallet" && (
+            {(form === "wallet" || form === "wallet-deposit") && (
                 <Confirm
                     title="Thanh toán bằng ví"
                     close={() => setForm("")}
-                    action={() =>
+                    action={(requestKey) =>
                         update(() =>
                             api(
                                 "bookings/" + booking.id + "/wallet-payment",
                                 "POST",
-                                { request_key: key() },
+                                {
+                                    request_key: requestKey,
+                                    deposit_only: form === "wallet-deposit",
+                                },
                             ),
                         )
                     }
                 >
-                    Trừ {money(booking.remaining_amount)} từ ví HUB. Số dư hiện
-                    tại {money(data!.user.wallet_balance)}.
+                    Trừ{" "}
+                    {money(
+                        form === "wallet-deposit"
+                            ? booking.deposit_remaining
+                            : booking.remaining_amount,
+                    )}{" "}
+                    từ ví HUB. Số dư hiện tại {money(data!.user.wallet_balance)}
+                    .
                 </Confirm>
+            )}
+            {form === "momo-refund" && (
+                <Editor
+                    title="Hoàn tiền qua MoMo"
+                    initial={{
+                        attempt_id: receipt?.payment_attempts?.[0]?.id,
+                        amount: Math.min(
+                            booking.paid_amount,
+                            receipt?.payment_attempts?.[0]?.amount ?? 0,
+                        ),
+                    }}
+                    close={() => setForm("")}
+                    fields={[
+                        {
+                            name: "attempt_id",
+                            label: "Giao dịch gốc",
+                            required: true,
+                            options: receipt?.payment_attempts.map(
+                                (v: Row) => ({
+                                    value: v.id,
+                                    label: v.order_id + " · " + money(v.amount),
+                                }),
+                            ),
+                        },
+                        {
+                            name: "amount",
+                            label: "Số tiền hoàn",
+                            type: "number",
+                            min: 1000,
+                            max: booking.paid_amount,
+                            required: true,
+                        },
+                    ]}
+                    save={async (d) => {
+                        const r = await api(
+                            "manage/bookings/" + booking.id + "/momo-refund",
+                            "POST",
+                            {
+                                ...d,
+                                attempt_id: Number(d.attempt_id),
+                                amount: Number(d.amount),
+                            },
+                        );
+                        setReceipt(
+                            (await api("bookings/" + booking.id + "/receipt"))
+                                .data,
+                        );
+                        await refreshBookings();
+                        toast(
+                            r.data.status === "paid"
+                                ? "Đã hoàn tiền."
+                                : "Đang chờ kết quả từ MoMo.",
+                        );
+                    }}
+                />
             )}
             {form === "cancel" && (
                 <Confirm
@@ -224,6 +445,11 @@ export function BookingDetail({
                     initial={{ rating: 5 }}
                     fields={[
                         {
+                            name: "images",
+                            label: "Ảnh buổi chơi",
+                            type: "images",
+                        },
+                        {
                             name: "rating",
                             label: "Số sao",
                             type: "number",
@@ -269,6 +495,25 @@ export default function Account({
         [emailSent, setEmailSent] = useState(false),
         [page, setPage] = useState(1),
         [lastPage, setLastPage] = useState(1);
+    useEffect(() => {
+        const followLink = () => {
+            const target = location.hash.split("/")[1];
+            if (
+                location.hash.startsWith("#account/") &&
+                [
+                    "bookings",
+                    "wallet",
+                    "membership",
+                    "notifications",
+                    "profile",
+                    "extras",
+                ].includes(target)
+            )
+                setTab(target);
+        };
+        window.addEventListener("hashchange", followLink);
+        return () => window.removeEventListener("hashchange", followLink);
+    }, []);
     async function load() {
         const [b, a, n] = await Promise.all([
             api("bookings?page=" + page + (status ? "&status=" + status : "")),
@@ -293,7 +538,7 @@ export default function Account({
         <div className="mx-auto max-w-6xl p-5 md:p-10">
             <div className="mb-6 flex flex-wrap justify-between gap-3">
                 <div>
-                    <p className="eyebrow text-[#16a34a]">customer hub</p>
+                    <p className="eyebrow text-[#16a34a]">GÓC CỦA BẠN</p>
                     <h1 className="font-display text-3xl font-bold">
                         Xin chào, {user.name}
                     </h1>
@@ -317,6 +562,7 @@ export default function Account({
                     ["membership", "Hội viên"],
                     ["notifications", "Thông báo"],
                     ["profile", "Tài khoản"],
+                    ["extras", "Quyền lợi & đã lưu"],
                 ].map(([id, label]) => (
                     <button
                         key={id}
@@ -327,6 +573,7 @@ export default function Account({
                     </button>
                 ))}
             </div>
+            {tab === "extras" && <AccountExtras />}
             {tab === "bookings" && (
                 <>
                     <div className="mb-4 flex gap-3">

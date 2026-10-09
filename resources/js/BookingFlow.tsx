@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
-import { BRANCHES, day, money, times, type Row } from "./data";
+import { BRANCHES, day, money, type Row } from "./data";
 import { Card, Empty, Modal } from "./ui";
 export default function BookingFlow({
     initial = {},
@@ -29,9 +29,28 @@ export default function BookingFlow({
         [step, setStep] = useState(0),
         [requestKey] = useState(key),
         [method, setMethod] = useState("cash"),
+        [depositOnly, setDepositOnly] = useState(true),
         [customer, setCustomer] = useState(initial.user_id ?? ""),
         [error, setError] = useState("");
     const b = data!.branches.find((b: Row) => b.id === Number(branch));
+    const minuteOf = (v: string) =>
+        Number(v.slice(0, 2)) * 60 + Number(v.slice(3));
+    const timeOptions = Array.from({ length: 48 }, (_, i) => i * 30)
+        .filter(
+            (m) =>
+                m >= (b?.opens_minute ?? 180) &&
+                m + duration * 60 <= Math.min(b?.closes_minute ?? 1380, 1410),
+        )
+        .map(
+            (m) =>
+                String(Math.floor(m / 60)).padStart(2, "0") +
+                ":" +
+                String(m % 60).padStart(2, "0"),
+        );
+    useEffect(() => {
+        if (timeOptions.length && !timeOptions.includes(time))
+            setTime(timeOptions[0]);
+    }, [branch, duration, b?.opens_minute, b?.closes_minute]);
     const start = date + "T" + time + ":00+07:00";
     const [hour, minute] = time.split(":").map(Number);
     const endHour = hour + Math.floor((minute + duration * 60) / 60),
@@ -58,7 +77,16 @@ export default function BookingFlow({
                 new URLSearchParams({ starts_at: start, ends_at: end }),
         )
             .then((r) => {
-                if (active) setAvailable(r.data);
+                if (active) {
+                    setAvailable(r.data);
+                    if (initial.court_id)
+                        setCourt(
+                            r.data.find(
+                                (c: Row) =>
+                                    c.id === initial.court_id && c.available,
+                            ) ?? null,
+                        );
+                }
             })
             .catch((e) => {
                 if (active) {
@@ -131,6 +159,10 @@ export default function BookingFlow({
             notes,
             coupon_code: coupon || null,
             pay_with_wallet: method === "wallet",
+            deposit_only:
+                depositOnly &&
+                data!.user.role === "customer" &&
+                b.deposit_percent > 0,
             ...(hold ? { hold_id: hold.id } : {}),
             ...(customer ? { user_id: Number(customer) } : {}),
         };
@@ -150,6 +182,7 @@ export default function BookingFlow({
                     request_key: key(),
                     purpose: "booking",
                     booking_id: booked[0].id,
+                    deposit_only: depositOnly && b.deposit_percent > 0,
                 });
                 location.assign(p.data.pay_url);
                 return;
@@ -170,7 +203,11 @@ export default function BookingFlow({
                 booked.length +
                 " lịch. " +
                 (method === "cash"
-                    ? "Thanh toán tại quầy trước khi nhận sân."
+                    ? data!.user.role === "customer" && b.deposit_percent > 0
+                        ? "Thanh toán đặt cọc trong " +
+                          b.payment_minutes +
+                          " phút để giữ lịch."
+                        : "Thanh toán tại quầy trước khi nhận sân."
                     : ""),
         );
         done(booked[0]);
@@ -179,7 +216,7 @@ export default function BookingFlow({
         <div className="mx-auto max-w-6xl p-5 md:p-10">
             <div className="mb-6 flex justify-between">
                 <div>
-                    <p className="eyebrow text-[#16a34a]">booking / đặt sân</p>
+                    <p className="eyebrow text-[#16a34a]">SẴN SÀNG LÊN SÂN</p>
                     <h1 className="font-display text-3xl font-bold">
                         Đặt sân của bạn
                     </h1>
@@ -244,6 +281,11 @@ export default function BookingFlow({
                                         type="date"
                                         value={date}
                                         min={day()}
+                                        max={day(
+                                            (b?.booking_days ?? 90) +
+                                                (data!.membership?.plan
+                                                    ?.early_days ?? 0),
+                                        )}
                                         onChange={(e) =>
                                             setDate(e.target.value)
                                         }
@@ -258,7 +300,7 @@ export default function BookingFlow({
                                             setTime(e.target.value)
                                         }
                                     >
-                                        {times.map((t) => (
+                                        {timeOptions.map((t) => (
                                             <option key={t}>{t}</option>
                                         ))}
                                     </select>
@@ -272,13 +314,23 @@ export default function BookingFlow({
                                             setDuration(+e.target.value)
                                         }
                                     >
-                                        {[0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6].map(
-                                            (v) => (
+                                        {[0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6]
+                                            .filter(
+                                                (v) =>
+                                                    v * 60 <=
+                                                    Math.min(
+                                                        b?.closes_minute ??
+                                                            1380,
+                                                        1410,
+                                                    ) -
+                                                        (b?.opens_minute ??
+                                                            180),
+                                            )
+                                            .map((v) => (
                                                 <option value={v} key={v}>
                                                     {v} giờ
                                                 </option>
-                                            ),
-                                        )}
+                                            ))}
                                     </select>
                                 </label>
                             </div>
@@ -291,7 +343,8 @@ export default function BookingFlow({
                                         setCoupon("");
                                     }}
                                 />{" "}
-                                Đặt cố định hàng tuần · giảm 15% phí sân
+                                Đặt cố định hàng tuần · giảm{" "}
+                                {b?.fixed_discount ?? 0}% phí sân
                             </label>
                             {fixed && (
                                 <label>
@@ -400,33 +453,40 @@ export default function BookingFlow({
                                 Dịch vụ thêm
                             </h2>
                             <div className="grid gap-3 sm:grid-cols-2">
-                                {b?.services.map((s: Row) => (
-                                    <label
-                                        className="flex items-center justify-between gap-3 rounded-xl bg-[#f3f6f4] p-3"
-                                        key={s.id}
-                                    >
-                                        <span>
-                                            {s.name}
-                                            <small className="block text-[#6d8474]">
-                                                {money(s.price)}/{s.unit}
-                                            </small>
-                                        </span>
-                                        <input
-                                            aria-label={"Số lượng " + s.name}
-                                            type="number"
-                                            min={0}
-                                            max={10}
-                                            className="input w-20"
-                                            value={services[s.id] ?? 0}
-                                            onChange={(e) =>
-                                                setServices({
-                                                    ...services,
-                                                    [s.id]: +e.target.value,
-                                                })
-                                            }
-                                        />
-                                    </label>
-                                ))}
+                                {b?.services
+                                    .filter(
+                                        (s: Row) =>
+                                            s.name !== "Huấn luyện viên",
+                                    )
+                                    .map((s: Row) => (
+                                        <label
+                                            className="flex items-center justify-between gap-3 rounded-xl bg-[#f3f6f4] p-3"
+                                            key={s.id}
+                                        >
+                                            <span>
+                                                {s.name}
+                                                <small className="block text-[#6d8474]">
+                                                    {money(s.price)}/{s.unit}
+                                                </small>
+                                            </span>
+                                            <input
+                                                aria-label={
+                                                    "Số lượng " + s.name
+                                                }
+                                                type="number"
+                                                min={0}
+                                                max={10}
+                                                className="input w-20"
+                                                value={services[s.id] ?? 0}
+                                                onChange={(e) =>
+                                                    setServices({
+                                                        ...services,
+                                                        [s.id]: +e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </label>
+                                    ))}
                             </div>
                             {!fixed && (
                                 <label className="mt-4 block">
@@ -498,7 +558,14 @@ export default function BookingFlow({
                                 trống.
                             </p>
                             {[
-                                { id: "cash", label: "Thanh toán tại quầy" },
+                                {
+                                    id: "cash",
+                                    label:
+                                        data!.user.role === "customer" &&
+                                        b.deposit_percent > 0
+                                            ? "Tạo lịch và thanh toán đặt cọc sau"
+                                            : "Thanh toán tại quầy",
+                                },
                                 {
                                     id: "wallet",
                                     label:
@@ -526,6 +593,44 @@ export default function BookingFlow({
                                     {m.label}
                                 </label>
                             ))}
+                            <div className="my-4 rounded-xl bg-amber-50 p-4 text-sm">
+                                {data!.user.role === "customer" &&
+                                b.deposit_percent > 0 ? (
+                                    <>
+                                        <b>
+                                            Đặt cọc {b.deposit_percent}% (
+                                            {money(
+                                                Math.ceil(
+                                                    ((quote?.total_amount ??
+                                                        0) *
+                                                        b.deposit_percent) /
+                                                        100,
+                                                ),
+                                            )}
+                                            ) trong {b.payment_minutes} phút.
+                                        </b>
+                                        <p className="mt-2">
+                                            Lịch chưa đủ cọc sẽ tự giải phóng
+                                            khi hết hạn.
+                                        </p>
+                                        <label className="mt-3 flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={depositOnly}
+                                                onChange={(e) =>
+                                                    setDepositOnly(
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                            />
+                                            Chỉ trả phần đặt cọc khi thanh toán
+                                            bằng ví hoặc MoMo
+                                        </label>
+                                    </>
+                                ) : (
+                                    "Thanh toán đủ trước khi nhận sân."
+                                )}
+                            </div>
                             <p className="text-sm text-[#6d8474]">
                                 Lịch chưa thanh toán có thể hủy trước giờ chơi.
                                 Lịch trả bằng ví được hoàn ví khi hủy trước ít
@@ -569,7 +674,7 @@ export default function BookingFlow({
                     )}
                 </Card>
                 <Card className="h-fit">
-                    <p className="eyebrow text-[#16a34a]">chi tiết booking</p>
+                    <p className="eyebrow text-[#16a34a]">BUỔI CHƠI CỦA BẠN</p>
                     <h2 className="mt-3 text-xl font-bold">{b?.name}</h2>
                     <p className="my-3 text-sm text-[#6d8474]">{b?.address}</p>
                     <p>

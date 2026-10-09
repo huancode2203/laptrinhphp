@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { ContentSupport, Coaching } from "./FeaturePages";
+import { lazy, Suspense, useEffect, useState } from "react";
 import CustomerHome, { Logo } from "./CustomerHome";
 import BookingFlow from "./BookingFlow";
 import AuthScreen from "./AuthScreen";
 import Account from "./Account";
 import CommunityApp from "./CommunityApp";
 import EventsPage from "./EventsPage";
-import Management from "./Management";
+const Management = lazy(() => import("./Management"));
 import { api, useHub } from "./hub";
 import { BRANCHES, day, money, type Row } from "./data";
 import { Card, Empty, Modal } from "./ui";
@@ -30,11 +31,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
             <div className="relative mb-6 overflow-hidden rounded-2xl bg-[#0d1f2d] p-8 text-white">
                 <img
                     className="absolute inset-0 h-full w-full object-cover opacity-20"
-                    src={
-                        "https://images.unsplash.com/" +
-                        b.img +
-                        "?w=1400&fit=crop&auto=format"
-                    }
+                    src="https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=1400&fit=crop&auto=format"
                     alt=""
                 />
                 <div className="relative">
@@ -75,7 +72,19 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
             <div className="grid gap-5 md:grid-cols-3">
                 <Card>
                     <h2 className="font-bold">Giờ mở cửa</h2>
-                    <p className="mt-3">03:00 – 23:00 mỗi ngày</p>
+                    <p className="mt-3">
+                        {String(Math.floor(raw.opens_minute / 60)).padStart(
+                            2,
+                            "0",
+                        )}
+                        :{String(raw.opens_minute % 60).padStart(2, "0")} –{" "}
+                        {String(Math.floor(raw.closes_minute / 60)).padStart(
+                            2,
+                            "0",
+                        )}
+                        :{String(raw.closes_minute % 60).padStart(2, "0")} mỗi
+                        ngày
+                    </p>
                 </Card>
                 <Card>
                     <h2 className="font-bold">Giá sân</h2>
@@ -175,6 +184,20 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                             {r.user?.name} · {r.rating}★
                         </b>
                         <p className="mt-2 whitespace-pre-wrap">{r.content}</p>
+                        {r.images?.map((id: number) => (
+                            <img
+                                key={id}
+                                className="mt-3 h-32 rounded-xl"
+                                src={"/api/v1/media/" + id}
+                                alt="Ảnh đánh giá"
+                            />
+                        ))}
+                        {r.reply && (
+                            <p className="mt-3 rounded-xl bg-[#eaf7de] p-3 text-sm">
+                                <b>Chi nhánh phản hồi: </b>
+                                {r.reply}
+                            </p>
+                        )}
                     </Card>
                 ))
             ) : (
@@ -197,6 +220,8 @@ export default function App() {
             "events",
             "manage",
             "account",
+            "content",
+            "coaching",
         ].includes(name)
             ? name
             : "home";
@@ -206,7 +231,6 @@ export default function App() {
         [branch, setBranch] = useState(
             Number(location.hash.split("/")[1]) || BRANCHES[0]?.id,
         ),
-        [support, setSupport] = useState(false),
         [afterAuth, setAfterAuth] = useState("account");
     useEffect(() => {
         const cb = () => {
@@ -238,6 +262,15 @@ export default function App() {
     useEffect(() => {
         if (user && page === "auth") go(afterAuth);
     }, [user?.id]);
+    useEffect(() => {
+        const expired = () => {
+            setAfterAuth(page);
+            go("auth");
+            refresh();
+        };
+        window.addEventListener("hub:auth-expired", expired);
+        return () => window.removeEventListener("hub:auth-expired", expired);
+    }, [page]);
     const manager =
         user && ["manager", "admin", "staff", "cashier"].includes(user.role);
     return (
@@ -252,7 +285,11 @@ export default function App() {
                         <button onClick={() => go("community")}>
                             Cộng đồng
                         </button>
-                        <button onClick={() => go("events")}>Sự kiện</button>
+                        <button onClick={() => go("events")}>Giải đấu</button>
+                        <button onClick={() => go("coaching")}>
+                            Học cầu lông
+                        </button>
+                        <button onClick={() => go("content")}>Hỗ trợ</button>
                         {user ? (
                             <>
                                 <button onClick={() => go("account")}>
@@ -300,29 +337,13 @@ export default function App() {
                         onEvents={() => go("events")}
                         onAuth={() => (user ? go("account") : auth())}
                         onMembership={() =>
-                            user
-                                ? go("account/membership")
-                                : auth("account/membership")
+                            user ? go("account/extras") : auth("account/extras")
                         }
-                        onSupport={() => setSupport(true)}
+                        onSupport={() => go("content")}
+                        onAiBook={book}
+                        onManage={manager ? () => go("manage") : undefined}
                         userName={user?.name}
                     />
-                    <div className="fixed bottom-4 right-4 z-20 flex gap-2">
-                        {manager && (
-                            <button
-                                className="btn shadow-lg"
-                                onClick={() => go("manage")}
-                            >
-                                Quản lý
-                            </button>
-                        )}
-                        <button
-                            className="btn-outline bg-white shadow-lg lg:hidden"
-                            onClick={() => (user ? go("account") : auth())}
-                        >
-                            {user ? "Tài khoản" : "Đăng nhập"}
-                        </button>
-                    </div>
                 </>
             ) : page === "auth" ? (
                 <AuthScreen done={() => go(afterAuth)} />
@@ -342,9 +363,15 @@ export default function App() {
                 <CommunityApp auth={() => auth("community")} />
             ) : page === "events" ? (
                 <EventsPage auth={() => auth("events")} />
+            ) : page === "content" ? (
+                <ContentSupport />
+            ) : page === "coaching" ? (
+                <Coaching />
             ) : page === "manage" ? (
                 manager ? (
-                    <Management book={book} />
+                    <Suspense fallback={<Empty text="Đang mở quản lý…" />}>
+                        <Management book={book} />
+                    </Suspense>
                 ) : (
                     <AuthScreen done={() => go("account")} />
                 )
@@ -355,44 +382,6 @@ export default function App() {
                 />
             ) : (
                 <AuthScreen done={() => go("account")} />
-            )}
-            {support && (
-                <Modal
-                    title="Hỗ trợ Badminton Hub"
-                    close={() => setSupport(false)}
-                >
-                    <div className="space-y-4 text-sm">
-                        <p>
-                            Chọn chi nhánh, ngày và giờ chơi để xem sân trống.
-                            Giá cuối cùng và ưu đãi hiển thị trước khi xác nhận.
-                        </p>
-                        <p>
-                            Lịch chưa trả tiền: hủy trước giờ bắt đầu. Lịch trả
-                            bằng ví: hủy trước tối thiểu 4 giờ để tự hoàn ví.
-                            Các phương thức khác: liên hệ quầy để được xử lý
-                            hoàn tiền.
-                        </p>
-                        <p>
-                            Lịch cố định: từ 2 đến 12 tuần, cùng sân và khung
-                            giờ mỗi tuần, giảm 15% phí sân. Nếu một tuần bị
-                            trùng, toàn bộ yêu cầu chưa được tạo.
-                        </p>
-                        <p>
-                            Để liên hệ sân, chọn Chi tiết chi nhánh và dùng số
-                            điện thoại hoặc bản đồ đã công bố. Thông tin hợp tác
-                            và tuyển dụng do quản trị cung cấp qua chi nhánh.
-                        </p>
-                        <button
-                            className="btn"
-                            onClick={() => {
-                                setSupport(false);
-                                go("community");
-                            }}
-                        >
-                            Hỏi cộng đồng
-                        </button>
-                    </div>
-                </Modal>
             )}
         </>
     );

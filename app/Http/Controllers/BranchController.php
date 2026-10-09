@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AccessService;
 use App\BookingService;
 use App\Http\Resources\BranchResource;
 use App\Models\Branch;
@@ -37,6 +38,10 @@ class BranchController extends Controller
         abort_unless($branch->active, 404);
         $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at']]);
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
+        $first = $branch->courts()->where('status', 'active')->first();
+        if ($first) {
+            $engine->assertOpen($first, $start, $end, $request->user());
+        }
         $courts = $branch->courts()->where('status', 'active')
             ->withCount([
                 'bookings as conflicts' => fn ($query) => $query->where('status', '!=', 'cancelled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
@@ -71,12 +76,14 @@ class BranchController extends Controller
             $owner = User::where('role', 'customer')->findOrFail($data['user_id']);
         }
 
+        $engine->assertOpen($court, $start, $end, $owner);
+
         return response()->json(['data' => $engine->quote($court, $start, $end, $data['services'] ?? [], $owner, $data['coupon_code'] ?? null, $data['fixed'] ?? false), 'currency' => 'VND']);
     }
 
     public function schedule(Request $request, Branch $branch, BookingService $engine): JsonResponse
     {
-        $staff = $request->user() && ($request->user()->role === 'admin' || (in_array($request->user()->role, ['manager', 'staff', 'cashier'], true) && $request->user()->branch_id === $branch->id));
+        $staff = $request->user() && app(AccessService::class)->manages($request->user(), $branch->id);
         abort_unless($branch->active || $staff, 404);
         $data = $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
         $day = CarbonImmutable::parse($data['date'], config('app.timezone'))->startOfDay();
@@ -89,7 +96,7 @@ class BranchController extends Controller
         ])->orderBy('id')->get();
         $schedule = $courts->map(function (Court $court) use ($day, $engine): array {
             $slots = [];
-            for ($start = $day->setTime(3, 0); $start->lt($day->setTime(23, 0)); $start = $start->addMinutes(30)) {
+            for ($start = $day->addMinutes($court->branch->opens_minute); $start->lt($day->addMinutes($court->branch->closes_minute)); $start = $start->addMinutes(30)) {
                 $end = $start->addMinutes(30);
                 $state = $court->status === 'active' ? 'available' : $court->status;
                 if ($court->maintenances->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {

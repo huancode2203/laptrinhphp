@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['request_key', 'conversation_id', 'user_id', 'content', 'deleted'])]
+#[Fillable(['request_key', 'conversation_id', 'user_id', 'content', 'deleted', 'attachments'])]
 
 class ChatMessage extends Model
 {
@@ -15,7 +15,7 @@ class ChatMessage extends Model
 
     protected function casts(): array
     {
-        return ['deleted' => 'boolean'];
+        return ['deleted' => 'boolean', 'attachments' => 'array'];
     }
 
     public function user(): BelongsTo

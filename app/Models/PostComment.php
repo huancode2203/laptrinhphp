@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['community_post_id', 'user_id', 'content'])]
+#[Fillable(['community_post_id', 'user_id', 'content', 'parent_id'])]
 
 class PostComment extends Model
 {

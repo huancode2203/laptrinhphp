@@ -22,6 +22,7 @@ class StoreBookingRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:1000'],
             'coupon_code' => ['nullable', 'string', 'max:30'],
             'hold_id' => ['sometimes', 'integer', 'exists:court_holds,id'],
+            'deposit_only' => 'sometimes|boolean',
             'pay_with_wallet' => ['sometimes', 'boolean'],
             'services' => ['sometimes', 'array', 'max:20'],
             'services.*.id' => ['required', 'integer', 'distinct', 'exists:services,id'],

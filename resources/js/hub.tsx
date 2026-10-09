@@ -33,6 +33,10 @@ export async function api(
     try {
         j = await r.json();
     } catch {}
+    if (r.status === 401) {
+        window.dispatchEvent(new CustomEvent("hub:auth-expired"));
+        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+    }
     if (!r.ok)
         throw new Error(
             Object.values(j.errors ?? {})
@@ -40,6 +44,35 @@ export async function api(
                 .join(" ") ||
                 j.message ||
                 "Không thực hiện được yêu cầu (" + r.status + ").",
+        );
+    return j;
+}
+export async function upload(file: File) {
+    const c = await fetch("/api/v1/csrf", {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+    });
+    const token = (await c.json()).csrf_token;
+    const body = new FormData();
+    body.append("file", file);
+    const r = await fetch("/api/v1/media", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { Accept: "application/json", "X-CSRF-TOKEN": token },
+        body,
+    });
+    const j = await r.json();
+    if (r.status === 401) {
+        window.dispatchEvent(new CustomEvent("hub:auth-expired"));
+        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+    }
+    if (!r.ok)
+        throw new Error(
+            Object.values(j.errors ?? {})
+                .flat()
+                .join(" ") ||
+                j.message ||
+                "Chưa tải được tệp.",
         );
     return j;
 }

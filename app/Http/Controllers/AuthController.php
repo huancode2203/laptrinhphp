@@ -34,8 +34,23 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
-        $data = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string', 'max:72'], 'remember' => ['sometimes', 'boolean']]);
-        if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password'], 'active' => true], $data['remember'] ?? false)) {
+        $data = $request->validate(['email' => ['required', 'string', 'max:255'], 'password' => ['required', 'string', 'max:72'], 'remember' => ['sometimes', 'boolean']]);
+        $login = $data['email'];
+        $credentials = ['password' => $data['password'], 'active' => true];
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            $credentials['email'] = $login;
+        } else {
+            $phone = preg_replace('/[\s.-]/', '', $login);
+            if (str_starts_with($phone, '0')) {
+                $phone = '+84'.substr($phone, 1);
+            }
+            $verified = User::where('phone', $phone)->whereNotNull('phone_verified_at')->first();
+            if (! $verified) {
+                throw ValidationException::withMessages(['email' => 'Email/SĐT hoặc mật khẩu không đúng.']);
+            }
+            $credentials['email'] = $verified->email;
+        }
+        if (! Auth::attempt($credentials, $data['remember'] ?? false)) {
             throw ValidationException::withMessages(['email' => 'Email hoặc mật khẩu không đúng.']);
         }
         $request->session()->regenerate();

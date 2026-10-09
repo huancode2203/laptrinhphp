@@ -1,19 +1,25 @@
 <?php
 
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CommerceController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\HubController;
+use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\MomoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecoveryController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/auth/google', [IntegrationController::class, 'google']);
+Route::get('/auth/google/callback', [IntegrationController::class, 'googleCallback']);
 Route::get('/', fn () => view('hub'))->name('home');
 Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('csrf', [AuthController::class, 'csrf']);
@@ -34,9 +40,31 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('community/players', [CommunityController::class, 'players']);
     Route::get('events', [EventController::class, 'index']);
     Route::get('events/{event}', [EventController::class, 'show']);
+
+    Route::post('ai/courts', [AiController::class, 'search'])->middleware('throttle:ai');
+    Route::get('pages', [FeatureController::class, 'pages']);
+    Route::get('coaches', [FeatureController::class, 'coaches']);
+    Route::get('media/{media}', [FeatureController::class, 'media'])->whereNumber('media');
+    Route::post('payments/bank/webhook', [IntegrationController::class, 'bank']);
     Route::post('payments/momo/ipn', [MomoController::class, 'ipn']);
     Route::middleware('auth')->group(function (): void {
         Route::get('me', [AuthController::class, 'me']);
+
+        Route::get('features/account', [FeatureController::class, 'account']);
+        Route::post('loyalty/redeem', [FeatureController::class, 'redeem'])->middleware('throttle:book');
+        Route::put('courts/{court}/favorite', [FeatureController::class, 'favorite']);
+        Route::put('community/posts/{post}/saved', [FeatureController::class, 'saved']);
+        Route::put('users/{user}/block', [FeatureController::class, 'block']);
+        Route::post('media', [FeatureController::class, 'upload'])->middleware('throttle:book');
+        Route::post('support', [FeatureController::class, 'ticket'])->middleware('throttle:book');
+        Route::post('coaching', [FeatureController::class, 'coaching'])->middleware('throttle:book');
+        Route::post('me/phone/send', [IntegrationController::class, 'phoneSend'])->middleware('throttle:sensitive');
+        Route::post('me/phone/verify', [IntegrationController::class, 'phoneVerify'])->middleware('throttle:sensitive');
+        Route::post('bookings/{booking}/conversation', [FeatureController::class, 'bookingChat']);
+        Route::get('bookings/{booking}/receipt.pdf', [ReportController::class, 'receipt']);
+        Route::delete('community/posts/{post}', [CommunityController::class, 'deletePost']);
+        Route::post('conversations/{conversation}/typing', [CommunityController::class, 'typing'])->middleware('throttle:60,1');
+        Route::get('conversations/{conversation}/stream', [CommunityController::class, 'stream']);
         Route::get('account', [HubController::class, 'account']);
         Route::patch('me', [ProfileController::class, 'update']);
         Route::put('me/password', [ProfileController::class, 'password'])->middleware('throttle:sensitive');
@@ -83,7 +111,12 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::get('calendar', [ManagementController::class, 'calendar']);
             Route::get('booking-search', [ManagementController::class, 'findBooking']);
             Route::get('customers', [ManagementController::class, 'customers']);
-            Route::get('reports', [HubController::class, 'report']);
+            Route::get('reports', [ReportController::class, 'index']);
+            Route::get('reports.{format}', [ReportController::class, 'export'])->where('format', 'xlsx|pdf');
+            Route::get('features', [FeatureController::class, 'manage']);
+            Route::post('customers', [FeatureController::class, 'customer']);
+            Route::patch('support/{ticket}', [FeatureController::class, 'ticketReply']);
+            Route::post('bookings/{booking}/momo-refund', [IntegrationController::class, 'momoRefund']);
             Route::get('reports.csv', [HubController::class, 'csv']);
             Route::get('courts', [ManagementController::class, 'courts']);
             Route::get('services', [ManagementController::class, 'services']);
@@ -106,6 +139,12 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
                 Route::post('products', [CommerceController::class, 'saveProduct']);
                 Route::put('products/{product}', [CommerceController::class, 'saveProduct']);
                 Route::post('products/{product}/stock', [CommerceController::class, 'stock']);
+                Route::put('branches/{branch}/policy', [FeatureController::class, 'policy']);
+                Route::post('pricing', [FeatureController::class, 'pricing']);
+                Route::put('pricing/{rule}', [FeatureController::class, 'pricing']);
+                Route::post('coaches', [FeatureController::class, 'coach']);
+                Route::put('coaches/{coach}', [FeatureController::class, 'coach']);
+                Route::patch('reviews/{review}/reply', [FeatureController::class, 'reviewReply']);
                 Route::post('events', [EventController::class, 'save']);
                 Route::put('events/{event}', [EventController::class, 'save']);
                 Route::patch('events/{event}/status', [EventController::class, 'status']);
@@ -114,7 +153,17 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             });
         });
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
+
             Route::get('hub', [HubController::class, 'admin']);
+            Route::get('features', [FeatureController::class, 'admin']);
+            Route::post('bank-transactions/{transaction}/match', [IntegrationController::class, 'bankMatch'])->whereNumber('transaction');
+            Route::post('pages', [FeatureController::class, 'pageSave']);
+            Route::put('pages/{page}', [FeatureController::class, 'pageSave']);
+            Route::post('rewards', [FeatureController::class, 'rewardSave']);
+            Route::put('rewards/{reward}', [FeatureController::class, 'rewardSave']);
+            Route::put('permissions', [FeatureController::class, 'permission']);
+            Route::put('users/{user}/branches', [FeatureController::class, 'assignments']);
+            Route::patch('posts/{post}/moderation', [FeatureController::class, 'moderate']);
             Route::get('users', [ManagementController::class, 'users']);
             Route::post('users', [HubController::class, 'createUser']);
             Route::patch('users/{user}/role', [ManagementController::class, 'userRole']);

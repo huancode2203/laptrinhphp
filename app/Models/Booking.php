@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['reference', 'request_key', 'user_id', 'court_id', 'starts_at', 'ends_at', 'status', 'court_amount', 'service_amount', 'total_amount', 'paid_amount', 'notes', 'checked_in_at', 'discount_amount', 'coupon_id', 'coupon_code', 'booking_type', 'series_key'])]
+#[Fillable(['reference', 'request_key', 'user_id', 'court_id', 'starts_at', 'ends_at', 'status', 'court_amount', 'service_amount', 'total_amount', 'paid_amount', 'notes', 'checked_in_at', 'discount_amount', 'coupon_id', 'coupon_code', 'booking_type', 'series_key', 'source', 'deposit_amount', 'payment_expires_at', 'reminded_at'])]
 class Booking extends Model
 {
     protected $attributes = ['status' => 'confirmed', 'service_amount' => 0, 'paid_amount' => 0, 'discount_amount' => 0, 'booking_type' => 'single'];
@@ -18,7 +18,7 @@ class Booking extends Model
 
     protected function casts(): array
     {
-        return ['starts_at' => 'immutable_datetime', 'ends_at' => 'immutable_datetime', 'checked_in_at' => 'immutable_datetime'];
+        return ['starts_at' => 'immutable_datetime', 'ends_at' => 'immutable_datetime', 'checked_in_at' => 'immutable_datetime', 'payment_expires_at' => 'immutable_datetime', 'reminded_at' => 'immutable_datetime'];
     }
 
     public function court(): BelongsTo

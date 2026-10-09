@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AccessService;
 use App\BookingService;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BranchResource;
@@ -28,13 +29,8 @@ class ManagementController extends Controller
     private function scope(Builder $query, Request $request, string $column = 'branch_id'): Builder
     {
         $request->validate(['branch_id' => ['sometimes', 'integer', 'exists:branches,id']]);
-        if ($request->user()->role !== 'admin') {
-            $query->where($column, $request->user()->branch_id ?? 0);
-        } elseif ($request->filled('branch_id')) {
-            $query->where($column, $request->integer('branch_id'));
-        }
 
-        return $query;
+        return app(AccessService::class)->scope($query, $request, $column);
     }
 
     public function branches(Request $request): AnonymousResourceCollection
@@ -49,6 +45,9 @@ class ManagementController extends Controller
             'name' => ['required', 'string', 'max:255'], 'district' => ['required', 'string', 'max:100'],
             'address' => ['required', 'string', 'max:255'], 'phone' => ['nullable', 'string', 'max:30'],
             'amenities' => ['sometimes', 'array', 'max:20'], 'amenities.*' => ['string', 'max:100'], 'active' => ['required', 'boolean'],
+            'opens_minute' => 'sometimes|integer|between:0,1380|multiple_of:30', 'closes_minute' => 'sometimes|integer|between:30,1410|multiple_of:30|gt:opens_minute',
+            'peak_minute' => 'sometimes|integer|between:0,1410|multiple_of:30', 'booking_days' => 'sometimes|integer|between:1,180',
+            'deposit_percent' => 'sometimes|integer|between:0,100', 'payment_minutes' => 'sometimes|integer|between:5,120', 'fixed_discount' => 'sometimes|integer|between:0,50',
         ]);
         $branch->fill($data)->save();
         $this->engine->audit($request->user(), 'branch.saved', $branch->id, $data, 'branch');
@@ -58,8 +57,11 @@ class ManagementController extends Controller
 
     public function calendar(Request $request): AnonymousResourceCollection
     {
-        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d'], 'status' => ['sometimes', Rule::in(['confirmed', 'checked_in', 'completed', 'cancelled'])]]);
-        $query = Booking::query()->whereDate('starts_at', $data['date'])->whereHas('court', fn ($query) => $this->scope($query, $request));
+        $data = $request->validate(['date' => ['required_without:from', 'date_format:Y-m-d'], 'from' => 'required_without:date|date_format:Y-m-d', 'to' => 'required_with:from|date_format:Y-m-d|after_or_equal:from', 'status' => ['sometimes', Rule::in(['confirmed', 'checked_in', 'completed', 'cancelled'])]]);
+        $from = CarbonImmutable::parse($data['from'] ?? $data['date']);
+        $to = CarbonImmutable::parse($data['to'] ?? $data['date']);
+        abort_if($from->diffInDays($to) > 42, 422);
+        $query = Booking::query()->whereBetween('starts_at', [$from->startOfDay(), $to->endOfDay()])->whereHas('court', fn ($query) => $this->scope($query, $request));
         if (isset($data['status'])) {
             $query->where('status', $data['status']);
         }
@@ -235,7 +237,10 @@ class ManagementController extends Controller
             'role' => ['required', Rule::in(['customer', 'manager', 'staff', 'cashier', 'admin'])],
             'branch_id' => ['nullable', 'required_if:role,manager,staff,cashier', 'integer', 'exists:branches,id'],
         ]);
-        $user->forceFill(['role' => $data['role'], 'branch_id' => in_array($data['role'], ['manager', 'staff', 'cashier'], true) ? $data['branch_id'] : null])->save();
+        DB::transaction(function () use ($user, $data): void {
+            DB::table('user_branches')->where('user_id', $user->id)->delete();
+            $user->forceFill(['role' => $data['role'], 'branch_id' => in_array($data['role'], ['manager', 'staff', 'cashier'], true) ? $data['branch_id'] : null])->save();
+        });
         $this->engine->audit($request->user(), 'user.role_changed', $user->id, $data, 'user');
 
         return response()->json(['data' => $user]);

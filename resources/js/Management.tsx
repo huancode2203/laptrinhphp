@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import AdvancedManagement from "./AdvancedManagement";
+import CalendarBoard from "./CalendarBoard";
+const ReportsView = lazy(() => import("./ReportsView"));
+const QRScanner = lazy(() => import("./QRScanner"));
+import { lazy, Suspense, useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
     BRANCHES,
@@ -25,24 +29,43 @@ import { BookingDetail } from "./Account";
 export default function Management({ book }: { book: (initial: Row) => void }) {
     const { data, run, toast, refresh } = useHub();
     const user = data!.user,
-        admin = user.role === "admin",
-        canEdit = admin || user.role === "manager";
+        admin = user.role === "admin";
+    const allows = (p: string) => admin || !!data!.permissions?.[p];
+    const writePermissions: Record<string, string> = {
+        courts: "courts.write",
+        services: "catalog.write",
+        products: "catalog.write",
+        events: "events.write",
+    };
+    const tabPermissions: Record<string, string> = {
+        dashboard: "bookings.read",
+        matrix: "courts.read",
+        bookings: "bookings.read",
+        calendar: "bookings.read",
+        pos: "pos.read",
+        customers: "customers.read",
+        courts: "courts.read",
+        services: "catalog.write",
+        products: "catalog.write",
+        maintenance: "courts.write",
+        events: "events.write",
+        reports: "reports.read",
+        advanced: "",
+    };
     const nav = [
         ["dashboard", "📊", "Tổng quan"],
         ["matrix", "🗓", "Ma trận sân"],
         ["bookings", "📋", "Quản lý lịch"],
         ["pos", "🛒", "Bán hàng / POS"],
         ["customers", "👥", "Khách hàng"],
-        ...(canEdit
-            ? [
-                  ["courts", "🏸", "Sân & bảng giá"],
-                  ["services", "🎾", "Dịch vụ"],
-                  ["products", "📦", "Kho hàng"],
-                  ["maintenance", "🔧", "Bảo trì"],
-                  ["events", "🏆", "Sự kiện"],
-              ]
-            : []),
+        ["courts", "🏸", "Sân & bảng giá"],
+        ["services", "🎾", "Dịch vụ"],
+        ["products", "📦", "Kho hàng"],
+        ["maintenance", "🔧", "Bảo trì"],
+        ["events", "🏆", "Sự kiện"],
         ["reports", "📈", "Báo cáo"],
+        ["calendar", "◷", "Lịch tuần / tháng"],
+        ["advanced", "✦", "Vận hành & nội dung"],
         ...(admin
             ? [
                   ["branches", "📍", "Chi nhánh"],
@@ -53,8 +76,13 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                   ["audit", "📜", "Nhật ký"],
               ]
             : []),
-    ];
-    const [tab, setTab] = useState("dashboard"),
+    ].filter(
+        ([id]) =>
+            admin ||
+            !tabPermissions[id] ||
+            data!.permissions?.[tabPermissions[id]],
+    );
+    const [tab, setTab] = useState(nav[0]?.[0] ?? "advanced"),
         [branch, setBranch] = useState(user.branch_id ?? BRANCHES[0]?.id),
         [date, setDate] = useState(day()),
         [hub, setHub] = useState<Row | null>(null),
@@ -76,8 +104,12 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
     async function load() {
         const requests = [
             api("manage/hub?" + query + "&date=" + date),
-            api("manage/reports?" + query + "&from=" + from + "&to=" + to),
-            api("branches/" + branch + "/schedule?date=" + date),
+            data!.permissions?.["reports.read"]
+                ? api("manage/reports?" + query + "&from=" + from + "&to=" + to)
+                : Promise.resolve({ data: {} }),
+            allows("courts.read") || allows("bookings.read")
+                ? api("branches/" + branch + "/schedule?date=" + date)
+                : Promise.resolve({ data: {} }),
             ...(admin ? [api("admin/hub")] : []),
         ];
         const values = await Promise.all(requests);
@@ -244,6 +276,13 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
             num("discount_percent", "Giảm phí sân (%)", 0, 50),
             num("duration_days", "Số ngày", 1, 365),
             { name: "active", label: "Đang bán", type: "checkbox" },
+            num("early_days", "Số ngày được đặt sớm", 0, 90),
+            num(
+                "points_threshold",
+                "Điểm để nhận hạng (0: gói mua)",
+                0,
+                1000000,
+            ),
         ],
         coupons: [
             text("code", "Mã ưu đãi"),
@@ -288,7 +327,17 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 type: "textarea",
                 required: true,
             },
-            text("format", "Thể thức (giải đấu: loại trực tiếp đơn)"),
+            {
+                name: "format",
+                label: "Thể thức",
+                required: true,
+                options: [
+                    { value: "knockout", label: "Loại trực tiếp" },
+                    { value: "round_robin", label: "Vòng tròn" },
+                    { value: "swiss", label: "Thụy Sĩ" },
+                    { value: "Giao lưu", label: "Giao lưu" },
+                ],
+            },
             text("skill_level", "Trình độ"),
             dt("starts_at", "Bắt đầu"),
             dt("ends_at", "Kết thúc"),
@@ -340,6 +389,12 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 ],
             },
             { name: "notes", label: "Ghi chú" },
+        ],
+        quickcustomer: [
+            branchField,
+            text("name", "Tên khách"),
+            text("phone", "Điện thoại"),
+            { name: "email", label: "Email (nếu có)", type: "email" },
         ],
         checkin: [text("token", "Nội dung QR check-in (quét hoặc dán mã)")],
         sale: [
@@ -401,6 +456,12 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
             path = "manage/bookings/" + row.id + "/payments";
             method = "POST";
             d.request_key ??= key();
+        }
+        if (kind === "quickcustomer") {
+            path = "manage/customers";
+            method = "POST";
+            d.branch_id = Number(d.branch_id);
+            d.email = d.email || null;
         }
         if (kind === "checkin") {
             path = "manage/checkin";
@@ -488,14 +549,16 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         {nav.find((n) => n[0] === tab)?.[2]}
                     </h1>
                     <div className="flex flex-wrap gap-2">
-                        {admin && (
+                        {(data!.managed_branch_ids?.length ?? 0) > 1 && (
                             <select
                                 aria-label="Chi nhánh quản lý"
                                 className="input"
                                 value={branch}
                                 onChange={(e) => setBranch(+e.target.value)}
                             >
-                                {BRANCHES.map((b) => (
+                                {BRANCHES.filter((b) =>
+                                    data!.managed_branch_ids.includes(b.id),
+                                ).map((b) => (
                                     <option key={b.id} value={b.id}>
                                         {b.name}
                                     </option>
@@ -521,6 +584,18 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                     <Empty text="Đang tải dữ liệu…" />
                 ) : (
                     <>
+                        {tab === "advanced" && (
+                            <AdvancedManagement
+                                branch={branch}
+                                courts={hub.courts}
+                            />
+                        )}
+                        {tab === "calendar" && (
+                            <CalendarBoard
+                                branch={branch}
+                                courts={hub.courts}
+                            />
+                        )}
                         {tab === "dashboard" && (
                             <>
                                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -672,6 +747,27 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                         {tab === "bookings" && (
                             <>
+                                <div className="mb-4">
+                                    <Suspense
+                                        fallback={
+                                            <Empty text="Đang tải máy quét…" />
+                                        }
+                                    >
+                                        <QRScanner
+                                            found={(token) =>
+                                                run(async () => {
+                                                    await api(
+                                                        "manage/checkin",
+                                                        "POST",
+                                                        { token },
+                                                    );
+                                                    await load();
+                                                    toast("Đã nhận sân.");
+                                                })
+                                            }
+                                        />
+                                    </Suspense>
+                                </div>
                                 <div className="mb-4 flex flex-wrap gap-2">
                                     <button
                                         className="btn"
@@ -771,30 +867,37 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             </td>
                                             <td className={cell}>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button
-                                                        className="btn-outline text-xs"
-                                                        onClick={() =>
-                                                            edit("payment", {
-                                                                ...b,
-                                                                amount:
-                                                                    b.status ===
-                                                                    "cancelled"
-                                                                        ? b.paid_amount
-                                                                        : b.remaining_amount,
-                                                                method: "cash",
-                                                                kind:
-                                                                    b.status ===
-                                                                    "cancelled"
-                                                                        ? "refund"
-                                                                        : "payment",
-                                                            })
-                                                        }
-                                                    >
-                                                        {b.status ===
-                                                        "cancelled"
-                                                            ? "Hoàn"
-                                                            : "Thu tiền"}
-                                                    </button>
+                                                    {allows(
+                                                        "payments.write",
+                                                    ) && (
+                                                        <button
+                                                            className="btn-outline text-xs"
+                                                            onClick={() =>
+                                                                edit(
+                                                                    "payment",
+                                                                    {
+                                                                        ...b,
+                                                                        amount:
+                                                                            b.status ===
+                                                                            "cancelled"
+                                                                                ? b.paid_amount
+                                                                                : b.remaining_amount,
+                                                                        method: "cash",
+                                                                        kind:
+                                                                            b.status ===
+                                                                            "cancelled"
+                                                                                ? "refund"
+                                                                                : "payment",
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            {b.status ===
+                                                            "cancelled"
+                                                                ? "Hoàn"
+                                                                : "Thu tiền"}
+                                                        </button>
+                                                    )}
                                                     {[
                                                         "confirmed",
                                                         "checked_in",
@@ -859,32 +962,35 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                         {fieldsFor && rows && (
                             <>
-                                <button
-                                    className="btn mb-4"
-                                    onClick={() =>
-                                        edit(tab, {
-                                            branch_id: branch,
-                                            role: "customer",
-                                            active: true,
-                                            status:
-                                                tab === "courts"
-                                                    ? "active"
-                                                    : undefined,
-                                            price: 0,
-                                            stock: 0,
-                                            discount_percent: 0,
-                                            duration_days: 30,
-                                            minimum_amount: 0,
-                                            usage_limit: 100,
-                                            kind: "percent",
-                                            type: "friendly",
-                                            format: "Giao lưu",
-                                            skill_level: "Mọi trình độ",
-                                        })
-                                    }
-                                >
-                                    + Thêm mới
-                                </button>
+                                {(admin ||
+                                    allows(writePermissions[tab] ?? "")) && (
+                                    <button
+                                        className="btn mb-4"
+                                        onClick={() =>
+                                            edit(tab, {
+                                                branch_id: branch,
+                                                role: "customer",
+                                                active: true,
+                                                status:
+                                                    tab === "courts"
+                                                        ? "active"
+                                                        : undefined,
+                                                price: 0,
+                                                stock: 0,
+                                                discount_percent: 0,
+                                                duration_days: 30,
+                                                minimum_amount: 0,
+                                                usage_limit: 100,
+                                                kind: "percent",
+                                                type: "friendly",
+                                                format: "Giao lưu",
+                                                skill_level: "Mọi trình độ",
+                                            })
+                                        }
+                                    >
+                                        + Thêm mới
+                                    </button>
+                                )}
                                 <Table
                                     headers={[
                                         "Mã",
@@ -937,51 +1043,58 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             </td>
                                             <td className={cell}>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <button
-                                                        className="btn-outline text-xs"
-                                                        onClick={() =>
-                                                            edit(tab, {
-                                                                ...r,
-                                                                court_ids_text:
-                                                                    r.blocks
-                                                                        ?.map(
-                                                                            (
-                                                                                b: Row,
-                                                                            ) =>
-                                                                                b.court_id,
-                                                                        )
-                                                                        .join(
+                                                    {(admin ||
+                                                        allows(
+                                                            writePermissions[
+                                                                tab
+                                                            ] ?? "",
+                                                        )) && (
+                                                        <button
+                                                            className="btn-outline text-xs"
+                                                            onClick={() =>
+                                                                edit(tab, {
+                                                                    ...r,
+                                                                    court_ids_text:
+                                                                        r.blocks
+                                                                            ?.map(
+                                                                                (
+                                                                                    b: Row,
+                                                                                ) =>
+                                                                                    b.court_id,
+                                                                            )
+                                                                            .join(
+                                                                                ", ",
+                                                                            ),
+                                                                    amenities_text:
+                                                                        r.amenities?.join(
                                                                             ", ",
                                                                         ),
-                                                                amenities_text:
-                                                                    r.amenities?.join(
-                                                                        ", ",
-                                                                    ),
-                                                                starts_at:
-                                                                    r.starts_at
-                                                                        ? localDateTime(
-                                                                              r.starts_at,
-                                                                          )
-                                                                        : undefined,
-                                                                expires_at:
-                                                                    r.expires_at
-                                                                        ? localDateTime(
-                                                                              r.expires_at,
-                                                                          )
-                                                                        : undefined,
-                                                                ends_at:
-                                                                    r.ends_at
-                                                                        ? localDateTime(
-                                                                              r.ends_at,
-                                                                          )
-                                                                        : undefined,
-                                                            })
-                                                        }
-                                                    >
-                                                        {tab === "users"
-                                                            ? "Phân quyền"
-                                                            : "Sửa"}
-                                                    </button>
+                                                                    starts_at:
+                                                                        r.starts_at
+                                                                            ? localDateTime(
+                                                                                  r.starts_at,
+                                                                              )
+                                                                            : undefined,
+                                                                    expires_at:
+                                                                        r.expires_at
+                                                                            ? localDateTime(
+                                                                                  r.expires_at,
+                                                                              )
+                                                                            : undefined,
+                                                                    ends_at:
+                                                                        r.ends_at
+                                                                            ? localDateTime(
+                                                                                  r.ends_at,
+                                                                              )
+                                                                            : undefined,
+                                                                })
+                                                            }
+                                                        >
+                                                            {tab === "users"
+                                                                ? "Phân quyền"
+                                                                : "Sửa"}
+                                                        </button>
+                                                    )}
                                                     {tab === "products" && (
                                                         <button
                                                             className="btn-outline text-xs"
@@ -1103,6 +1216,16 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                         {tab === "customers" && (
                             <>
+                                <button
+                                    className="btn mb-4"
+                                    onClick={() =>
+                                        edit("quickcustomer", {
+                                            branch_id: branch,
+                                        })
+                                    }
+                                >
+                                    + Thêm khách tại quầy
+                                </button>
                                 <input
                                     aria-label="Tìm khách hàng"
                                     className="input mb-4 w-full max-w-lg"
@@ -1319,70 +1442,11 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                             </>
                         )}
                         {tab === "reports" && (
-                            <>
-                                <div className="mb-5 flex flex-wrap items-center gap-3">
-                                    <label>
-                                        Từ{" "}
-                                        <input
-                                            className="input"
-                                            type="date"
-                                            value={from}
-                                            onChange={(e) =>
-                                                setFrom(e.target.value)
-                                            }
-                                        />
-                                    </label>
-                                    <label>
-                                        Đến{" "}
-                                        <input
-                                            className="input"
-                                            type="date"
-                                            value={to}
-                                            onChange={(e) =>
-                                                setTo(e.target.value)
-                                            }
-                                        />
-                                    </label>
-                                    <a
-                                        className="btn"
-                                        href={
-                                            "/api/v1/manage/reports.csv?" +
-                                            query +
-                                            "&from=" +
-                                            from +
-                                            "&to=" +
-                                            to
-                                        }
-                                    >
-                                        Tải CSV
-                                    </a>
-                                </div>
-                                <div className="mb-5 grid gap-4 sm:grid-cols-3">
-                                    {[
-                                        ["Đã thu", report?.collected],
-                                        ["Đã hoàn", report?.refunded],
-                                        ["Doanh thu ròng", report?.net_revenue],
-                                        ["Còn phải thu", report?.outstanding],
-                                    ].map(([l, v]) => (
-                                        <Card key={l}>
-                                            <p>{l}</p>
-                                            <h2 className="mt-2 text-2xl font-bold">
-                                                {money(v)}
-                                            </h2>
-                                        </Card>
-                                    ))}
-                                </div>
-                                <Table headers={["Ngày", "Doanh thu ròng"]}>
-                                    {report?.daily.map((d: Row) => (
-                                        <tr key={d.date}>
-                                            <td className={cell}>{d.date}</td>
-                                            <td className={cell}>
-                                                {money(d.revenue)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </Table>
-                            </>
+                            <Suspense
+                                fallback={<Empty text="Đang tải báo cáo…" />}
+                            >
+                                <ReportsView branch={branch} />
+                            </Suspense>
                         )}
                         {tab === "moderation" && (
                             <>

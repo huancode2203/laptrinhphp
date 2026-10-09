@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Logo } from "./CustomerHome";
 import { api, useHub } from "./hub";
 export default function AuthScreen({ done }: { done: () => void }) {
-    const { refresh } = useHub();
+    const { refresh, data } = useHub();
     const [mode, setMode] = useState("login"),
         [d, set] = useState<Record<string, string>>({}),
         [error, setError] = useState(""),
@@ -64,6 +64,14 @@ export default function AuthScreen({ done }: { done: () => void }) {
                     <p className="mb-6 mt-2 text-[#6d8474]">
                         Tài khoản dành cho cộng đồng cầu lông
                     </p>
+                    {mode === "login" && data?.google_enabled && (
+                        <a
+                            className="btn-outline mb-4 block text-center"
+                            href="/auth/google"
+                        >
+                            Tiếp tục với Google
+                        </a>
+                    )}
                     <form
                         className="space-y-4"
                         onSubmit={async (e) => {
@@ -121,7 +129,13 @@ export default function AuthScreen({ done }: { done: () => void }) {
                         {(mode === "login" ||
                             mode === "register" ||
                             mode === "send") &&
-                            field("email", "Email", "email")}
+                            field(
+                                "email",
+                                mode === "login"
+                                    ? "Email hoặc điện thoại đã xác thực"
+                                    : "Email",
+                                mode === "login" ? "text" : "email",
+                            )}
                         {(mode === "login" ||
                             mode === "register" ||
                             mode === "reset") &&
