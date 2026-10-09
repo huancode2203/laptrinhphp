@@ -72,6 +72,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::patch('notifications/read-all', [NotificationController::class, 'readAll']);
         Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification');
+        Route::delete('notifications/{notification}', [NotificationController::class, 'delete'])->whereUuid('notification');
         Route::get('bookings', [BookingController::class, 'index']);
         Route::post('bookings', [BookingController::class, 'store'])->middleware('throttle:book');
         Route::post('bookings/series', [BookingController::class, 'series'])->middleware('throttle:book');
@@ -99,6 +100,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::delete('community/comments/{comment}', [CommunityController::class, 'deleteComment']);
         Route::post('community/posts/{post}/report', [CommunityController::class, 'report'])->middleware('throttle:book');
         Route::get('conversations', [CommunityController::class, 'conversations']);
+        Route::get('ai/chat', [AiController::class, 'history']);
+        Route::post('ai/chat', [AiController::class, 'chat'])->middleware('throttle:ai');
         Route::post('conversations/direct', [CommunityController::class, 'direct'])->middleware('throttle:book');
         Route::get('conversations/{conversation}/messages', [CommunityController::class, 'messages']);
         Route::post('conversations/{conversation}/messages', [CommunityController::class, 'send'])->middleware('throttle:60,1');

@@ -21,6 +21,8 @@ class BookingResource extends JsonResource
             'status' => $this->status,
             'court_amount' => $this->court_amount,
             'service_amount' => $this->service_amount,
+            'product_amount' => $this->product_amount,
+            'product_items' => $this->whenLoaded('sales', fn () => $this->sales->flatMap(fn ($s) => $s->items)),
             'total_amount' => $this->total_amount,
             'discount_amount' => $this->discount_amount, 'coupon_code' => $this->coupon_code, 'booking_type' => $this->booking_type, 'series_key' => $this->series_key,
             'paid_amount' => $this->paid_amount,

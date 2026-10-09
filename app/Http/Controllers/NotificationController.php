@@ -37,4 +37,11 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Đã đọc tất cả thông báo.']);
     }
+
+    public function delete(Request $request, string $notification): JsonResponse
+    {
+        $request->user()->notifications()->findOrFail($notification)->delete();
+
+        return response()->json(['message' => 'Đã xóa thông báo.']);
+    }
 }

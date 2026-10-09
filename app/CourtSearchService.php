@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class CourtSearchService
 {
-    public function search(string $message, ?User $user = null, ?array $filters = null): array
+    public function search(string $message, ?User $user = null, ?array $filters = null, ?array $context = null): array
     {
         $mode = 'filters';
         if (! $filters) {
@@ -32,6 +32,12 @@ class CourtSearchService
                 } catch (\Throwable) {
                     $mode = 'filters';
                 }
+            }
+        }
+        if ($context) {
+            $filters = array_replace($context, array_filter($filters, fn ($v) => $v !== null && $v !== []));
+            if (preg_match('/(?:toan|ca)\s+(?:tp\.?\s*hcm|thanh pho ho chi minh)/', $this->normalize($message))) {
+                $filters['district'] = null;
             }
         }
         if (empty($filters['date']) || empty($filters['start_time']) || empty($filters['end_time'])) {

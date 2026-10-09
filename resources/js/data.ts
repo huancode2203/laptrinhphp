@@ -23,6 +23,12 @@ const images = [
 export const statusText = (s: string) =>
     (
         ({
+            customer: "Khách hàng",
+            manager: "Quản lý",
+            staff: "Nhân viên",
+            cashier: "Thu ngân",
+            admin: "Quản trị viên",
+            expired: "Hết hạn",
             confirmed: "Đã xác nhận",
             checked_in: "Đang chơi",
             completed: "Hoàn tất",

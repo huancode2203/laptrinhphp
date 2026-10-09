@@ -141,17 +141,28 @@ class CommerceService
     {
         return DB::transaction(function () use ($actor, $data): Sale {
             app(BookingService::class)->assertManage($actor, (int) $data['branch_id']);
+            $booking = isset($data['booking_id']) ? Booking::whereKey($data['booking_id'])->lockForUpdate()->firstOrFail() : null;
+            abort_unless(($data['method'] === 'booking') === (bool) $booking, 422, 'Gộp hóa đơn cần chọn lịch sân; thanh toán riêng không chọn lịch.');
+            if ($booking) {
+                abort_unless(app(AccessService::class)->allows($actor, 'bookings.write'), 403);
+                abort_unless($booking->court->branch_id === (int) $data['branch_id'], 403);
+                $data['user_id'] ??= $booking->user_id;
+                abort_unless((int) $data['user_id'] === $booking->user_id, 422, 'Khách mua phải là chủ lịch sân.');
+            }
             $ids = collect($data['items'])->pluck('product_id')->sort()->all();
             $products = Product::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $existing = Sale::where('request_key', $data['request_key'])->with('items')->first();
             if ($existing) {
                 $wanted = collect($data['items'])->mapWithKeys(fn ($item) => [(int) $item['product_id'] => (int) $item['quantity']])->sortKeys()->all();
                 $actual = $existing->items->mapWithKeys(fn ($item) => [$item->product_id => $item->quantity])->sortKeys()->all();
-                abort_unless($existing->branch_id === (int) $data['branch_id'] && $existing->clerk_id === $actor->id && $existing->method === $data['method'] && $existing->user_id === ($data['user_id'] ?? null) && $wanted === $actual, 422);
+                abort_unless($existing->branch_id === (int) $data['branch_id'] && $existing->clerk_id === $actor->id && $existing->method === $data['method'] && $existing->booking_id === ($data['booking_id'] ?? null) && $existing->user_id === ($data['user_id'] ?? null) && $wanted === $actual, 422);
 
                 return $existing;
             }
             $items = [];
+            if ($booking) {
+                abort_unless(in_array($booking->status, ['confirmed', 'checked_in'], true), 422, 'Chỉ thêm hàng cho lịch đã xác nhận hoặc đang chơi.');
+            }
             $total = 0;
             foreach ($data['items'] as $item) {
                 $product = $products->get($item['product_id']);
@@ -164,7 +175,7 @@ class CommerceService
             }
             abort_if($total > 2147483647, 422, 'Tổng đơn vượt giới hạn.');
             $owner = isset($data['user_id']) ? User::where('role', 'customer')->where('active', true)->findOrFail($data['user_id']) : $actor;
-            $sale = Sale::create(['request_key' => $data['request_key'], 'reference' => 'POS-'.strtoupper(Str::random(10)), 'branch_id' => $data['branch_id'], 'clerk_id' => $actor->id, 'user_id' => $data['user_id'] ?? null, 'total_amount' => $total, 'method' => $data['method']]);
+            $sale = Sale::create(['request_key' => $data['request_key'], 'reference' => 'POS-'.strtoupper(Str::random(10)), 'branch_id' => $data['branch_id'], 'clerk_id' => $actor->id, 'user_id' => $data['user_id'] ?? null, 'total_amount' => $total, 'method' => $data['method'], 'booking_id' => $data['booking_id'] ?? null]);
             if ($data['method'] === 'wallet') {
                 abort_unless(isset($data['user_id']), 422, 'Chọn khách hàng để thanh toán ví.');
                 $this->wallet($actor, $owner, -$total, 'pos', $data['request_key'], 'Đơn '.$sale->reference, $sale->branch_id, 'sale', $sale->id);
@@ -173,10 +184,17 @@ class CommerceService
                 $products[$item['product_id']]->decrement('stock', $item['quantity']);
                 $sale->items()->create($item);
             }
-            $this->payment($actor, $owner, 'sale', $sale->id, $total, $data['method'], $sale->branch_id);
+            if ($booking) {
+                abort_if($booking->total_amount + $total > 2147483647, 422);
+                $booking->product_amount += $total;
+                $booking->total_amount += $total;
+                $booking->save();
+            } else {
+                $this->payment($actor, $owner, 'sale', $sale->id, $total, $data['method'], $sale->branch_id);
+            }
             app(BookingService::class)->audit($actor, 'sale.created', $sale->id, ['reference' => $sale->reference, 'total' => $total], 'sale');
 
-            if (isset($data['user_id'])) {
+            if (isset($data['user_id']) && ! $booking) {
                 app(LoyaltyService::class)->award($owner, $total, 'sale-'.$sale->id, 'Mua hàng '.$sale->reference);
             }
 

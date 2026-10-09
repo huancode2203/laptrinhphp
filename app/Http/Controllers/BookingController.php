@@ -25,7 +25,7 @@ class BookingController extends Controller
             $query->where('status', $data['status']);
         }
 
-        return BookingResource::collection($query->with(['court.branch', 'services', 'payments'])->orderByDesc('starts_at')->paginate(20));
+        return BookingResource::collection($query->with(['court.branch', 'services', 'payments', 'sales.items'])->orderByDesc('starts_at')->paginate(20));
     }
 
     public function store(StoreBookingRequest $request, BookingService $engine): BookingResource
@@ -36,7 +36,7 @@ class BookingController extends Controller
                 app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($request->input('request_key'), 'wallet-payment'), $request->boolean('deposit_only'));
             }
 
-            return new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments']));
+            return new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments', 'sales.items']));
         }, 5);
     }
 
@@ -63,7 +63,7 @@ class BookingController extends Controller
                 if ($request->boolean('pay_with_wallet')) {
                     app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($data['request_key'], 'wallet-payment-'.$i), $request->boolean('deposit_only'));
                 }
-                $rows[] = new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments']));
+                $rows[] = new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments', 'sales.items']));
             }
 
             return $rows;
@@ -77,10 +77,10 @@ class BookingController extends Controller
         if ($request->user()->role === 'customer') {
             abort_unless($booking->user_id === $request->user()->id, 403);
         } else {
-            $engine->assertManage($request->user(), $booking->court->branch_id);
+            $engine->assertManage($request->user(), $booking->court->branch_id, 'bookings.read');
         }
 
-        return new BookingResource($booking->load(['court.branch', 'services', 'payments']));
+        return new BookingResource($booking->load(['court.branch', 'services', 'payments', 'sales.items', 'user']));
     }
 
     public function status(Request $request, Booking $booking, BookingService $engine): BookingResource

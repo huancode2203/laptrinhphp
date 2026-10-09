@@ -13,13 +13,13 @@ import { day, money, type Row } from "./data";
 import { Card, Table, cell } from "./ui";
 const td = (value: React.ReactNode) => <td className={cell}>{value}</td>;
 
-export default function ReportsView({ branch }: { branch: number }) {
+export default function ReportsView({ branch }: { branch: number | null }) {
     const { toast } = useHub();
     const [from, setFrom] = useState(day(-30)),
         [to, setTo] = useState(day()),
         [report, setReport] = useState<Row | null>(null);
     const query = new URLSearchParams({
-        branch_id: String(branch),
+        ...(branch ? { branch_id: String(branch) } : {}),
         from,
         to,
     }).toString();

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['request_key', 'reference', 'branch_id', 'clerk_id', 'user_id', 'total_amount', 'method'])]
+#[Fillable(['request_key', 'reference', 'branch_id', 'clerk_id', 'user_id', 'total_amount', 'method', 'booking_id'])]
 
 class Sale extends Model
 {

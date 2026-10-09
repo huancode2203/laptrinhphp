@@ -29,6 +29,7 @@ Yêu cầu PHP **8.3+**, MySQL **8.0+**, Composer 2, Node **22.12+** hoặc Node
 
    ```powershell
    php artisan migrate --seed
+   php artisan db:seed --class=RealisticDemoSeeder
    npm ci
    npm run build
    ```
@@ -53,7 +54,7 @@ ZIP có sẵn `public/build` nên có thể bỏ npm nếu không sửa giao di�
 
 ## Tài khoản và dữ liệu thử
 
-Seeder tạo 8 chi nhánh, 77 sân, 64 dịch vụ, 48 sản phẩm, gói hội viên, 3 hạng điểm, 2 phần thưởng và hướng dẫn. Đây là **danh mục thử từ thiết kế**, chưa phải xác nhận thông tin sân đang kinh doanh. Khi vận hành, cập nhật địa chỉ, điện thoại, giá, giờ mở và tồn kho thật. Không tạo doanh thu, nạp ví, huấn luyện viên hoặc bài quảng cáo giả.
+Seeder tạo 8 chi nhánh, 77 sân, 64 dịch vụ, 48 sản phẩm, gói hội viên, 3 hạng điểm, 2 phần thưởng và hướng dẫn. Đây là **danh mục thử từ thiết kế**, chưa phải xác nhận thông tin sân đang kinh doanh. Khi vận hành, cập nhật địa chỉ, điện thoại, giá, giờ mở và tồn kho thật. Bộ dữ liệu giao dịch dưới đây chỉ dùng để trải nghiệm và kiểm thử, không phải doanh thu kinh doanh.
 
 Mật khẩu dùng thử: **Demo@12345**.
 
@@ -66,6 +67,18 @@ Mật khẩu dùng thử: **Demo@12345**.
 | customer@badminton.test | Khách hàng |
 
 Seeder tài khoản chỉ dành cho local/testing. Quản trị tạo nhân sự trong **Tài khoản & quyền**, phân nhiều chi nhánh và chỉnh ma trận quyền trong **Vận hành & nội dung**.
+
+## 280 bản ghi trải nghiệm
+
+Lệnh `php artisan db:seed --class=RealisticDemoSeeder` tạo **đúng 280 bản ghi liên kết**, ngoài danh mục cơ bản: 20 khách, 60 lịch sân, 50 khoản thu, 20 đánh giá, 20 bài cộng đồng, 20 bình luận (gồm trả lời), 8 huấn luyện viên, 8 sự kiện, 8 lịch chặn sân sự kiện, 16 vé, 26 giao dịch vé/hội viên, 8 voucher, 10 gói hội viên đã mua và 6 lịch bảo trì.
+
+Dữ liệu có lịch đã hoàn tất, lịch sắp tới, lịch đã hủy và bài chờ duyệt; ngày được tính theo ngày chạy seeder. Có dữ liệu cho tài khoản `customer@badminton.test`. Khách mới: `player01@badminton.test` đến `player20@badminton.test`, mật khẩu `Demo@12345`. Chạy lại không tạo trùng, không thay thế dữ liệu đã có. Seeder chỉ chạy trong `local` hoặc `testing`; mọi khoản thu đều là dữ liệu mẫu, không gọi cổng thanh toán.
+
+SQL đi kèm được xuất từ database cài mới riêng: 62 bảng, 25 tài khoản, 8 chi nhánh, 77 sân và bộ 280 bản ghi. Không chứa phiên đăng nhập, upload, lịch thử từ database đang vận hành hoặc khóa dịch vụ. SQL chứa ngày cố định tại lúc xuất; dùng seeder trên database mới để có lịch mẫu theo ngày cài đặt.
+
+Các luồng đã đối chiếu với source `huancode2203/SNCUCAHuNRose` và hai chat “Kiểm tra hệ thống đặt sân”, “Kiểm tra tính năng layout”: ma trận công khai chỉ hiện trạng thái; bước chọn sân giữ đúng ngày/giờ; quản lý chọn nhiều ô để đặt nhanh bằng tên/số điện thoại; mở lịch đã đặt từ ma trận theo quyền; POS gộp vào hóa đơn sân và trừ kho một lần; khách theo chi nhánh có lịch/chi tiêu/hội viên; báo cáo toàn hệ thống; thông báo mở đối tượng liên quan/xóa; voucher, bài/trận cá nhân, bình luận lồng nhau và danh sách chờ sự kiện.
+
+HUB AI ghim đầu danh sách chat, lưu lịch sử riêng và nhớ tiêu chí cho câu hỏi tiếp theo. Gợi ý sử dụng giờ trống và giá từ MySQL; khi chọn sân, hệ thống kiểm tra lại lịch. Cấu hình model nằm trong mục dưới.
 
 ## Chức năng
 

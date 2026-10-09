@@ -33,7 +33,7 @@ class FeatureService
                 $booking->status = 'cancelled';
                 $booking->save();
                 DB::table('coach_sessions')->where('booking_id', $id)->update(['status' => 'cancelled', 'updated_at' => now()]);
-                $booking->user->notify(new HubNotification(['type' => 'booking.expired', 'title' => 'Lịch đã hết hạn giữ chỗ', 'body' => 'Lịch '.$booking->reference.' chưa đủ tiền cọc trong thời hạn thanh toán.']));
+                $booking->user->notify(new HubNotification(['type' => 'booking.expired', 'title' => 'Lịch đã hết hạn giữ chỗ', 'body' => 'Lịch '.$booking->reference.' chưa đủ tiền cọc trong thời hạn thanh toán.', 'booking_id' => $booking->id]));
                 app(BookingService::class)->notifyWaitlist($booking->court, $booking->starts_at, $booking->ends_at);
                 $expired++;
             }, 5);

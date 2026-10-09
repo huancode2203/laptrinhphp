@@ -141,9 +141,11 @@ class CommerceController extends Controller
 
     public function sale(Request $request, CommerceService $commerce): JsonResponse
     {
-        $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'user_id' => ['nullable', 'integer', 'exists:users,id'], 'method' => ['required', Rule::in(['cash', 'bank', 'wallet'])], 'items' => ['required', 'array', 'min:1', 'max:20'], 'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'user_id' => ['nullable', 'integer', 'exists:users,id'], 'method' => ['required', Rule::in(['cash', 'bank', 'wallet', 'booking'])], 'items' => ['required', 'array', 'min:1', 'max:20'], 'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
 
-        return response()->json(['data' => $commerce->sale($request->user(), $data)], 201);
+        $extra = $request->validate(['booking_id' => 'nullable|integer|exists:bookings,id']);
+
+        return response()->json(['data' => $commerce->sale($request->user(), $data + $extra)], 201);
     }
 
     public function saleReceipt(Request $request, Sale $sale, BookingService $engine): JsonResponse

@@ -1,3 +1,5 @@
+import CourtMatrix from "./CourtMatrix";
+import CustomerPicker from "./CustomerPicker";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, day, money, type Row } from "./data";
@@ -18,6 +20,7 @@ export default function BookingFlow({
         [duration, setDuration] = useState(initial.duration ?? 2),
         [court, setCourt] = useState<Row | null>(null),
         [available, setAvailable] = useState<Row[]>([]),
+        [schedule, setSchedule] = useState<Row | null>(null),
         [services, setServices] = useState<Row>({}),
         [coupon, setCoupon] = useState(""),
         [notes, setNotes] = useState(""),
@@ -98,6 +101,20 @@ export default function BookingFlow({
             active = false;
         };
     }, [branch, start, end]);
+    useEffect(() => {
+        let live = true;
+        setSchedule(null);
+        api("branches/" + branch + "/schedule?date=" + date)
+            .then((r) => {
+                if (live) setSchedule(r.data);
+            })
+            .catch((e) => {
+                if (live) toast(e.message);
+            });
+        return () => {
+            live = false;
+        };
+    }, [branch, date]);
     useEffect(() => {
         if (!court) return;
         let active = true;
@@ -252,8 +269,8 @@ export default function BookingFlow({
                     </div>
                 ))}
             </div>
-            <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-                <Card>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <Card className="min-w-0">
                     {step === 0 && (
                         <div className="space-y-4">
                             <label className="block">
@@ -266,7 +283,14 @@ export default function BookingFlow({
                                         setServices({});
                                     }}
                                 >
-                                    {BRANCHES.map((b) => (
+                                    {BRANCHES.filter(
+                                        (b) =>
+                                            data!.user.role === "customer" ||
+                                            data!.user.role === "admin" ||
+                                            data!.managed_branch_ids?.includes(
+                                                b.id,
+                                            ),
+                                    ).map((b) => (
                                         <option key={b.id} value={b.id}>
                                             {b.rawName}
                                         </option>
@@ -314,7 +338,10 @@ export default function BookingFlow({
                                             setDuration(+e.target.value)
                                         }
                                     >
-                                        {[0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6]
+                                        {Array.from(
+                                            { length: 12 },
+                                            (_, i) => (i + 1) / 2,
+                                        )
                                             .filter(
                                                 (v) =>
                                                     v * 60 <=
@@ -362,22 +389,11 @@ export default function BookingFlow({
                                 </label>
                             )}
                             {data!.user.role !== "customer" && (
-                                <label className="block">
-                                    Mã khách hàng
-                                    <input
-                                        className="input mt-1 w-full"
-                                        type="number"
-                                        required
-                                        value={customer}
-                                        onChange={(e) =>
-                                            setCustomer(e.target.value)
-                                        }
-                                    />
-                                    <small>
-                                        Tra khách hàng trong trang quản lý để
-                                        lấy mã.
-                                    </small>
-                                </label>
+                                <CustomerPicker
+                                    branch={Number(branch)}
+                                    value={customer}
+                                    onChange={setCustomer}
+                                />
                             )}
                             <button
                                 className="btn"
@@ -396,59 +412,47 @@ export default function BookingFlow({
                     {step === 1 && (
                         <>
                             <h2 className="mb-4 text-xl font-bold">Chọn sân</h2>
-                            <div className="grid gap-3 sm:grid-cols-3">
-                                {available.map((c) => (
-                                    <div
-                                        key={c.id}
-                                        className={
-                                            "rounded-xl border-2 p-4 " +
-                                            (court?.id === c.id
-                                                ? "border-[#16a34a] bg-green-50"
-                                                : "border-[#dce4dc]")
-                                        }
-                                    >
-                                        <p className="font-bold">🏸 {c.name}</p>
-                                        <p className="my-2 text-sm">
-                                            {c.available
-                                                ? money(c.court_amount)
-                                                : "Đã có lịch / giữ chỗ"}
-                                        </p>
-                                        {c.available ? (
-                                            <button
-                                                className="btn-outline"
-                                                onClick={() => setCourt(c)}
-                                            >
-                                                {court?.id === c.id
-                                                    ? "Đã chọn"
-                                                    : "Chọn sân"}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="text-sm text-[#16a34a]"
-                                                onClick={() =>
-                                                    run(async () => {
-                                                        await api(
-                                                            "waitlist",
-                                                            "POST",
-                                                            {
-                                                                court_id: c.id,
-                                                                starts_at:
-                                                                    start,
-                                                                ends_at: end,
-                                                            },
-                                                        );
-                                                        toast(
-                                                            "Đã thêm vào danh sách chờ.",
-                                                        );
-                                                    })
-                                                }
-                                            >
-                                                Nhận thông báo khi trống
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                            <div className="mb-4 rounded-xl bg-green-50 p-4">
+                                <b>
+                                    {date.split("-").reverse().join("/")} ·{" "}
+                                    {time} – {end.slice(11, 16)} · {duration}{" "}
+                                    giờ
+                                </b>
+                                <p className="mt-1 text-sm text-green-700">
+                                    {
+                                        available.filter((c) => c.available)
+                                            .length
+                                    }{" "}
+                                    sân trống trong khung đã chọn
+                                </p>
                             </div>
+                            <CourtMatrix
+                                schedule={schedule}
+                                fixedWindow={{ time, duration }}
+                                selectedCourt={court?.id}
+                                onPick={(r) => {
+                                    const c = available.find(
+                                        (c) => c.id === r.court_id,
+                                    );
+                                    if (c?.available) setCourt(c);
+                                    else
+                                        toast(
+                                            "Sân vừa có lịch. Chọn sân khác.",
+                                        );
+                                }}
+                                onBusy={(c) =>
+                                    run(async () => {
+                                        await api("waitlist", "POST", {
+                                            court_id: c.id,
+                                            starts_at: start,
+                                            ends_at: end,
+                                        });
+                                        toast(
+                                            "Đã đăng ký nhận thông báo khi sân trống.",
+                                        );
+                                    })
+                                }
+                            />
                             <h2 className="mb-4 mt-6 text-xl font-bold">
                                 Dịch vụ thêm
                             </h2>

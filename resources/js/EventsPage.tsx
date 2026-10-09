@@ -70,8 +70,16 @@ export function EventDetail({
                                 : ""}
                         </span>
                     )}
+                    {e.my_registration?.status === "pending" && (
+                        <button
+                            className="btn"
+                            onClick={() => setForm("register:wallet")}
+                        >
+                            Thanh toán vé bằng ví
+                        </button>
+                    )}
                     {e.my_registration &&
-                    ["pending", "confirmed"].includes(
+                    ["pending", "confirmed", "waiting"].includes(
                         e.my_registration.status,
                     ) ? (
                         <button
@@ -79,6 +87,13 @@ export function EventDetail({
                             onClick={() => setForm("withdraw")}
                         >
                             Hủy đăng ký
+                        </button>
+                    ) : e.reserved_count >= e.capacity ? (
+                        <button
+                            className="btn-outline"
+                            onClick={() => setForm("register:waiting")}
+                        >
+                            Vào danh sách chờ
                         </button>
                     ) : (
                         <>
@@ -291,15 +306,23 @@ export function EventDetail({
                     action={() =>
                         update(() =>
                             api("events/" + id + "/register", "POST", {
-                                method: form.split(":")[1],
+                                method: form.endsWith("waiting")
+                                    ? "cash"
+                                    : form.split(":")[1],
                             }),
                         )
                     }
                 >
-                    Phí {money(e.fee)}.{" "}
-                    {form.endsWith("cash")
-                        ? "Vé được giữ trong 30 phút để thanh toán tại quầy."
-                        : "Phí sẽ trừ từ số dư ví HUB."}
+                    {form.endsWith("waiting") ? (
+                        "Sự kiện đã đủ người. Bạn sẽ nhận thông báo khi có chỗ, chưa bị thu phí."
+                    ) : (
+                        <>
+                            Phí {money(e.fee)}.{" "}
+                            {form.endsWith("cash")
+                                ? "Vé được giữ trong 30 phút để thanh toán tại quầy."
+                                : "Phí sẽ trừ từ số dư ví HUB."}
+                        </>
+                    )}
                 </Confirm>
             )}
             {(form === "confirm" || form === "refund") && reg && (
@@ -372,7 +395,7 @@ export default function EventsPage({ auth }: { auth: () => void }) {
     const { toast, data } = useHub();
     const [items, set] = useState<Row[]>([]),
         [type, setType] = useState(""),
-        [selected, select] = useState(0),
+        [selected, select] = useState(Number(location.hash.split("/")[1]) || 0),
         [page, setPage] = useState(1),
         [last, setLast] = useState(1);
     useEffect(() => {

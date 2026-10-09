@@ -216,7 +216,7 @@ class BookingService
             }
             $previousCourt = $locked[$booking->court_id];
             $previous = ['court_id' => $booking->court_id, 'starts_at' => $booking->starts_at->toIso8601String(), 'ends_at' => $booking->ends_at->toIso8601String(), 'total_amount' => $booking->total_amount];
-            $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $quote['total_amount'], 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at])->save();
+            $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $quote['total_amount'] + $booking->product_amount, 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at])->save();
             $booking->services()->sync($quote['items']);
             $this->audit($actor, 'booking.rescheduled', $booking->id, ['previous' => $previous, 'starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'total_amount' => $booking->total_amount]);
             $this->notifyBooking($booking, 'rescheduled', 'Đã đổi lịch sân', 'Lịch '.$booking->reference.' đã được cập nhật.');
@@ -255,7 +255,7 @@ class BookingService
             } elseif ($status === 'checked_in' && $booking->status === 'confirmed' && $booking->paid_amount === $booking->total_amount && now()->between($booking->starts_at->subMinutes(30), $booking->ends_at)) {
                 $booking->status = 'checked_in';
                 $booking->checked_in_at = now();
-            } elseif ($status === 'completed' && $booking->status === 'checked_in' && now()->gte($booking->ends_at)) {
+            } elseif ($status === 'completed' && $booking->paid_amount === $booking->total_amount && $booking->status === 'checked_in' && now()->gte($booking->ends_at)) {
                 $booking->status = 'completed';
             } else {
                 throw ValidationException::withMessages(['status' => 'Không thể đổi trạng thái. Check-in yêu cầu thanh toán đủ và đúng giờ; chỉ hoàn tất khi hết giờ chơi.']);

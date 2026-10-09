@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\EventWaitlistService;
 use App\FeatureService;
 use App\Models\Booking;
 use App\Notifications\HubNotification;
@@ -16,6 +17,7 @@ class HubMaintenance extends Command
 
     public function handle(FeatureService $features): int
     {
+        app(EventWaitlistService::class)->maintain();
         $expired = $features->expireBookings();
         $ids = Booking::where('status', 'confirmed')->whereNull('reminded_at')->whereBetween('starts_at', [now(), now()->addMinutes(30)])->pluck('id');
         foreach ($ids as $id) {

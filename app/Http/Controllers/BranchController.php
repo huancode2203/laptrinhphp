@@ -94,15 +94,17 @@ class BranchController extends Controller
             'holds' => fn ($query) => $query->where('released', false)->where('expires_at', '>', now())->where('user_id', '!=', $request->user()?->id ?? 0)->where('starts_at', '<', $day->addDay())->where('ends_at', '>', $day),
             'blocks' => fn ($query) => $query->where('active', true)->where('starts_at', '<', $day->addDay())->where('ends_at', '>', $day),
         ])->orderBy('id')->get();
-        $schedule = $courts->map(function (Court $court) use ($day, $engine): array {
+        $private = $staff && app(AccessService::class)->allows($request->user(), 'bookings.read');
+        $schedule = $courts->map(function (Court $court) use ($day, $engine, $private): array {
             $slots = [];
             for ($start = $day->addMinutes($court->branch->opens_minute); $start->lt($day->addMinutes($court->branch->closes_minute)); $start = $start->addMinutes(30)) {
                 $end = $start->addMinutes(30);
+                $booking = $court->bookings->first(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start));
                 $state = $court->status === 'active' ? 'available' : $court->status;
                 if ($court->maintenances->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {
                     $state = 'maintenance';
-                } elseif ($court->bookings->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {
-                    $state = 'reserved';
+                } elseif ($booking) {
+                    $state = $booking->status === 'checked_in' ? 'playing' : ($booking->booking_type === 'fixed' ? 'fixed' : 'reserved');
                 } elseif ($court->blocks->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {
                     $state = 'event';
                 } elseif ($court->holds->contains(fn ($item) => $item->starts_at->lt($end) && $item->ends_at->gt($start))) {
@@ -110,7 +112,7 @@ class BranchController extends Controller
                 } elseif ($start->lt(now()->startOfMinute())) {
                     $state = 'past';
                 }
-                $slots[] = ['starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'state' => $state, 'available' => $state === 'available' && $start->gte(now()->startOfMinute()), 'court_amount' => $engine->quote($court, $start, $end)['court_amount']];
+                $slots[] = ['starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'state' => $state, 'available' => $state === 'available' && $start->gte(now()->startOfMinute()), 'court_amount' => $engine->quote($court, $start, $end)['court_amount'], ...($private && $booking ? ['booking_id' => $booking->id, 'reference' => $booking->reference] : [])];
             }
 
             return ['id' => $court->id, 'name' => $court->name, 'status' => $court->status, 'slots' => $slots];

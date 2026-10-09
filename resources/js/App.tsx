@@ -1,3 +1,4 @@
+import CourtMatrix from "./CourtMatrix";
 import { ContentSupport, Coaching } from "./FeaturePages";
 import { lazy, Suspense, useEffect, useState } from "react";
 import CustomerHome, { Logo } from "./CustomerHome";
@@ -109,60 +110,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                     onChange={(e) => setDate(e.target.value)}
                 />
             </div>
-            <p className="mb-4 text-sm text-[#6d8474]">
-                Mỗi ô là 30 phút. Chọn ô xanh để đặt lịch.
-            </p>
-            <div className="overflow-x-auto rounded-xl border border-[#dce4dc] bg-white p-4">
-                <table className="text-xs">
-                    <thead>
-                        <tr>
-                            <th className="sticky left-0 min-w-24 bg-white">
-                                Sân
-                            </th>
-                            {schedule?.courts[0]?.slots.map((s: Row) => (
-                                <th className="min-w-16" key={s.starts_at}>
-                                    {s.starts_at.slice(11, 16)}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {schedule?.courts.map((c: Row) => (
-                            <tr key={c.id}>
-                                <th className="sticky left-0 bg-white py-3">
-                                    {c.name}
-                                </th>
-                                {c.slots.map((s: Row) => (
-                                    <td key={s.starts_at}>
-                                        <button
-                                            title={
-                                                s.state +
-                                                " · " +
-                                                money(s.court_amount)
-                                            }
-                                            className={"slot w-full " + s.state}
-                                            disabled={!s.available}
-                                            onClick={() =>
-                                                book({
-                                                    branch_id: id,
-                                                    date,
-                                                    time: s.starts_at.slice(
-                                                        11,
-                                                        16,
-                                                    ),
-                                                    duration: 0.5,
-                                                })
-                                            }
-                                        >
-                                            {s.available ? "＋" : "●"}
-                                        </button>
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <CourtMatrix schedule={schedule} onPick={book} />
             <h2 className="my-6 text-2xl font-bold">Dịch vụ tại sân</h2>
             <div className="grid gap-3 sm:grid-cols-3">
                 {raw.services.map((s: Row) => (
@@ -360,7 +308,7 @@ export default function App() {
             ) : page === "branch" ? (
                 <BranchDetail id={branch} book={book} />
             ) : page === "community" ? (
-                <CommunityApp auth={() => auth("community")} />
+                <CommunityApp auth={() => auth("community")} book={book} />
             ) : page === "events" ? (
                 <EventsPage auth={() => auth("events")} />
             ) : page === "content" ? (

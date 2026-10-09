@@ -1,10 +1,23 @@
 import MediaPicker from "./MediaPicker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
-import { BRANCHES, stamp, localDateTime, statusText, type Row } from "./data";
+import {
+    BRANCHES,
+    money,
+    stamp,
+    localDateTime,
+    statusText,
+    type Row,
+} from "./data";
 import { Card, Editor, Empty, Modal } from "./ui";
-export default function CommunityApp({ auth }: { auth: () => void }) {
-    const { data, run, toast, refresh } = useHub();
+export default function CommunityApp({
+    auth,
+    book,
+}: {
+    auth: () => void;
+    book: (range: Row) => void;
+}) {
+    const { data, run, toast, refresh, loading } = useHub();
     const [tab, setTab] = useState("feed"),
         [posts, setPosts] = useState<Row[]>([]),
         [players, setPlayers] = useState<Row[]>([]),
@@ -19,6 +32,11 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
         [text, setText] = useState(""),
         [page, setPage] = useState(1),
         [lastPage, setLastPage] = useState(1);
+    const messageEnd = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const list = messageEnd.current?.parentElement;
+        if (list) list.scrollTo({ top: list.scrollHeight });
+    }, [messages.length]);
     const user = data!.user;
     const [attachments, setAttachments] = useState<number[]>([]),
         [members, setMembers] = useState<Row[]>([]),
@@ -45,10 +63,25 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
         setPlayers(q.data);
         if (user) {
             const c = await api("conversations");
-            setConversations(c.data);
+            const all = [
+                {
+                    id: "hub-ai",
+                    title: "HUB AI",
+                    type: "ai",
+                    messages: [
+                        {
+                            content:
+                                "Tìm sân phù hợp với lịch và khu vực của bạn",
+                        },
+                    ],
+                },
+                ...c.data,
+            ];
+            setConversations(all);
             if (location.hash.startsWith("#community/chat/")) {
-                const id = Number(location.hash.split("/")[2]);
-                setConversation(c.data.find((v: Row) => v.id === id) ?? null);
+                const value = location.hash.split("/")[2];
+                const id = value === "hub-ai" ? value : Number(value);
+                setConversation(all.find((v: Row) => v.id === id) ?? null);
                 setTab("chat");
             }
         }
@@ -68,6 +101,23 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
     }, [search, branch, level, page, user?.id]);
     useEffect(() => {
         if (!conversation) return;
+        setMessages([]);
+        setText("");
+        setAttachments([]);
+        setMembers([]);
+        setFiles([]);
+        if (conversation.id === "hub-ai") {
+            let live = true;
+            api("ai/chat")
+                .then((r) => {
+                    if (live) setMessages(r.data);
+                })
+                .catch((e) => toast(e.message));
+            return () => {
+                live = false;
+            };
+        }
+
         let live = true;
         const get = () =>
             api("conversations/" + conversation.id + "/messages")
@@ -104,10 +154,25 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
             .map((c: Row) => (
                 <div
                     key={c.id}
-                    className="my-2 rounded-xl border-l-2 border-[#dce4dc] bg-slate-50 p-3 text-sm"
+                    className={
+                        "my-2 rounded-xl p-3 text-sm " +
+                        (depth
+                            ? "border-l-2 border-[#b2d4bd] bg-green-50/50"
+                            : "bg-[#f3f6f4]")
+                    }
                     style={{ marginLeft: Math.min(depth, 4) * 12 }}
                 >
                     <b>{c.user.name}</b>
+                    {parent && (
+                        <p className="mt-1 text-xs font-semibold text-[#168449]">
+                            ↳ Trả lời{" "}
+                            {
+                                post?.comments?.find(
+                                    (v: Row) => v.id === parent,
+                                )?.user?.name
+                            }
+                        </p>
+                    )}
                     <p className="mt-2 whitespace-pre-wrap">{c.content}</p>
                     <div className="mt-2 flex gap-3">
                         <button
@@ -454,9 +519,20 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                             : "bg-[#f3f6f4]")
                                     }
                                     key={c.id}
-                                    onClick={() => setConversation(c)}
+                                    onClick={() => {
+                                        setConversation(c);
+                                        location.hash =
+                                            "community/chat/" + c.id;
+                                    }}
                                 >
-                                    <b>{c.title}</b>
+                                    <b>
+                                        {c.type === "ai" ? "✦ HUB AI" : c.title}
+                                    </b>
+                                    {c.type === "ai" && (
+                                        <span className="float-right text-xs text-green-700">
+                                            Đã ghim
+                                        </span>
+                                    )}
                                     <p className="mt-1 truncate text-[#6d8474]">
                                         {c.messages?.[0]?.content ??
                                             "Bắt đầu trò chuyện"}
@@ -473,6 +549,30 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                     <h2 className="mb-4 font-bold">
                                         {conversation.title}
                                     </h2>
+                                    {conversation.id === "hub-ai" &&
+                                        !messages.length && (
+                                            <div className="mb-5 rounded-xl bg-green-50 p-5">
+                                                <p className="font-bold">
+                                                    Bạn muốn lên sân lúc nào?
+                                                </p>
+                                                <p className="mt-2 text-sm">
+                                                    Cho tôi ngày, giờ chơi và
+                                                    khu vực. Tôi sẽ tìm sân
+                                                    trống và giá cho bạn.
+                                                </p>
+                                                <button
+                                                    className="btn-outline mt-3 text-sm"
+                                                    onClick={() =>
+                                                        setText(
+                                                            "Ngày mai tôi muốn đánh cầu từ 13h tới 15h ở Bình Thạnh",
+                                                        )
+                                                    }
+                                                >
+                                                    Ngày mai, 13:00–15:00, Bình
+                                                    Thạnh
+                                                </button>
+                                            </div>
+                                        )}
                                     <p className="mb-3 text-xs text-slate-500">
                                         {members
                                             .filter((m) => m.id !== user.id)
@@ -495,7 +595,12 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                             )
                                             .join(" · ")}
                                     </p>
-                                    <div className="mb-4 max-h-[420px] space-y-3 overflow-y-auto">
+                                    <div
+                                        role="log"
+                                        aria-label="Tin nhắn trong hội thoại"
+                                        tabIndex={0}
+                                        className="mb-4 max-h-[420px] space-y-3 overflow-y-auto"
+                                    >
                                         {messages.map((m) => (
                                             <div
                                                 className={
@@ -513,6 +618,68 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                                 <p className="mt-1 whitespace-pre-wrap break-words">
                                                     {m.content}
                                                 </p>
+                                                {m.result?.courts
+                                                    ?.slice(0, 6)
+                                                    .map((c: Row) => (
+                                                        <div
+                                                            key={c.court_id}
+                                                            className="mt-3 rounded-xl border border-[#dce4dc] bg-white p-3"
+                                                        >
+                                                            <b>
+                                                                {c.branch_name}{" "}
+                                                                · {c.court_name}
+                                                            </b>
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                {c.address}
+                                                            </p>
+                                                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                                                <b className="text-green-700">
+                                                                    {money(
+                                                                        c.total_amount,
+                                                                    )}
+                                                                </b>
+                                                                <button
+                                                                    className="btn text-xs"
+                                                                    onClick={() =>
+                                                                        book({
+                                                                            branch_id:
+                                                                                c.branch_id,
+                                                                            court_id:
+                                                                                c.court_id,
+                                                                            date: c.starts_at.slice(
+                                                                                0,
+                                                                                10,
+                                                                            ),
+                                                                            time: c.starts_at.slice(
+                                                                                11,
+                                                                                16,
+                                                                            ),
+                                                                            duration:
+                                                                                (new Date(
+                                                                                    c.ends_at,
+                                                                                ).getTime() -
+                                                                                    new Date(
+                                                                                        c.starts_at,
+                                                                                    ).getTime()) /
+                                                                                3600000,
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    Chọn sân này
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                {m.result?.checked_at && (
+                                                    <p className="mt-2 text-xs text-slate-500">
+                                                        Cập nhật{" "}
+                                                        {stamp(
+                                                            m.result.checked_at,
+                                                        )}{" "}
+                                                        · Lịch trống được kiểm
+                                                        tra lại khi đặt.
+                                                    </p>
+                                                )}
                                                 {m.attachments?.map(
                                                     (id: number) => {
                                                         const f = files.find(
@@ -601,17 +768,38 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                                     )}
                                             </div>
                                         ))}
+                                        <div ref={messageEnd} />
                                     </div>
-                                    <MediaPicker
-                                        files
-                                        value={attachments}
-                                        onChange={setAttachments}
-                                    />
+                                    {conversation.id !== "hub-ai" && (
+                                        <MediaPicker
+                                            files
+                                            value={attachments}
+                                            onChange={setAttachments}
+                                        />
+                                    )}
                                     <form
                                         className="flex gap-2"
                                         onSubmit={(e) => {
                                             e.preventDefault();
                                             run(async () => {
+                                                if (
+                                                    conversation.id === "hub-ai"
+                                                ) {
+                                                    const r = await api(
+                                                        "ai/chat",
+                                                        "POST",
+                                                        {
+                                                            request_key: key(),
+                                                            message: text,
+                                                        },
+                                                    );
+                                                    setMessages((old) => [
+                                                        ...old,
+                                                        ...r.data,
+                                                    ]);
+                                                    setText("");
+                                                    return;
+                                                }
                                                 await api(
                                                     "conversations/" +
                                                         conversation.id +
@@ -641,12 +829,19 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                         <input
                                             aria-label="Tin nhắn"
                                             className="input min-w-0 flex-1"
-                                            maxLength={2000}
+                                            maxLength={
+                                                conversation.id === "hub-ai"
+                                                    ? 1000
+                                                    : 2000
+                                            }
                                             required
                                             value={text}
                                             onChange={(e) => {
                                                 setText(e.target.value);
-                                                if (conversation)
+                                                if (
+                                                    conversation &&
+                                                    conversation.id !== "hub-ai"
+                                                )
                                                     api(
                                                         "conversations/" +
                                                             conversation.id +
@@ -655,7 +850,12 @@ export default function CommunityApp({ auth }: { auth: () => void }) {
                                                     ).catch(() => {});
                                             }}
                                         />
-                                        <button className="btn">Gửi</button>
+                                        <button
+                                            className="btn"
+                                            disabled={loading}
+                                        >
+                                            {loading ? "Đang gửi…" : "Gửi"}
+                                        </button>
                                     </form>
                                 </>
                             ) : (

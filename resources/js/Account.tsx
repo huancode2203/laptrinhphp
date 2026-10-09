@@ -5,7 +5,7 @@ import { api, key, useHub } from "./hub";
 import { money, stamp, statusText, type Row } from "./data";
 import { Card, Confirm, Editor, Empty, Modal, Table, cell } from "./ui";
 export function BookingDetail({
-    booking,
+    booking: initialBooking,
     close,
     refreshBookings,
 }: {
@@ -17,6 +17,7 @@ export function BookingDetail({
     const [qr, setQr] = useState(""),
         [form, setForm] = useState(""),
         [receipt, setReceipt] = useState<Row | null>(null);
+    const booking = receipt?.booking ?? initialBooking;
     useEffect(() => {
         api("bookings/" + booking.id + "/receipt")
             .then((r) => setReceipt(r.data))
@@ -295,6 +296,23 @@ export function BookingDetail({
                         </p>
                     ))}
                     <p className="flex justify-between text-sm">
+                        <span>Tiền sân</span>
+                        <span>
+                            {money(
+                                receipt.booking?.court_amount ??
+                                    booking.court_amount,
+                            )}
+                        </span>
+                    </p>
+                    {receipt.booking?.product_items?.map((i: Row) => (
+                        <p className="flex justify-between text-sm" key={i.id}>
+                            <span>
+                                {i.name} × {i.quantity}
+                            </span>
+                            <span>{money(i.amount)}</span>
+                        </p>
+                    ))}
+                    <p className="flex justify-between text-sm">
                         <span>Ưu đãi</span>
                         <span>{money(booking.discount_amount)}</span>
                     </p>
@@ -494,7 +512,10 @@ export default function Account({
         [status, setStatus] = useState(""),
         [emailSent, setEmailSent] = useState(false),
         [page, setPage] = useState(1),
-        [lastPage, setLastPage] = useState(1);
+        [lastPage, setLastPage] = useState(1),
+        [deletingNotification, setDeletingNotification] = useState<Row | null>(
+            null,
+        );
     useEffect(() => {
         const followLink = () => {
             const target = location.hash.split("/")[1];
@@ -507,6 +528,7 @@ export default function Account({
                     "notifications",
                     "profile",
                     "extras",
+                    "activity",
                 ].includes(target)
             )
                 setTab(target);
@@ -563,6 +585,7 @@ export default function Account({
                     ["notifications", "Thông báo"],
                     ["profile", "Tài khoản"],
                     ["extras", "Quyền lợi & đã lưu"],
+                    ["activity", "Bài viết & trận của tôi"],
                 ].map(([id, label]) => (
                     <button
                         key={id}
@@ -685,6 +708,43 @@ export default function Account({
                     ))}
                 </>
             )}
+            {tab === "activity" && (
+                <div className="space-y-6">
+                    {[
+                        ["my_posts", "Bài viết của tôi"],
+                        ["my_matches", "Trận tôi tham gia"],
+                    ].map(([field, title]) => (
+                        <section key={field}>
+                            <h2 className="mb-4 text-xl font-bold">{title}</h2>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {account?.[field]?.map((p: Row) => (
+                                    <Card key={p.id}>
+                                        <b>{p.title}</b>
+                                        <p className="mt-2 text-sm text-slate-500">
+                                            {p.branch?.district} ·{" "}
+                                            {stamp(p.starts_at)}
+                                        </p>
+                                        <span className="badge badge-green mt-3">
+                                            {p.moderation_status === "pending"
+                                                ? "Chờ duyệt"
+                                                : statusText(p.status)}
+                                        </span>
+                                        <a
+                                            className="btn-outline mt-3 block w-fit"
+                                            href={"#community/post/" + p.id}
+                                        >
+                                            Xem bài & thành viên
+                                        </a>
+                                    </Card>
+                                ))}
+                            </div>
+                            {!account?.[field]?.length && (
+                                <Empty text="Chưa có hoạt động trong nhóm này." />
+                            )}
+                        </section>
+                    ))}
+                </div>
+            )}
             {tab === "wallet" && (
                 <>
                     <Card>
@@ -701,11 +761,45 @@ export default function Account({
                         </button>
                         <p className="mt-3 text-sm text-[#6d8474]">
                             Bạn có thể nạp tiền tại quầy.{" "}
-                            {data!.momo_enabled
-                                ? ""
-                                : "MoMo đang chờ cấu hình merchant."}
                         </p>
                     </Card>
+                    <h2 className="my-5 text-xl font-bold">Voucher của bạn</h2>
+                    <div className="mb-6 grid gap-3 sm:grid-cols-2">
+                        {account?.coupons?.map((c: Row) => (
+                            <Card key={c.code}>
+                                <span className="badge badge-green">
+                                    {c.kind === "percent"
+                                        ? "Giảm " + c.value + "%"
+                                        : money(c.value)}
+                                </span>
+                                <b className="mt-3 block">{c.code}</b>
+                                <p className="mt-2 text-sm text-slate-500">
+                                    Đơn từ {money(c.minimum_amount)} ·{" "}
+                                    {c.branch_id
+                                        ? data!.branches.find(
+                                              (b: Row) => b.id === c.branch_id,
+                                          )?.district
+                                        : "Toàn hệ thống"}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Hết hạn {stamp(c.expires_at)}
+                                </p>
+                                <button
+                                    className="btn-outline mt-3"
+                                    onClick={() =>
+                                        run(async () => {
+                                            await navigator.clipboard.writeText(
+                                                c.code,
+                                            );
+                                            toast("Đã sao chép mã ưu đãi.");
+                                        })
+                                    }
+                                >
+                                    Sao chép mã
+                                </button>
+                            </Card>
+                        ))}
+                    </div>
                     <h2 className="my-5 text-xl font-bold">Lịch sử ví</h2>
                     <Table
                         headers={["Thời gian", "Nội dung", "Số tiền", "Số dư"]}
@@ -816,6 +910,49 @@ export default function Account({
                                     <small>{stamp(n.created_at)}</small>
                                 </div>
                                 <p className="mt-2 text-sm">{n.data.body}</p>
+                                <div className="mt-3 flex gap-3">
+                                    <button
+                                        className="text-sm font-bold text-green-700"
+                                        onClick={() =>
+                                            run(async () => {
+                                                await api(
+                                                    "notifications/" +
+                                                        n.id +
+                                                        "/read",
+                                                    "PATCH",
+                                                );
+                                                if (n.data.booking_id) {
+                                                    const r = await api(
+                                                        "bookings/" +
+                                                            n.data.booking_id,
+                                                    );
+                                                    setSelected(r.data);
+                                                } else if (n.data.event_id) {
+                                                    location.hash =
+                                                        "events/" +
+                                                        n.data.event_id;
+                                                } else if (n.data.post_id) {
+                                                    location.hash =
+                                                        "community/post/" +
+                                                        n.data.post_id;
+                                                }
+                                                await refresh();
+                                                await load();
+                                            })
+                                        }
+                                    >
+                                        Xem chi tiết
+                                    </button>
+                                    <button
+                                        className="text-sm text-slate-500"
+                                        onClick={() =>
+                                            setDeletingNotification(n)
+                                        }
+                                    >
+                                        Xóa thông báo
+                                    </button>
+                                </div>
+
                                 {!n.read_at && (
                                     <button
                                         className="mt-3 text-sm text-[#16a34a]"
@@ -877,6 +1014,23 @@ export default function Account({
                         )}
                     </div>
                 </Card>
+            )}
+            {deletingNotification && (
+                <Confirm
+                    title="Xóa thông báo?"
+                    close={() => setDeletingNotification(null)}
+                    action={() =>
+                        changed(() =>
+                            api(
+                                "notifications/" + deletingNotification.id,
+                                "DELETE",
+                            ),
+                        )
+                    }
+                >
+                    Thông báo “{deletingNotification.data.title}” sẽ được xóa
+                    khỏi danh sách của bạn.
+                </Confirm>
             )}
             {selected && (
                 <BookingDetail

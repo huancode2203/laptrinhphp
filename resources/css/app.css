@@ -750,6 +750,14 @@ label.lbl {
         background: #dbeafe;
         color: #1d4ed8;
     }
+    .slot.playing {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .slot.fixed-booking {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
     .slot.held {
         background: #fef9c3;
         color: #a16207;

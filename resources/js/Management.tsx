@@ -1,3 +1,6 @@
+import PosCheckout from "./PosCheckout";
+import CourtMatrix from "./CourtMatrix";
+import QuickBooking from "./QuickBooking";
 import AdvancedManagement from "./AdvancedManagement";
 import CalendarBoard from "./CalendarBoard";
 const ReportsView = lazy(() => import("./ReportsView"));
@@ -97,10 +100,17 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         [event, setEvent] = useState(0),
         [editing, setEditing] = useState<Row | null>(null),
         [cart, setCart] = useState<Row>({}),
+        [category, setCategory] = useState(""),
+        [allReports, setAllReports] = useState(admin),
         [sale, setSale] = useState<Row | null>(null),
         [found, setFound] = useState<Row | null>(null),
+        [quick, setQuick] = useState<Row | null>(null),
         [confirm, setConfirm] = useState<Row | null>(null);
     const query = "branch_id=" + branch;
+    useEffect(() => {
+        setCart({});
+        setCategory("");
+    }, [branch]);
     async function load() {
         const requests = [
             api("manage/hub?" + query + "&date=" + date),
@@ -122,19 +132,30 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         load().catch((e) => toast(e.message));
     }, [branch, date, from, to]);
     useEffect(() => {
-        if (search.length < 3) {
-            setCustomers([]);
-            return;
-        }
+        if (!allows("customers.read")) return;
+        let live = true;
         const t = setTimeout(
             () =>
-                api("manage/customers?search=" + encodeURIComponent(search))
-                    .then((r) => setCustomers(r.data))
-                    .catch((e) => toast(e.message)),
-            350,
+                api(
+                    "manage/customers?" +
+                        new URLSearchParams({
+                            branch_id: String(branch),
+                            search,
+                        }),
+                )
+                    .then((r) => {
+                        if (live) setCustomers(r.data);
+                    })
+                    .catch((e) => {
+                        if (live) toast(e.message);
+                    }),
+            250,
         );
-        return () => clearTimeout(t);
-    }, [search]);
+        return () => {
+            live = false;
+            clearTimeout(t);
+        };
+    }, [search, branch, hub?.bookings?.length]);
     async function changed(fn: () => Promise<any>) {
         await fn();
         await load();
@@ -228,6 +249,36 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 name: "amenities_text",
                 label: "Tiện ích, ngăn bằng dấu phẩy",
                 help: "Parking, Shower, Cafe, WiFi, Locker, Shop",
+            },
+            {
+                name: "opens_time",
+                label: "Giờ mở cửa",
+                type: "time",
+                required: true,
+            },
+            {
+                name: "closes_time",
+                label: "Giờ đóng cửa",
+                type: "time",
+                required: true,
+            },
+            ...(!editing?.row.id
+                ? [
+                      num("court_count", "Số sân", 1, 40),
+                      num("hourly_rate", "Giá thường / giờ", 1000),
+                      num("peak_rate", "Giá cao điểm / giờ", 1000),
+                      num("weekend_rate", "Giá cuối tuần / giờ", 1000),
+                  ]
+                : []),
+            {
+                name: "manager_id",
+                label: "Giao quản lý",
+                options: [
+                    { value: "", label: "Chọn sau" },
+                    ...(adminData?.users ?? [])
+                        .filter((u: Row) => u.role === "manager" && u.active)
+                        .map((u: Row) => ({ value: u.id, label: u.name })),
+                ],
             },
             { name: "active", label: "Đang hoạt động", type: "checkbox" },
         ],
@@ -422,6 +473,15 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         if (["branches", "plans", "coupons"].includes(kind))
             path = "admin/" + kind + (row.id ? "/" + row.id : "");
         if (kind === "branches") {
+            for (const [source, target] of [
+                ["opens_time", "opens_minute"],
+                ["closes_time", "closes_minute"],
+            ]) {
+                const [h, m] = d[source].split(":").map(Number);
+                d[target] = h * 60 + m;
+                delete d[source];
+            }
+            d.manager_id = d.manager_id ? Number(d.manager_id) : null;
             d.amenities = (d.amenities_text ?? "")
                 .split(",")
                 .map((s: string) => s.trim())
@@ -528,7 +588,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                     </button>
                 ))}
                 <p className="mt-auto pt-6 text-xs text-white/50">
-                    {user.name} · {user.role}
+                    {user.name} · {statusText(user.role)}
                 </p>
             </aside>
             <main className="min-w-0 flex-1 p-4 md:p-8">
@@ -596,7 +656,49 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 courts={hub.courts}
                             />
                         )}
-                        {tab === "dashboard" && (
+                        {tab === "dashboard" && admin && (
+                            <>
+                                <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                    {[
+                                        ["Chi nhánh", BRANCHES.length],
+                                        [
+                                            "Sân toàn hệ thống",
+                                            data!.branches.reduce(
+                                                (n: number, b: Row) =>
+                                                    n + b.courts.length,
+                                                0,
+                                            ),
+                                        ],
+                                        [
+                                            "Tài khoản",
+                                            adminData?.stats?.users ?? 0,
+                                        ],
+                                        [
+                                            "Bài chờ duyệt",
+                                            adminData?.stats?.pending_posts ??
+                                                0,
+                                        ],
+                                    ].map(([label, value]) => (
+                                        <Card key={label}>
+                                            <p className="text-sm text-slate-500">
+                                                {label}
+                                            </p>
+                                            <b className="mt-3 block text-3xl">
+                                                {value}
+                                            </b>
+                                        </Card>
+                                    ))}
+                                </div>
+                                <Suspense
+                                    fallback={
+                                        <Empty text="Đang tải tổng quan hệ thống…" />
+                                    }
+                                >
+                                    <ReportsView branch={null} />
+                                </Suspense>
+                            </>
+                        )}
+                        {tab === "dashboard" && !admin && (
                             <>
                                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                                     {[
@@ -666,84 +768,21 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                             </>
                         )}
                         {tab === "matrix" && (
-                            <>
-                                <div className="mb-4 flex flex-wrap gap-3 text-xs">
-                                    {[
-                                        ["available", "Trống"],
-                                        ["reserved", "Đã đặt"],
-                                        ["held", "Giữ chỗ"],
-                                        ["event", "Sự kiện"],
-                                        ["maintenance", "Bảo trì"],
-                                    ].map(([s, l]) => (
-                                        <span className={"slot " + s} key={s}>
-                                            {l}
-                                        </span>
-                                    ))}
-                                </div>
-                                <div className="overflow-auto rounded-xl bg-white p-4">
-                                    <table className="text-xs">
-                                        <thead>
-                                            <tr>
-                                                <th className="sticky left-0 z-10 min-w-24 bg-white">
-                                                    Sân
-                                                </th>
-                                                {schedule?.courts[0]?.slots.map(
-                                                    (s: Row) => (
-                                                        <th
-                                                            className="min-w-16 py-3"
-                                                            key={s.starts_at}
-                                                        >
-                                                            {s.starts_at.slice(
-                                                                11,
-                                                                16,
-                                                            )}
-                                                        </th>
-                                                    ),
-                                                )}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {schedule?.courts.map((c: Row) => (
-                                                <tr key={c.id}>
-                                                    <th className="sticky left-0 z-10 bg-white py-3">
-                                                        {c.name}
-                                                    </th>
-                                                    {c.slots.map((s: Row) => (
-                                                        <td key={s.starts_at}>
-                                                            <button
-                                                                className={
-                                                                    "slot w-full " +
-                                                                    s.state
-                                                                }
-                                                                title={s.state}
-                                                                disabled={
-                                                                    !s.available
-                                                                }
-                                                                onClick={() =>
-                                                                    book({
-                                                                        branch_id:
-                                                                            branch,
-                                                                        date,
-                                                                        time: s.starts_at.slice(
-                                                                            11,
-                                                                            16,
-                                                                        ),
-                                                                        duration: 0.5,
-                                                                    })
-                                                                }
-                                                            >
-                                                                {s.available
-                                                                    ? "＋"
-                                                                    : "●"}
-                                                            </button>
-                                                        </td>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
+                            <CourtMatrix
+                                schedule={schedule}
+                                onReserved={(s) =>
+                                    run(async () => {
+                                        const r = await api(
+                                            "bookings/" + s.booking_id,
+                                        );
+                                        setSelected(r.data);
+                                    })
+                                }
+                                onPick={(r) => {
+                                    if (allows("bookings.write")) setQuick(r);
+                                    else toast("Bạn chưa có quyền tạo lịch.");
+                                }}
+                            />
                         )}
                         {tab === "bookings" && (
                             <>
@@ -1229,7 +1268,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 <input
                                     aria-label="Tìm khách hàng"
                                     className="input mb-4 w-full max-w-lg"
-                                    placeholder="Tên, email, điện thoại (ít nhất 3 ký tự)"
+                                    placeholder="Tìm theo tên, email hoặc số điện thoại"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
@@ -1238,6 +1277,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         "Mã",
                                         "Khách hàng",
                                         "Liên hệ",
+                                        "Lịch đã đặt",
+                                        "Đã chi tiêu",
+                                        "Hội viên",
                                         "Thao tác",
                                     ]}
                                 >
@@ -1248,6 +1290,21 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             <td className={cell}>
                                                 {c.email}
                                                 <p>{c.phone}</p>
+                                            </td>
+                                            <td className={cell}>
+                                                <b>{c.visits}</b>
+                                                <p className="text-xs text-slate-500">
+                                                    {c.last_visit
+                                                        ? stamp(c.last_visit)
+                                                        : "Chưa có lịch"}
+                                                </p>
+                                            </td>
+                                            <td className={cell}>
+                                                {money(Number(c.spent ?? 0))}
+                                            </td>
+                                            <td className={cell}>
+                                                {c.memberships?.[0]?.plan
+                                                    ?.name ?? "Basic"}
                                             </td>
                                             <td className={cell}>
                                                 <button
@@ -1293,10 +1350,40 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                         {tab === "pos" && (
                             <>
+                                <div className="mb-4 flex flex-wrap gap-2">
+                                    {[
+                                        "",
+                                        ...Array.from(
+                                            new Set(
+                                                hub.products.map(
+                                                    (p: Row) => p.category,
+                                                ),
+                                            ),
+                                        ),
+                                    ].map((c: any) => (
+                                        <button
+                                            key={c}
+                                            className={
+                                                category === c
+                                                    ? "btn"
+                                                    : "btn-outline"
+                                            }
+                                            onClick={() => setCategory(c)}
+                                        >
+                                            {c || "Tất cả sản phẩm"}
+                                        </button>
+                                    ))}
+                                </div>
                                 <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
                                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                         {hub.products
-                                            .filter((p: Row) => p.active)
+                                            .filter(
+                                                (p: Row) =>
+                                                    p.active &&
+                                                    (!category ||
+                                                        p.category ===
+                                                            category),
+                                            )
                                             .map((p: Row) => (
                                                 <Card key={p.id}>
                                                     <div className="text-3xl">
@@ -1400,7 +1487,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         "Mã đơn",
                                         "Thời gian",
                                         "Tổng tiền",
-                                        "Phương thức",
+                                        "Thanh toán",
                                         "Hóa đơn",
                                     ]}
                                 >
@@ -1415,7 +1502,17 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             <td className={cell}>
                                                 {money(s.total_amount)}
                                             </td>
-                                            <td className={cell}>{s.method}</td>
+                                            <td className={cell}>
+                                                {s.method === "booking"
+                                                    ? "Gộp hóa đơn sân"
+                                                    : ((
+                                                          {
+                                                              cash: "Tiền mặt",
+                                                              bank: "Chuyển khoản",
+                                                              wallet: "Ví HUB",
+                                                          } as Row
+                                                      )[s.method] ?? s.method)}
+                                            </td>
                                             <td className={cell}>
                                                 <button
                                                     className="text-[#16a34a]"
@@ -1445,7 +1542,25 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                             <Suspense
                                 fallback={<Empty text="Đang tải báo cáo…" />}
                             >
-                                <ReportsView branch={branch} />
+                                <>
+                                    {admin && (
+                                        <label className="mb-5 block text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={allReports}
+                                                onChange={(e) =>
+                                                    setAllReports(
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                            />{" "}
+                                            Báo cáo toàn hệ thống
+                                        </label>
+                                    )}
+                                    <ReportsView
+                                        branch={allReports ? null : branch}
+                                    />
+                                </>
                             </Suspense>
                         )}
                         {tab === "moderation" && (
@@ -1575,24 +1690,108 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                     </>
                 )}
-                {editing && (
-                    <Editor
-                        title={
-                            editing.row.id
-                                ? "Cập nhật / " + editing.kind
-                                : "Thêm / " + editing.kind
-                        }
-                        close={() => setEditing(null)}
-                        initial={{
-                            branch_id: branch,
-                            active: true,
-                            method: "cash",
-                            ...editing.row,
+                {quick && (
+                    <QuickBooking
+                        range={quick}
+                        close={() => setQuick(null)}
+                        done={async (b) => {
+                            setQuick(null);
+                            await load();
+                            setSelected(b);
                         }}
-                        fields={fields[editing.kind] ?? []}
-                        save={save}
                     />
                 )}
+                {editing &&
+                    (editing.kind === "sale" ? (
+                        <PosCheckout
+                            branch={branch}
+                            bookings={hub?.bookings ?? []}
+                            total={Object.entries(cart).reduce(
+                                (n, [id, q]) =>
+                                    n +
+                                    q *
+                                        (hub?.products.find(
+                                            (p: Row) => p.id === Number(id),
+                                        )?.price ?? 0),
+                                0,
+                            )}
+                            close={() => setEditing(null)}
+                            save={save}
+                        />
+                    ) : (
+                        <Editor
+                            title={
+                                (editing.row.id ? "Cập nhật " : "Thêm ") +
+                                (
+                                    {
+                                        branches: "chi nhánh",
+                                        courts: "sân",
+                                        users: "tài khoản",
+                                        plans: "gói hội viên",
+                                        coupons: "mã ưu đãi",
+                                        products: "sản phẩm",
+                                        services: "dịch vụ",
+                                        maintenance: "lịch bảo trì",
+                                        stock: "nhập / xuất kho",
+                                        events: "sự kiện",
+                                        quickcustomer: "khách hàng",
+                                        payment: "giao dịch",
+                                        topup: "tiền vào ví",
+                                        membership: "gói hội viên",
+                                    } as Row
+                                )[editing.kind]
+                            }
+                            close={() => setEditing(null)}
+                            initial={{
+                                branch_id: branch,
+                                active: true,
+                                method: "cash",
+                                ...(editing.kind === "branches"
+                                    ? {
+                                          opens_minute: 180,
+                                          closes_minute: 1380,
+                                          court_count: 6,
+                                          hourly_rate: 100000,
+                                          peak_rate: 180000,
+                                          weekend_rate: 200000,
+                                      }
+                                    : {}),
+                                ...editing.row,
+                                ...(editing.kind === "branches"
+                                    ? {
+                                          opens_time:
+                                              String(
+                                                  Math.floor(
+                                                      (editing.row
+                                                          .opens_minute ??
+                                                          180) / 60,
+                                                  ),
+                                              ).padStart(2, "0") +
+                                              ":" +
+                                              String(
+                                                  (editing.row.opens_minute ??
+                                                      180) % 60,
+                                              ).padStart(2, "0"),
+                                          closes_time:
+                                              String(
+                                                  Math.floor(
+                                                      (editing.row
+                                                          .closes_minute ??
+                                                          1380) / 60,
+                                                  ),
+                                              ).padStart(2, "0") +
+                                              ":" +
+                                              String(
+                                                  (editing.row.closes_minute ??
+                                                      1380) % 60,
+                                              ).padStart(2, "0"),
+                                      }
+                                    : {}),
+                            }}
+                            fields={fields[editing.kind] ?? []}
+                            save={save}
+                        />
+                    ))}
                 {confirm && (
                     <Confirm
                         title={confirm.title}

@@ -17,7 +17,7 @@ class ReportService
         $start = CarbonImmutable::parse($from)->startOfDay();
         $end = CarbonImmutable::parse($to)->endOfDay();
         $bookings = Booking::whereBetween('starts_at', [$start, $end])->whereHas('court', fn ($q) => $q->when($branch, fn ($q) => $q->where('branch_id', $branch)))->with('court.branch', 'services')->get();
-        $courtPayments = Payment::whereBetween('created_at', [$start, $end])->whereHas('booking.court', fn ($q) => $q->when($branch, fn ($q) => $q->where('branch_id', $branch)))->with('booking.court.branch', 'booking.services')->get();
+        $courtPayments = Payment::whereBetween('created_at', [$start, $end])->whereHas('booking.court', fn ($q) => $q->when($branch, fn ($q) => $q->where('branch_id', $branch)))->with('booking.court.branch', 'booking.services', 'booking.sales.items')->get();
         $commerce = DB::table('commerce_payments')->whereBetween('created_at', [$start, $end])->when($branch, fn ($q) => $q->where('branch_id', $branch))->get();
         $daily = [];
         $byBranch = [];
@@ -44,6 +44,11 @@ class ReportService
                 $b = $p->booking;
                 $cid = $b->court_id;
                 $byCourt[$cid] = ($byCourt[$cid] ?? 0) + $value;
+                foreach ($b->sales->flatMap(fn ($s) => $s->items) as $item) {
+                    $share = $b->total_amount ? (int) round($value * $item->amount / $b->total_amount) : 0;
+                    $pos += $share;
+                    $byProduct[$item->name] = ($byProduct[$item->name] ?? 0) + $share;
+                }
                 foreach ($b->services as $s) {
                     $byService[$s->pivot->name] = ($byService[$s->pivot->name] ?? 0) + ($b->total_amount ? (int) round($value * $s->pivot->amount / $b->total_amount) : 0);
                 }

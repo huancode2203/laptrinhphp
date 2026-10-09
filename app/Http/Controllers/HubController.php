@@ -9,6 +9,7 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\BranchResource;
 use App\Models\Booking;
 use App\Models\Branch;
+use App\Models\CommunityPost;
 use App\Models\Coupon;
 use App\Models\Court;
 use App\Models\CourtHold;
@@ -48,7 +49,11 @@ class HubController extends Controller
 
     public function account(Request $r): JsonResponse
     {
-        return response()->json(['data' => ['user' => $r->user(), 'membership' => Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first(), 'payment_attempts' => PaymentAttempt::where('user_id', $r->user()->id)->latest('id')->limit(30)->get(), 'wallet_entries' => WalletEntry::where('user_id', $r->user()->id)->latest('id')->limit(100)->get(), 'memberships' => Membership::where('user_id', $r->user()->id)->with('plan')->latest('id')->get(), 'waitlist' => WaitlistEntry::where('user_id', $r->user()->id)->with('court.branch')->latest('id')->limit(50)->get()]]);
+        return response()->json(['data' => [
+            'my_posts' => CommunityPost::where('user_id', $r->user()->id)->with('branch:id,name,district')->latest('id')->get(),
+            'my_matches' => CommunityPost::whereHas('joins', fn ($q) => $q->where('user_id', $r->user()->id)->whereIn('status', ['pending', 'accepted']))->where('moderation_status', 'approved')->where('status', '!=', 'hidden')->with('branch:id,name,district')->latest('starts_at')->get(),
+            'coupons' => Coupon::where('active', true)->where('starts_at', '<=', now())->where('expires_at', '>', now())->get(['code', 'branch_id', 'kind', 'value', 'max_discount', 'minimum_amount', 'expires_at']),
+            'user' => $r->user(), 'membership' => Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first(), 'payment_attempts' => PaymentAttempt::where('user_id', $r->user()->id)->latest('id')->limit(30)->get(), 'wallet_entries' => WalletEntry::where('user_id', $r->user()->id)->latest('id')->limit(100)->get(), 'memberships' => Membership::where('user_id', $r->user()->id)->with('plan')->latest('id')->get(), 'waitlist' => WaitlistEntry::where('user_id', $r->user()->id)->with('court.branch')->latest('id')->limit(50)->get()]]);
     }
 
     public function reviews(Branch $branch): JsonResponse
@@ -129,7 +134,7 @@ class HubController extends Controller
 
     public function admin(Request $r): JsonResponse
     {
-        return response()->json(['data' => ['branches' => Branch::withCount('courts')->get(), 'users' => User::latest('id')->limit(500)->get(['id', 'name', 'email', 'phone', 'role', 'branch_id', 'active']), 'plans' => MembershipPlan::all(), 'coupons' => Coupon::latest('id')->get(), 'audits' => DB::table('audit_logs')->latest('id')->limit(100)->get(), 'reports' => DB::table('content_reports')->join('community_posts', 'community_posts.id', '=', 'content_reports.community_post_id')->select('content_reports.*', 'community_posts.title')->latest('content_reports.id')->limit(100)->get(), 'reviews' => Review::with('user:id,name')->latest('id')->limit(100)->get()]]);
+        return response()->json(['data' => ['stats' => ['users' => User::count(), 'pending_posts' => DB::table('community_posts')->where('moderation_status', 'pending')->count()], 'branches' => Branch::withCount('courts')->get(), 'users' => User::latest('id')->limit(500)->get(['id', 'name', 'email', 'phone', 'role', 'branch_id', 'active']), 'plans' => MembershipPlan::all(), 'coupons' => Coupon::latest('id')->get(), 'audits' => DB::table('audit_logs')->latest('id')->limit(100)->get(), 'reports' => DB::table('content_reports')->join('community_posts', 'community_posts.id', '=', 'content_reports.community_post_id')->select('content_reports.*', 'community_posts.title')->latest('content_reports.id')->limit(100)->get(), 'reviews' => Review::with('user:id,name')->latest('id')->limit(100)->get()]]);
     }
 
     public function userActive(Request $r, User $user, BookingService $engine): JsonResponse

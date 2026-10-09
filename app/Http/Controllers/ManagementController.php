@@ -48,9 +48,24 @@ class ManagementController extends Controller
             'opens_minute' => 'sometimes|integer|between:0,1380|multiple_of:30', 'closes_minute' => 'sometimes|integer|between:30,1410|multiple_of:30|gt:opens_minute',
             'peak_minute' => 'sometimes|integer|between:0,1410|multiple_of:30', 'booking_days' => 'sometimes|integer|between:1,180',
             'deposit_percent' => 'sometimes|integer|between:0,100', 'payment_minutes' => 'sometimes|integer|between:5,120', 'fixed_discount' => 'sometimes|integer|between:0,50',
+            'court_count' => 'sometimes|integer|between:1,40', 'hourly_rate' => 'sometimes|integer|between:1000,10000000', 'peak_rate' => 'sometimes|integer|between:1000,10000000', 'weekend_rate' => 'sometimes|integer|between:1000,10000000',
+            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'manager')->where('active', true)],
         ]);
-        $branch->fill($data)->save();
-        $this->engine->audit($request->user(), 'branch.saved', $branch->id, $data, 'branch');
+        DB::transaction(function () use ($branch, $data, $request): void {
+            $creating = ! $branch->exists;
+            $branch->fill(array_diff_key($data, array_flip(['court_count', 'hourly_rate', 'peak_rate', 'weekend_rate', 'manager_id'])));
+            abort_if(($branch->opens_minute ?? 180) >= ($branch->closes_minute ?? 1380), 422, 'Giờ đóng cửa phải sau giờ mở cửa.');
+            $branch->save();
+            if ($creating) {
+                for ($number = 1; $number <= ($data['court_count'] ?? 6); $number++) {
+                    $branch->courts()->create(['name' => sprintf('Sân %02d', $number), 'status' => 'active', 'hourly_rate' => $data['hourly_rate'] ?? 100000, 'peak_rate' => $data['peak_rate'] ?? 180000, 'weekend_rate' => $data['weekend_rate'] ?? 200000]);
+                }
+            }
+            if (! empty($data['manager_id'])) {
+                DB::table('user_branches')->updateOrInsert(['user_id' => $data['manager_id'], 'branch_id' => $branch->id], []);
+            }
+            $this->engine->audit($request->user(), 'branch.saved', $branch->id, $data, 'branch');
+        }, 5);
 
         return new BranchResource($branch);
     }
@@ -195,9 +210,23 @@ class ManagementController extends Controller
 
     public function customers(Request $request): JsonResponse
     {
-        $data = $request->validate(['search' => ['required', 'string', 'min:3', 'max:100']]);
-        $term = str_replace(['%', '_', '\\'], '', $data['search']);
-        $customers = User::query()->where('role', 'customer')->where('active', true)->where(fn ($query) => $query->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%'))->limit(20)->get(['id', 'name', 'email', 'phone']);
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'user_id' => 'nullable|integer|exists:users,id', 'branch_id' => 'nullable|integer|exists:branches,id']);
+        $branch = $data['branch_id'] ?? ($request->user()->role === 'admin' ? null : ($request->user()->branch_id ?? (app(AccessService::class)->branches($request->user())[0] ?? 0)));
+        abort_if($request->user()->role !== 'admin' && ! $branch, 403);
+        if ($branch) {
+            app(BookingService::class)->assertManage($request->user(), $branch);
+        }
+        $term = str_replace(['%', '_', '\\'], '', $data['search'] ?? '');
+        $query = User::query()->where('role', 'customer')->where('active', true);
+        if ($term !== '') {
+            $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%'));
+        } elseif (! empty($data['user_id'])) {
+            $query->whereKey($data['user_id']);
+        } else {
+            $query->whereHas('bookings', fn ($q) => $q->when($branch, fn ($q) => $q->whereHas('court', fn ($q) => $q->where('branch_id', $branch))));
+        }
+        $scope = fn ($q) => $q->where('status', '!=', 'cancelled')->when($branch, fn ($q) => $q->whereHas('court', fn ($q) => $q->where('branch_id', $branch)));
+        $customers = $query->withCount(['bookings as visits' => $scope])->withSum(['bookings as spent' => $scope], 'paid_amount')->withMax(['bookings as last_visit' => $scope], 'starts_at')->withCasts(['spent' => 'integer', 'visits' => 'integer'])->with(['memberships' => fn ($q) => $q->where('expires_at', '>', now())->with('plan')])->orderBy('name')->limit(50)->get(['id', 'name', 'email', 'phone']);
 
         return response()->json(['data' => $customers]);
     }

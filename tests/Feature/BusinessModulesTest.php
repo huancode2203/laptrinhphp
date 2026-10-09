@@ -200,7 +200,7 @@ class BusinessModulesTest extends TestCase
         $other = User::factory()->create();
         $this->actingAs($other)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk();
         $third = User::factory()->create();
-        $this->actingAs($third)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertUnprocessable();
+        $this->actingAs($third)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk()->assertJsonPath('data.status', 'waiting');
         $this->actingAs($this->customer)->deleteJson('/api/v1/events/'.$event->id.'/register')->assertOk();
         $this->assertEquals(20000, $this->customer->refresh()->wallet_balance);
     }

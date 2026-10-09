@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\AccessService;
 use App\BookingService;
 use App\CommerceService;
+use App\EventWaitlistService;
 use App\Models\Court;
 use App\Models\EventRegistration;
 use App\Models\GameEvent;
@@ -106,13 +107,24 @@ class EventController extends Controller
         $reg = DB::transaction(function () use ($request, $event, $commerce, $data): EventRegistration {
             $event = GameEvent::query()->lockForUpdate()->findOrFail($event->id);
             abort_unless($event->status === 'published' && $event->starts_at->gt(now()) && ! $event->matches()->exists(), 422, 'Sự kiện đã đóng đăng ký.');
-            $event->registrations()->where('status', 'pending')->where('created_at', '<=', now()->subMinutes(30))->update(['status' => 'expired']);
+            app(EventWaitlistService::class)->advance($event);
             $reg = $event->registrations()->where('user_id', $request->user()->id)->lockForUpdate()->first();
-            if ($reg && in_array($reg->status, ['pending', 'confirmed'], true)) {
+            if ($reg && in_array($reg->status, ['pending', 'confirmed', 'waiting'], true)) {
+                if ($reg->status === 'pending' && $data['method'] === 'wallet') {
+                    $commerce->wallet($request->user(), $request->user(), -$reg->amount, 'event', (string) Str::uuid(), 'Đăng ký '.$event->title, $event->branch_id, 'event_registration', $reg->id);
+                    $commerce->payment($request->user(), $request->user(), 'event_registration', $reg->id, $reg->amount, 'wallet', $event->branch_id);
+                    $reg->update(['paid_amount' => $reg->amount, 'method' => 'wallet', 'status' => 'confirmed']);
+                }
+
                 return $reg;
             }
             abort_if($reg && $reg->paid_amount > 0, 422, 'Cần xử lý khoản hoàn tiền trước khi đăng ký lại.');
-            abort_if($event->registrations()->whereIn('status', ['pending', 'confirmed'])->count() >= $event->capacity, 422, 'Sự kiện đã hết chỗ.');
+            if ($event->registrations()->whereIn('status', ['pending', 'confirmed'])->count() >= $event->capacity) {
+                $reg = EventRegistration::updateOrCreate(['game_event_id' => $event->id, 'user_id' => $request->user()->id], ['amount' => $event->fee, 'paid_amount' => 0, 'method' => 'cash', 'status' => 'waiting', 'created_at' => now()]);
+                $request->user()->notify(new HubNotification(['type' => 'event.waitlisted', 'title' => 'Đã vào danh sách chờ', 'body' => $event->title, 'event_id' => $event->id]));
+
+                return $reg;
+            }
             $reg = EventRegistration::updateOrCreate(['game_event_id' => $event->id, 'user_id' => $request->user()->id], ['amount' => $event->fee, 'paid_amount' => 0, 'method' => $data['method'], 'status' => $event->fee === 0 ? 'confirmed' : 'pending', 'created_at' => now()]);
             if ($event->fee > 0 && $data['method'] === 'wallet') {
                 $commerce->wallet($request->user(), $request->user(), -$event->fee, 'event', (string) Str::uuid(), 'Đăng ký '.$event->title, $event->branch_id, 'event_registration', $reg->id);
@@ -170,6 +182,7 @@ class EventController extends Controller
             abort_unless($event->starts_at->gt(now()) && ! $event->matches()->exists(), 422, 'Sự kiện đã bắt đầu hoặc đã chốt danh sách.');
             abort_if($reg->paid_amount > 0 && $event->starts_at->lt(now()->addHours(4)), 422, 'Vé đã thanh toán cần hủy trước ít nhất 4 tiếng.');
             $this->cancelRegistration($request, $reg, $commerce);
+            app(EventWaitlistService::class)->advance($event);
         }, 5);
 
         return response()->json(['message' => 'Đã hủy đăng ký. Khoản thu tại quầy cần quầy xử lý hoàn tiền.']);

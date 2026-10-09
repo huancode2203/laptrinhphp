@@ -20,7 +20,7 @@ export function Modal({
             onClick={close}
         >
             <div
-                className="modal-box max-h-[90vh] overflow-y-auto"
+                className="modal-box max-h-[90vh] max-w-2xl overflow-y-auto p-5 sm:p-6"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="mb-5 flex items-center justify-between gap-3">
