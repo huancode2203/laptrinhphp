@@ -1,8 +1,12 @@
-# Kiểm tra bản Laravel / MySQL · 09/10/2026
+# Kiểm tra bản Laravel / MySQL · 10/10/2026
 
+- Giao diện làm lại ngày 10/10/2026: trang chủ nền sáng với ảnh cầu lông, thẻ chi nhánh/giá/giờ mở, SVG đồng bộ, thanh điều hướng chung và menu điện thoại; các trang đặt sân, chat, sự kiện, tài khoản, huấn luyện viên và quản lý được đồng bộ.
+- TypeScript và Vite production build đạt sau thay đổi giao diện. Không sửa nghiệp vụ PHP/MySQL trong đợt này.
+- Kiểm tra trực tiếp desktop và 390×844: không tràn ngang (386px), menu mở/đóng và điều hướng hoạt động; lọc Bình Thạnh còn 1 chi nhánh; tìm “Ngày mai 13h đến 15h tại Bình Thạnh” trả 12 sân ngày 11/10/2026, 380.000đ/2 giờ cho khách Silver; chọn sân giữ đúng 4 ô từ 13:00 đến 14:30.
+- Đã mở tài khoản mẫu, hội thoại HUB AI lưu lịch sử, tổng quan quản lý và lịch sân đọc dữ liệu thật; thẻ doanh thu và hàng lịch sân hiển thị đúng. ZIP cập nhật kèm build mới.
 - Đã đối chiếu lại source GitHub `huancode2203/SNCUCAHuNRose` tại commit `ae1c406618c1f60590640dce41f7a3c17d709ed7` và hai chat người dùng xác nhận: “Kiểm tra hệ thống đặt sân”, “Kiểm tra tính năng layout”.
 - Môi trường: PHP 8.3.33, Laravel 13.35.0, MySQL 8.4.3, Node 24; PHP zip được bật.
-- **93/93 bài kiểm thử, 836 assertions**, đạt trên cả SQLite in-memory và MySQL database test riêng. Database test không giữ booking sau rollback.
+- Bộ nghiệp vụ kiểm tra ngày 09/10/2026: **93/93 bài kiểm thử, 836 assertions**, đạt trên cả SQLite in-memory và MySQL database test riêng. Database test không giữ booking sau rollback.
 - TypeScript, Vite production build, Pint và kiểm tra diff thành công. Không thêm thư viện trong đợt cập nhật này.
 - Bộ `RealisticDemoSeeder` tạo **280 bản ghi liên kết**, ngoài danh mục nền: 20 khách, 60 lịch sân, 50 khoản thu, 20 đánh giá, 20 bài cộng đồng, 20 bình luận, 8 huấn luyện viên, 8 sự kiện, 8 lịch chặn sân, 16 vé, 26 giao dịch vé/hội viên, 8 voucher, 10 membership và 6 bảo trì. Kiểm thử chứng minh chạy lại không tạo trùng, số tiền thanh toán khớp sổ giao dịch; bản ghi theo ngày chạy, không gọi provider.
 - Đã chạy seeder trên database ứng dụng, giữ dữ liệu hiện có; chạy lại báo đã có bộ dữ liệu và không thay đổi.

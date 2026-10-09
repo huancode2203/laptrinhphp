@@ -1,4 +1,5 @@
 import MediaPicker from "./MediaPicker";
+import Icon from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
@@ -275,10 +276,10 @@ export default function CommunityApp({
         },
     ];
     return (
-        <div className="mx-auto max-w-6xl p-5 md:p-10">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
+            <div className="page-heading">
                 <div>
-                    <p className="eyebrow text-[#16a34a]">community court</p>
+                    <p className="eyebrow text-[#16a34a]">CỘNG ĐỒNG CẦU LÔNG</p>
                     <h1 className="font-display text-4xl font-bold">
                         Kết nối đồng đội
                     </h1>
@@ -293,13 +294,14 @@ export default function CommunityApp({
                     + Tạo bài đăng
                 </button>
             </div>
-            <div className="mb-6 flex flex-wrap gap-2">
+            <div className="page-tabs">
                 {[
                     ["feed", "Bảng tin"],
                     ["players", "Tìm người chơi"],
                     ["chat", "Chat & đội nhóm"],
                 ].map(([id, label]) => (
                     <button
+                        aria-pressed={tab === id}
                         className={tab === id ? "btn" : "btn-outline"}
                         key={id}
                         onClick={() => {
@@ -505,18 +507,18 @@ export default function CommunityApp({
             )}
             {tab === "chat" &&
                 (user ? (
-                    <div className="grid min-h-[500px] gap-4 md:grid-cols-[280px_1fr]">
-                        <Card>
-                            <h2 className="mb-4 font-bold">
+                    <div className="chat-layout grid min-h-[500px] md:grid-cols-[270px_minmax(0,1fr)]">
+                        <Card className="chat-sidebar">
+                            <h2 className="mb-4 text-sm font-bold">
                                 Hội thoại của tôi
                             </h2>
                             {conversations.map((c) => (
                                 <button
                                     className={
-                                        "mb-2 w-full rounded-xl p-3 text-left text-sm " +
+                                        "conversation-item " +
                                         (conversation?.id === c.id
-                                            ? "bg-[#e9fbd7]"
-                                            : "bg-[#f3f6f4]")
+                                            ? "is-active"
+                                            : "")
                                     }
                                     key={c.id}
                                     onClick={() => {
@@ -543,12 +545,29 @@ export default function CommunityApp({
                                 <Empty text="Tìm người chơi hoặc tham gia đội để mở chat." />
                             )}
                         </Card>
-                        <Card>
+                        <Card className="chat-pane">
                             {conversation ? (
                                 <>
-                                    <h2 className="mb-4 font-bold">
-                                        {conversation.title}
-                                    </h2>
+                                    <div className="chat-heading">
+                                        <span>
+                                            <Icon
+                                                name={
+                                                    conversation.type === "ai"
+                                                        ? "spark"
+                                                        : "chat"
+                                                }
+                                                size={22}
+                                            />
+                                        </span>
+                                        <div>
+                                            <h2>{conversation.title}</h2>
+                                            <p>
+                                                {conversation.type === "ai"
+                                                    ? "Cùng bạn tìm sân cho trận cầu tiếp theo"
+                                                    : "Hẹn lịch, trò chuyện, cùng lên sân"}
+                                            </p>
+                                        </div>
+                                    </div>
                                     {conversation.id === "hub-ai" &&
                                         !messages.length && (
                                             <div className="mb-5 rounded-xl bg-green-50 p-5">
@@ -599,15 +618,15 @@ export default function CommunityApp({
                                         role="log"
                                         aria-label="Tin nhắn trong hội thoại"
                                         tabIndex={0}
-                                        className="mb-4 max-h-[420px] space-y-3 overflow-y-auto"
+                                        className="chat-messages mb-4 max-h-[420px] space-y-3 overflow-y-auto"
                                     >
                                         {messages.map((m) => (
                                             <div
                                                 className={
-                                                    "rounded-xl p-3 text-sm " +
+                                                    "chat-bubble " +
                                                     (m.user_id === user.id
-                                                        ? "ml-10 bg-[#e9fbd7]"
-                                                        : "mr-10 bg-[#f3f6f4]")
+                                                        ? "is-own"
+                                                        : "")
                                                 }
                                                 key={m.id}
                                             >
@@ -623,7 +642,7 @@ export default function CommunityApp({
                                                     .map((c: Row) => (
                                                         <div
                                                             key={c.court_id}
-                                                            className="mt-3 rounded-xl border border-[#dce4dc] bg-white p-3"
+                                                            className="chat-result"
                                                         >
                                                             <b>
                                                                 {c.branch_name}{" "}
@@ -778,7 +797,7 @@ export default function CommunityApp({
                                         />
                                     )}
                                     <form
-                                        className="flex gap-2"
+                                        className="chat-composer flex gap-2"
                                         onSubmit={(e) => {
                                             e.preventDefault();
                                             run(async () => {

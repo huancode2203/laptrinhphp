@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { money, stamp, statusText, type Row } from "./data";
@@ -407,15 +408,25 @@ export default function EventsPage({ auth }: { auth: () => void }) {
             .catch((e) => toast(e.message));
     }, [type, page]);
     return (
-        <div className="mx-auto max-w-6xl p-5 md:p-10">
-            <p className="eyebrow text-[#16a34a]">events & tournaments</p>
-            <h1 className="font-display mt-2 text-4xl font-bold">
-                Sự kiện & Giải đấu
-            </h1>
-            <div className="my-6 flex flex-wrap gap-2">
+        <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
+            <div className="page-heading">
+                <div>
+                    <p className="eyebrow">HẸN NHAU CHINH PHỤC THỬ THÁCH MỚI</p>
+                    <h1 className="font-display mt-2 text-4xl font-bold">
+                        Sự kiện & Giải đấu
+                    </h1>
+                    <p>
+                        Giao lưu, thử sức và cùng đồng đội tạo nên những trận
+                        cầu đáng nhớ.
+                    </p>
+                </div>
+                <Icon name="trophy" size={43} />
+            </div>
+            <div className="page-tabs">
                 {[["", "Tất cả"], ...Object.entries(eventTypes)].map(
                     ([id, label]) => (
                         <button
+                            aria-pressed={id === type}
                             className={id === type ? "btn" : "btn-outline"}
                             key={id}
                             onClick={() => {
@@ -431,12 +442,26 @@ export default function EventsPage({ auth }: { auth: () => void }) {
             <div className="grid gap-5 md:grid-cols-3">
                 {items.map((e) => (
                     <Card key={e.id}>
-                        <div className="mb-5 grid h-28 place-items-center rounded-xl bg-[#0d1f2d] text-5xl">
-                            {e.type === "league"
-                                ? "🏆"
-                                : e.type === "training"
-                                  ? "🏸"
-                                  : "🤝"}
+                        <div className="event-visual">
+                            <span>
+                                <b>
+                                    {new Date(e.starts_at)
+                                        .getDate()
+                                        .toString()
+                                        .padStart(2, "0")}
+                                </b>
+                                THÁNG {new Date(e.starts_at).getMonth() + 1}
+                            </span>
+                            <Icon
+                                name={
+                                    e.type === "league"
+                                        ? "trophy"
+                                        : e.type === "training"
+                                          ? "racket"
+                                          : "people"
+                                }
+                                size={51}
+                            />
                         </div>
                         <span className="badge badge-green">
                             {eventTypes[e.type]}

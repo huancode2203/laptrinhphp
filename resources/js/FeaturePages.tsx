@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, day, money, stamp, type Row } from "./data";
@@ -326,12 +327,18 @@ export function ContentSupport() {
             : p.type === (tab === "about" ? "page" : tab),
     );
     return (
-        <main className="mx-auto max-w-5xl p-5 md:p-10">
-            <p className="eyebrow text-[#168449]">ĐỒNG HÀNH CÙNG BẠN</p>
-            <h1 className="font-display my-3 text-4xl font-black">
-                Thông tin & hỗ trợ
-            </h1>
-            <div className="my-6 flex flex-wrap gap-2">
+        <main className="product-page mx-auto max-w-5xl p-5 md:p-10">
+            <div className="page-heading">
+                <div>
+                    <p className="eyebrow">ĐỒNG HÀNH CÙNG BẠN</p>
+                    <h1 className="font-display my-3 text-4xl font-black">
+                        Thông tin & hỗ trợ
+                    </h1>
+                    <p>Mọi điều bạn cần biết để buổi chơi thêm trọn vẹn.</p>
+                </div>
+                <Icon name="help" size={43} />
+            </div>
+            <div className="page-tabs">
                 {[
                     ["faq", "Câu hỏi thường gặp"],
                     ["about", "Về chúng tôi"],
@@ -538,20 +545,25 @@ export function Coaching() {
     }, [court, start, end]);
     const branch = data!.branches.find((b: Row) => b.id === coach?.branch_id);
     return (
-        <main className="mx-auto max-w-6xl p-5 md:p-10">
-            <p className="eyebrow text-[#168449]">TIẾN BỘ QUA TỪNG BUỔI TẬP</p>
-            <h1 className="font-display my-3 text-4xl font-black">
-                Học cầu lông
-            </h1>
-            <p className="mb-8 text-slate-500">
-                Chọn huấn luyện viên, sân và giờ tập. Chi phí sân và buổi học
-                được hiển thị trước khi đặt.
-            </p>
+        <main className="product-page mx-auto max-w-6xl p-5 md:p-10">
+            <div className="page-heading">
+                <div>
+                    <p className="eyebrow">TIẾN BỘ QUA TỪNG BUỔI TẬP</p>
+                    <h1 className="font-display my-3 text-4xl font-black">
+                        Học cầu lông
+                    </h1>
+                    <p className="mb-8 text-slate-500">
+                        Chọn huấn luyện viên, sân và giờ tập. Chi phí sân và
+                        buổi học được hiển thị trước khi đặt.
+                    </p>
+                </div>
+                <Icon name="racket" size={43} />
+            </div>
             <div className="grid gap-5 md:grid-cols-3">
                 {coaches.map((c) => (
                     <Card key={c.id}>
-                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf7de] text-2xl">
-                            🏸
+                        <div className="coach-avatar mb-4">
+                            {c.name.split(" ").at(-1)?.slice(0, 1)}
                         </div>
                         <h2 className="text-xl font-bold">{c.name}</h2>
                         <p className="my-2 text-sm text-[#168449]">

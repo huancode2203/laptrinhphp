@@ -1,4 +1,5 @@
 import MediaPicker from "./MediaPicker";
+import Icon from "./Icon";
 import { useState, type ReactNode } from "react";
 import { key, useHub } from "./hub";
 import type { Row } from "./data";
@@ -23,14 +24,14 @@ export function Modal({
                 className="modal-box max-h-[90vh] max-w-2xl overflow-y-auto p-5 sm:p-6"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="mb-5 flex items-center justify-between gap-3">
+                <div className="modal-heading mb-5 flex items-center justify-between gap-3">
                     <h2 className="font-display text-2xl font-bold">{title}</h2>
                     <button
-                        className="btn-outline"
+                        className="modal-close"
                         aria-label="Đóng"
                         onClick={close}
                     >
-                        ✕
+                        <Icon name="close" size={18} />
                     </button>
                 </div>
                 {children}
@@ -169,7 +170,10 @@ export function Editor({
 }
 export function Empty({ text = "Chưa có dữ liệu." }: { text?: string }) {
     return (
-        <div className="rounded-xl border border-dashed border-[#dce4dc] p-8 text-center text-[#6d8474]">
+        <div className="empty-state">
+            <span className="empty-icon">
+                <Icon name="court" size={26} />
+            </span>
             {text}
         </div>
     );
@@ -181,15 +185,7 @@ export function Card({
     children: ReactNode;
     className?: string;
 }) {
-    return (
-        <div
-            className={
-                "rounded-2xl border border-[#dce4dc] bg-white p-5 " + className
-            }
-        >
-            {children}
-        </div>
-    );
+    return <div className={"app-card p-5 " + className}>{children}</div>;
 }
 export function Table({
     headers,
@@ -199,7 +195,7 @@ export function Table({
     children: ReactNode;
 }) {
     return (
-        <div className="overflow-x-auto rounded-xl border border-[#dce4dc] bg-white">
+        <div className="data-table-wrap overflow-x-auto border bg-white">
             <table className="w-full text-left text-sm">
                 <thead className="bg-[#edf3ed] text-[#6d8474]">
                     <tr>

@@ -1,7 +1,8 @@
 import CourtMatrix from "./CourtMatrix";
 import { ContentSupport, Coaching } from "./FeaturePages";
 import { lazy, Suspense, useEffect, useState } from "react";
-import CustomerHome, { Logo } from "./CustomerHome";
+import CustomerHome, { CourtIllustration } from "./CustomerHome";
+import SiteHeader from "./SiteHeader";
 import BookingFlow from "./BookingFlow";
 import AuthScreen from "./AuthScreen";
 import Account from "./Account";
@@ -28,13 +29,11 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
     }, [id, date]);
     if (!b) return <Empty />;
     return (
-        <div className="mx-auto max-w-6xl p-5 md:p-10">
-            <div className="relative mb-6 overflow-hidden rounded-2xl bg-[#0d1f2d] p-8 text-white">
-                <img
-                    className="absolute inset-0 h-full w-full object-cover opacity-20"
-                    src="https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=1400&fit=crop&auto=format"
-                    alt=""
-                />
+        <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
+            <div className="branch-hero relative mb-6 overflow-hidden p-8 text-white">
+                <div className="branch-detail-art">
+                    <CourtIllustration />
+                </div>
                 <div className="relative">
                     <span className="badge badge-green">{b.courts} sân</span>
                     <h1 className="font-display my-4 text-4xl font-bold">
@@ -222,51 +221,21 @@ export default function App() {
     const manager =
         user && ["manager", "admin", "staff", "cashier"].includes(user.role);
     return (
-        <>
-            {page !== "home" && (
-                <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[#dce4dc] bg-white px-5 py-4">
-                    <button aria-label="Trang chủ" onClick={() => go("home")}>
-                        <Logo dark />
-                    </button>
-                    <nav className="flex flex-wrap gap-4 text-sm font-bold">
-                        <button onClick={() => book()}>Đặt sân</button>
-                        <button onClick={() => go("community")}>
-                            Cộng đồng
-                        </button>
-                        <button onClick={() => go("events")}>Giải đấu</button>
-                        <button onClick={() => go("coaching")}>
-                            Học cầu lông
-                        </button>
-                        <button onClick={() => go("content")}>Hỗ trợ</button>
-                        {user ? (
-                            <>
-                                <button onClick={() => go("account")}>
-                                    Tài khoản
-                                </button>
-                                {manager && (
-                                    <button onClick={() => go("manage")}>
-                                        Quản lý
-                                    </button>
-                                )}
-                                <button
-                                    className="text-[#6d8474]"
-                                    onClick={() =>
-                                        run(async () => {
-                                            await api("logout", "POST");
-                                            await refresh();
-                                            go("home");
-                                        })
-                                    }
-                                >
-                                    Đăng xuất
-                                </button>
-                            </>
-                        ) : (
-                            <button onClick={() => auth()}>Đăng nhập</button>
-                        )}
-                    </nav>
-                </header>
-            )}
+        <div className={"app-shell page-" + page}>
+            <SiteHeader
+                page={page}
+                go={(p) => (p === "auth" ? auth() : go(p))}
+                book={() => book()}
+                userName={user?.name}
+                manage={!!manager}
+                logout={() =>
+                    run(async () => {
+                        await api("logout", "POST");
+                        await refresh();
+                        go("home");
+                    })
+                }
+            />
             {page === "home" ? (
                 <>
                     <CustomerHome
@@ -331,6 +300,6 @@ export default function App() {
             ) : (
                 <AuthScreen done={() => go("account")} />
             )}
-        </>
+        </div>
     );
 }

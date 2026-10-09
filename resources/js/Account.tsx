@@ -557,8 +557,8 @@ export default function Account({
     }
     const user = data!.user;
     return (
-        <div className="mx-auto max-w-6xl p-5 md:p-10">
-            <div className="mb-6 flex flex-wrap justify-between gap-3">
+        <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
+            <div className="page-heading">
                 <div>
                     <p className="eyebrow text-[#16a34a]">GÓC CỦA BẠN</p>
                     <h1 className="font-display text-3xl font-bold">
@@ -577,7 +577,7 @@ export default function Account({
                     + Đặt sân mới
                 </button>
             </div>
-            <div className="mb-6 flex flex-wrap gap-2">
+            <div className="page-tabs">
                 {[
                     ["bookings", "Lịch của tôi"],
                     ["wallet", "Ví HUB"],
@@ -589,6 +589,7 @@ export default function Account({
                 ].map(([id, label]) => (
                     <button
                         key={id}
+                        aria-pressed={tab === id}
                         className={tab === id ? "btn" : "btn-outline"}
                         onClick={() => setTab(id)}
                     >

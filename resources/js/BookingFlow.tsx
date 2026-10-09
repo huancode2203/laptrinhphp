@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import CourtMatrix from "./CourtMatrix";
 import CustomerPicker from "./CustomerPicker";
 import { useEffect, useState } from "react";
@@ -229,9 +230,12 @@ export default function BookingFlow({
         );
         done(booked[0]);
     }
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [step]);
     return (
-        <div className="mx-auto max-w-6xl p-5 md:p-10">
-            <div className="mb-6 flex justify-between">
+        <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
+            <div className="page-heading">
                 <div>
                     <p className="eyebrow text-[#16a34a]">SẴN SÀNG LÊN SÂN</p>
                     <h1 className="font-display text-3xl font-bold">
@@ -250,7 +254,7 @@ export default function BookingFlow({
                     Đóng
                 </button>
             </div>
-            <div className="mb-6 flex gap-2">
+            <div className="booking-steps">
                 {[
                     "Chọn lịch",
                     "Chọn sân & dịch vụ",
@@ -259,18 +263,23 @@ export default function BookingFlow({
                     <div
                         key={s}
                         className={
-                            "flex-1 rounded-xl p-3 text-sm font-bold " +
+                            "booking-step " +
                             (i === step
-                                ? "bg-[#16a34a] text-white"
-                                : "bg-white text-[#6d8474]")
+                                ? "is-active"
+                                : i < step
+                                  ? "is-done"
+                                  : "")
                         }
                     >
-                        {i + 1}. {s}
+                        <span>
+                            {i < step ? <Icon name="check" size={15} /> : i + 1}
+                        </span>
+                        {s}
                     </div>
                 ))}
             </div>
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-                <Card className="min-w-0">
+                <Card className="booking-form min-w-0">
                     {step === 0 && (
                         <div className="space-y-4">
                             <label className="block">
@@ -677,7 +686,7 @@ export default function BookingFlow({
                         </p>
                     )}
                 </Card>
-                <Card className="h-fit">
+                <Card className="booking-summary h-fit">
                     <p className="eyebrow text-[#16a34a]">BUỔI CHƠI CỦA BẠN</p>
                     <h2 className="mt-3 text-xl font-bold">{b?.name}</h2>
                     <p className="my-3 text-sm text-[#6d8474]">{b?.address}</p>

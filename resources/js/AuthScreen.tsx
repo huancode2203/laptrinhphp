@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Logo } from "./CustomerHome";
+import { Logo } from "./Brand";
 import { api, useHub } from "./hub";
 export default function AuthScreen({ done }: { done: () => void }) {
     const { refresh, data } = useHub();
@@ -25,7 +25,7 @@ export default function AuthScreen({ done }: { done: () => void }) {
     }
     return (
         <div className="grid min-h-[calc(100vh-80px)] lg:grid-cols-2">
-            <div className="relative hidden overflow-hidden bg-[#0d1f2d] p-14 text-white lg:flex lg:flex-col lg:justify-between">
+            <div className="auth-art relative hidden overflow-hidden p-14 text-white lg:flex lg:flex-col lg:justify-between">
                 <div className="court-lines" />
                 <Logo />
                 <div className="relative">

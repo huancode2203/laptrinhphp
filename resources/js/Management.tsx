@@ -5,6 +5,7 @@ import AdvancedManagement from "./AdvancedManagement";
 import CalendarBoard from "./CalendarBoard";
 const ReportsView = lazy(() => import("./ReportsView"));
 const QRScanner = lazy(() => import("./QRScanner"));
+import Icon, { type IconName } from "./Icon";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
@@ -26,7 +27,7 @@ import {
     Table,
     type Field,
 } from "./ui";
-import { Logo } from "./CustomerHome";
+import { Logo } from "./Brand";
 import { EventDetail, eventTypes } from "./EventsPage";
 import { BookingDetail } from "./Account";
 export default function Management({ book }: { book: (initial: Row) => void }) {
@@ -568,13 +569,13 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                           : [];
     const fieldsFor = fields[tab];
     return (
-        <div className="flex min-h-[calc(100vh-74px)] bg-[#f3f6f4]">
-            <aside className="hidden w-60 shrink-0 flex-col bg-[#0d1f2d] p-4 md:flex">
+        <div className="management-shell flex min-h-[calc(100vh-80px)]">
+            <aside className="management-sidebar hidden w-60 shrink-0 flex-col md:flex">
                 <Logo />
                 <p className="mb-5 mt-2 text-xs text-white/40">
                     {admin ? "QUẢN TRỊ HỆ THỐNG" : "QUẢN LÝ CHI NHÁNH"}
                 </p>
-                {nav.map(([id, icon, label]) => (
+                {nav.map(([id, , label]) => (
                     <button
                         className={
                             "sidebar-link mb-1 text-left " +
@@ -583,7 +584,34 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         key={id}
                         onClick={() => setTab(id)}
                     >
-                        <span>{icon}</span>
+                        <Icon
+                            name={
+                                (
+                                    {
+                                        dashboard: "grid",
+                                        matrix: "court",
+                                        bookings: "calendar",
+                                        pos: "bag",
+                                        customers: "people",
+                                        courts: "racket",
+                                        services: "spark",
+                                        products: "bag",
+                                        maintenance: "settings",
+                                        events: "trophy",
+                                        reports: "chart",
+                                        calendar: "calendar",
+                                        advanced: "settings",
+                                        branches: "pin",
+                                        users: "user",
+                                        plans: "star",
+                                        coupons: "gift",
+                                        moderation: "shield",
+                                        audit: "calendar",
+                                    } as Record<string, IconName>
+                                )[id] ?? "grid"
+                            }
+                            size={18}
+                        />
                         {label}
                     </button>
                 ))}
@@ -604,7 +632,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         </option>
                     ))}
                 </select>
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div className="management-toolbar mb-6 flex flex-wrap items-center justify-between gap-3">
                     <h1 className="font-display text-3xl font-bold">
                         {nav.find((n) => n[0] === tab)?.[2]}
                     </h1>
@@ -679,7 +707,31 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                 0,
                                         ],
                                     ].map(([label, value]) => (
-                                        <Card key={label}>
+                                        <Card
+                                            key={label}
+                                            className={
+                                                "metric-card " +
+                                                (label === "Chi nhánh"
+                                                    ? "metric-featured"
+                                                    : "")
+                                            }
+                                        >
+                                            <span className="metric-icon">
+                                                <Icon
+                                                    name={
+                                                        label === "Chi nhánh"
+                                                            ? "pin"
+                                                            : label ===
+                                                                "Sân toàn hệ thống"
+                                                              ? "court"
+                                                              : label ===
+                                                                  "Tài khoản"
+                                                                ? "people"
+                                                                : "shield"
+                                                    }
+                                                    size={19}
+                                                />
+                                            </span>
                                             <p className="text-sm text-slate-500">
                                                 {label}
                                             </p>
@@ -721,7 +773,31 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             ).length,
                                         ],
                                     ].map(([l, v]) => (
-                                        <Card key={l}>
+                                        <Card
+                                            key={l}
+                                            className={
+                                                "metric-card " +
+                                                (l === "Doanh thu ròng"
+                                                    ? "metric-featured"
+                                                    : "")
+                                            }
+                                        >
+                                            <span className="metric-icon">
+                                                <Icon
+                                                    name={
+                                                        l === "Doanh thu ròng"
+                                                            ? "chart"
+                                                            : l ===
+                                                                "Lịch hôm nay"
+                                                              ? "calendar"
+                                                              : l ===
+                                                                  "Đang chơi"
+                                                                ? "racket"
+                                                                : "bag"
+                                                    }
+                                                    size={19}
+                                                />
+                                            </span>
                                             <p className="text-sm text-[#6d8474]">
                                                 {l}
                                             </p>
@@ -739,6 +815,76 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         Doanh thu theo khoảng {from} đến {to}.
                                         Chọn Báo cáo để đổi kỳ.
                                     </p>
+                                    {hub.bookings.length > 0 && (
+                                        <div className="dashboard-bookings">
+                                            {hub.bookings
+                                                .slice(0, 4)
+                                                .map((b: Row) => (
+                                                    <button
+                                                        key={b.id}
+                                                        onClick={() =>
+                                                            setTab("bookings")
+                                                        }
+                                                        className="dashboard-booking"
+                                                    >
+                                                        <span className="dashboard-booking-icon">
+                                                            <Icon
+                                                                name="court"
+                                                                size={20}
+                                                            />
+                                                        </span>
+                                                        <span>
+                                                            <strong>
+                                                                {b.court
+                                                                    ?.name ??
+                                                                    "Lịch sân"}
+                                                                <span>
+                                                                    {" "}
+                                                                    ·{" "}
+                                                                    {b.user
+                                                                        ?.name ??
+                                                                        b.reference}
+                                                                </span>
+                                                            </strong>
+                                                            <small>
+                                                                {new Date(
+                                                                    b.starts_at,
+                                                                ).toLocaleTimeString(
+                                                                    "vi-VN",
+                                                                    {
+                                                                        timeZone:
+                                                                            "Asia/Ho_Chi_Minh",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    },
+                                                                )}{" "}
+                                                                –{" "}
+                                                                {new Date(
+                                                                    b.ends_at,
+                                                                ).toLocaleTimeString(
+                                                                    "vi-VN",
+                                                                    {
+                                                                        timeZone:
+                                                                            "Asia/Ho_Chi_Minh",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    },
+                                                                )}
+                                                            </small>
+                                                        </span>
+                                                        <span className="badge badge-green">
+                                                            {statusText(
+                                                                b.status,
+                                                            )}
+                                                        </span>
+                                                        <Icon
+                                                            name="northeast"
+                                                            size={17}
+                                                        />
+                                                    </button>
+                                                ))}
+                                        </div>
+                                    )}
                                     <div className="flex flex-wrap gap-3">
                                         <button
                                             className="btn"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Icon from "./Icon";
 import { api, useHub } from "./hub";
 import { BRANCHES, day, money, type Row } from "./data";
 export default function SearchAssistant({
@@ -58,30 +59,34 @@ export default function SearchAssistant({
             className={"assistant " + (compact ? "" : "my-5")}
             aria-label="Tìm sân theo nhu cầu"
         >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <span className="eyebrow text-[#168449]">
-                        TÌM SÂN CÙNG BẠN
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="assistant-heading">
+                    <span className="assistant-icon">
+                        <Icon name="spark" size={25} />
                     </span>
-                    <h2 className="font-display mt-1 text-2xl font-bold">
-                        Bạn muốn chơi lúc nào?
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-500">
-                        Cho biết ngày, giờ, khu vực và ngân sách. Chúng tôi tìm
-                        sân còn trống phù hợp.
-                    </p>
+                    <div>
+                        <span className="eyebrow">TRỢ LÝ TÌM SÂN CỦA BẠN</span>
+                        <h2 className="mt-1 font-bold">
+                            Hôm nay, bạn muốn chơi ở đâu?
+                        </h2>
+                    </div>
                 </div>
-                <span className="rounded-full bg-[#eaf7de] px-3 py-2 text-sm font-bold">
-                    ✦ Trợ lý tìm sân
+                <span className="assistant-label">
+                    <Icon name="spark" size={13} /> Tìm theo nhu cầu
                 </span>
             </div>
+            <p className="mt-3 text-xs leading-6 text-slate-500">
+                Cho biết ngày, giờ và khu vực. Chúng tôi tìm sân còn trống phù
+                hợp với bạn.
+            </p>
             <form
-                className="mt-5 flex flex-col gap-3 sm:flex-row"
+                className="assistant-form mt-5 flex flex-col gap-3 sm:flex-row"
                 onSubmit={(e) => {
                     e.preventDefault();
                     search();
                 }}
             >
+                <Icon name="search" size={21} />
                 <input
                     className="input min-w-0 flex-1"
                     aria-label="Nhu cầu tìm sân"
@@ -92,7 +97,14 @@ export default function SearchAssistant({
                     placeholder="Hôm nay từ 13h đến 15h ở TP.HCM, dưới 300k…"
                 />
                 <button className="btn" disabled={busy}>
-                    {busy ? "Đang tìm sân…" : "Tìm sân ↗"}
+                    {busy ? (
+                        "Đang tìm sân…"
+                    ) : (
+                        <>
+                            Tìm sân
+                            <Icon name="arrow" size={17} />
+                        </>
+                    )}
                 </button>
             </form>
             <div className="mt-3 flex flex-wrap gap-2">
