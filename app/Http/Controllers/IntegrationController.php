@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\BookingService;
 use App\CommerceService;
 use App\FeatureService;
+use App\IntegrationStatus;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\PaymentAttempt;
 use App\Models\User;
 use App\MomoService;
 use App\Notifications\HubNotification;
+use App\PhoneVerificationService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +28,7 @@ class IntegrationController extends Controller
 {
     public function google(Request $r): RedirectResponse
     {
-        abort_unless(config('integrations.google.client_id') && config('integrations.google.client_secret') && config('integrations.google.redirect_uri'), 503, 'Đăng nhập Google hiện chưa khả dụng.');
+        abort_unless(app(IntegrationStatus::class)->ready('google'), 503, 'Đăng nhập Google hiện chưa khả dụng.');
         $state = Str::random(48);
         $r->session()->put('google_oauth', ['state' => $state, 'created' => now()->timestamp, 'user_id' => $r->user()?->id]);
 
@@ -38,19 +42,37 @@ class IntegrationController extends Controller
         if (! $r->filled('code')) {
             return redirect('/#auth');
         }
-        $token = Http::asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', ['code' => $r->input('code'), 'client_id' => config('integrations.google.client_id'), 'client_secret' => config('integrations.google.client_secret'), 'redirect_uri' => config('integrations.google.redirect_uri'), 'grant_type' => 'authorization_code'])->throw()->json('access_token');
-        $profile = Http::withToken($token)->timeout(15)->get('https://openidconnect.googleapis.com/v1/userinfo')->throw()->json();
-        abort_unless(($profile['email_verified'] ?? false) && filter_var($profile['email'] ?? '', FILTER_VALIDATE_EMAIL) && is_string($profile['sub'] ?? null), 403);
-        $user = User::where('google_sub', $profile['sub'])->first();
-        if (! $user) {
-            $same = User::where('email', $profile['email'])->first();
-            if ($same) {
-                abort_unless($pending['user_id'] === $same->id && $r->user()?->id === $same->id, 409, 'Email đã có tài khoản. Đăng nhập bằng mật khẩu rồi liên kết Google trong Hồ sơ.');
-                $same->forceFill(['google_sub' => $profile['sub'], 'email_verified_at' => now()])->save();
-                $user = $same;
-            } else {
-                $user = User::create(['name' => Str::limit($profile['name'] ?? $profile['email'], 100, ''), 'email' => $profile['email'], 'password' => Str::random(60)]);
-                $user->forceFill(['google_sub' => $profile['sub'], 'email_verified_at' => now()])->save();
+        try {
+            $reply = Http::asForm()->connectTimeout(5)->timeout(15)->post('https://oauth2.googleapis.com/token', ['code' => $r->input('code'), 'client_id' => config('integrations.google.client_id'), 'client_secret' => config('integrations.google.client_secret'), 'redirect_uri' => config('integrations.google.redirect_uri'), 'grant_type' => 'authorization_code'])->throw()->json();
+            if (! is_string($reply['access_token'] ?? null) || $reply['access_token'] === '') {
+                return $this->googleFailure($r, 'Chưa xác nhận được đăng nhập Google. Vui lòng thử lại.');
+            }
+            $profile = Http::withToken($reply['access_token'])->connectTimeout(5)->timeout(15)->get('https://openidconnect.googleapis.com/v1/userinfo')->throw()->json();
+        } catch (ConnectionException|RequestException) {
+            return $this->googleFailure($r, 'Chưa kết nối được Google. Vui lòng thử lại sau.');
+        }
+        abort_unless(($profile['email_verified'] ?? false) === true && filter_var($profile['email'] ?? '', FILTER_VALIDATE_EMAIL) && is_string($profile['sub'] ?? null) && $profile['sub'] !== '', 403);
+        $googleUser = User::where('google_sub', $profile['sub'])->first();
+        if ($pending['user_id'] !== null) {
+            abort_unless($r->user()?->id === $pending['user_id'], 403);
+            if (($googleUser && $googleUser->id !== $pending['user_id']) || ($r->user()->google_sub && $r->user()->google_sub !== $profile['sub'])) {
+                return $this->googleFailure($r, 'Tài khoản Google đã được liên kết. Vui lòng dùng tài khoản phù hợp.');
+            }
+            $user = $r->user();
+            abort_unless($user->active, 403);
+            $user->forceFill(['google_sub' => $profile['sub'], 'email_verified_at' => $user->email === $profile['email'] ? now() : $user->email_verified_at])->save();
+        } else {
+            $user = $googleUser;
+            if (! $user) {
+                if (User::where('email', $profile['email'])->exists()) {
+                    return $this->googleFailure($r, 'Email đã có tài khoản. Đăng nhập bằng mật khẩu rồi liên kết Google trong Hồ sơ.');
+                }
+                $user = DB::transaction(function () use ($profile): User {
+                    $created = User::create(['name' => Str::limit($profile['name'] ?? $profile['email'], 100, ''), 'email' => $profile['email'], 'password' => Str::random(60)]);
+                    $created->forceFill(['google_sub' => $profile['sub'], 'email_verified_at' => now()])->save();
+
+                    return $created;
+                });
             }
         }
         abort_unless($user->active, 403);
@@ -60,15 +82,35 @@ class IntegrationController extends Controller
         return redirect('/#account');
     }
 
+    private function googleFailure(Request $r, string $message): RedirectResponse
+    {
+        $r->session()->put('auth_notice', $message);
+
+        return redirect($r->user() ? '/#account' : '/#auth');
+    }
+
+    public function integrations(): JsonResponse
+    {
+        return response()->json(['data' => app(IntegrationStatus::class)->all()]);
+    }
+
+    public function probeAi(Request $r): JsonResponse
+    {
+        $d = $r->validate(['task' => 'required|in:search,moderation']);
+
+        return response()->json(['data' => app(IntegrationStatus::class)->probeAi($d['task'])]);
+    }
+
     public function phoneSend(Request $r): JsonResponse
     {
-        abort_unless(config('integrations.sms.enabled') && config('integrations.sms.sid') && config('integrations.sms.token') && config('integrations.sms.service'), 503, 'Xác thực điện thoại hiện chưa khả dụng.');
+        abort_unless(app(IntegrationStatus::class)->ready('sms'), 503, 'Xác thực điện thoại hiện chưa khả dụng.');
+        $previous = $r->session()->get('phone_verification');
+        abort_if($previous && ($previous['sent_at'] ?? 0) > now()->subMinute()->timestamp, 429, 'Vui lòng chờ một phút trước khi gửi lại mã.');
         $d = $r->validate(['phone' => ['required', 'regex:/^(0[35789][0-9]{8}|[+]84[35789][0-9]{8})$/']]);
         $phone = str_starts_with($d['phone'], '0') ? '+84'.substr($d['phone'], 1) : $d['phone'];
         abort_if(User::where('phone', $phone)->whereNotNull('phone_verified_at')->where('id', '!=', $r->user()->id)->exists(), 422, 'Số điện thoại đã được tài khoản khác xác thực.');
-        $response = Http::asForm()->withBasicAuth(config('integrations.sms.sid'), config('integrations.sms.token'))->timeout(15)->post('https://verify.twilio.com/v2/Services/'.config('integrations.sms.service').'/Verifications', ['To' => $phone, 'Channel' => 'sms'])->throw()->json();
-        abort_unless(($response['status'] ?? null) === 'pending', 502, 'Chưa gửi được mã xác thực.');
-        $r->session()->put('phone_verification', ['phone' => $phone, 'user_id' => $r->user()->id, 'expires' => now()->addMinutes(10)->timestamp, 'attempts' => 0]);
+        app(PhoneVerificationService::class)->send($phone);
+        $r->session()->put('phone_verification', ['phone' => $phone, 'user_id' => $r->user()->id, 'expires' => now()->addMinutes(10)->timestamp, 'sent_at' => now()->timestamp, 'attempts' => 0]);
 
         return response()->json(['message' => 'Mã xác thực đã được gửi tới điện thoại.']);
     }
@@ -80,8 +122,7 @@ class IntegrationController extends Controller
         abort_unless($pending && $pending['user_id'] === $r->user()->id && $pending['expires'] > now()->timestamp && $pending['attempts'] < 5, 422, 'Yêu cầu xác thực đã hết hạn.');
         $pending['attempts']++;
         $r->session()->put('phone_verification', $pending);
-        $response = Http::asForm()->withBasicAuth(config('integrations.sms.sid'), config('integrations.sms.token'))->timeout(15)->post('https://verify.twilio.com/v2/Services/'.config('integrations.sms.service').'/VerificationCheck', ['To' => $pending['phone'], 'Code' => $d['code']])->throw()->json();
-        abort_unless(($response['status'] ?? null) === 'approved', 422, 'Mã xác thực không đúng.');
+        app(PhoneVerificationService::class)->verify($pending['phone'], $d['code']);
         DB::transaction(function () use ($r, $pending): void {
             $user = User::lockForUpdate()->findOrFail($r->user()->id);
             abort_if(User::where('phone', $pending['phone'])->whereNotNull('phone_verified_at')->where('id', '!=', $user->id)->lockForUpdate()->exists(), 422);
@@ -105,11 +146,11 @@ class IntegrationController extends Controller
         DB::transaction(function () use ($d, $commerce): void {
             $existing = DB::table('integration_transactions')->where('provider', 'sepay')->where('transaction_id', (string) $d['id'])->first();
             if ($existing) {
-                abort_unless($existing->amount === $d['transferAmount'], 409);
+                abort_unless($existing->amount === $d['transferAmount'] && $existing->account === $d['accountNumber'] && $existing->content === trim(($d['code'] ?? '').' '.($d['content'] ?? '')), 409, 'Giao dịch trùng có nội dung khác.');
 
                 return;
             }
-            preg_match('/BH-?[A-Z0-9]{10}\b/', strtoupper(($d['code'] ?? '').' '.($d['content'] ?? '')), $m);
+            preg_match('/\bBH-?[A-Z0-9]{10}\b/', strtoupper(($d['code'] ?? '').' '.($d['content'] ?? '')), $m);
             $ref = $m[0] ?? '';
             if ($ref && ! str_contains($ref, '-')) {
                 $ref = 'BH-'.substr($ref, 2);

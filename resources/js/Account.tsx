@@ -13,7 +13,7 @@ export function BookingDetail({
     close: () => void;
     refreshBookings: () => Promise<void>;
 }) {
-    const { run, toast, data, refresh } = useHub();
+    const { run, toast, data, refresh, loading } = useHub();
     const [qr, setQr] = useState(""),
         [form, setForm] = useState(""),
         [receipt, setReceipt] = useState<Row | null>(null);
@@ -27,6 +27,31 @@ export function BookingDetail({
             .then(setQr)
             .catch((e) => toast(e.message));
     }, [booking.id]);
+    async function refreshPayment() {
+        setReceipt((await api("bookings/" + booking.id + "/receipt")).data);
+        await refreshBookings();
+        await refresh();
+    }
+    useEffect(() => {
+        if (
+            !data?.bank ||
+            booking.status !== "confirmed" ||
+            booking.remaining_amount <= 0
+        )
+            return;
+        let active = true;
+        const timer = window.setInterval(() => {
+            api("bookings/" + booking.id + "/receipt")
+                .then((r) => {
+                    if (active) setReceipt(r.data);
+                })
+                .catch(() => {});
+        }, 15000);
+        return () => {
+            active = false;
+            window.clearInterval(timer);
+        };
+    }, [booking.id, booking.status, booking.remaining_amount, !!data?.bank]);
     async function update(fn: () => Promise<any>) {
         await fn();
         await refresh();
@@ -84,6 +109,32 @@ export function BookingDetail({
                         <p className="text-sm">
                             Nội dung: <b>{booking.reference}</b>
                         </p>
+                        <img
+                            className="mx-auto my-4 w-64 max-w-full rounded-xl"
+                            alt="VietQR chuyển khoản cho lịch đặt này"
+                            src={
+                                "https://img.vietqr.io/image/" +
+                                encodeURIComponent(data!.bank.bank_bin) +
+                                "-" +
+                                encodeURIComponent(data!.bank.account) +
+                                "-compact2.png?" +
+                                new URLSearchParams({
+                                    amount: String(
+                                        booking.deposit_remaining > 0
+                                            ? booking.deposit_remaining
+                                            : booking.remaining_amount,
+                                    ),
+                                    addInfo: booking.reference.replaceAll(
+                                        "-",
+                                        "",
+                                    ),
+                                    accountName: data!.bank.name,
+                                }).toString()
+                            }
+                            onError={(event) => {
+                                event.currentTarget.hidden = true;
+                            }}
+                        />
                         <button
                             className="btn-outline mt-3"
                             onClick={() =>
@@ -98,13 +149,39 @@ export function BookingDetail({
                         >
                             Sao chép nội dung
                         </button>
+                        <button
+                            className="btn-outline mt-3 ml-2"
+                            disabled={loading}
+                            onClick={() => run(refreshPayment)}
+                        >
+                            Kiểm tra chuyển khoản
+                        </button>
                         <p className="mt-3 text-xs text-slate-500">
                             Chuyển khoản đúng nội dung để tiền được ghi nhận vào
-                            lịch. Bạn có thể làm mới lịch để xem kết quả sau khi
-                            chuyển.
+                            lịch. Trạng thái tự cập nhật khi ngân hàng xác nhận.
                         </p>
                     </Card>
                 )}
+            {data!.user.id === booking.user_id &&
+                data!.momo_enabled &&
+                receipt?.pending_payment_attempts?.map((attempt: Row) => (
+                    <button
+                        key={attempt.id}
+                        className="btn-outline mt-4"
+                        disabled={loading}
+                        onClick={() =>
+                            run(async () => {
+                                await api(
+                                    "payments/momo/" + attempt.id + "/sync",
+                                    "POST",
+                                );
+                                await refreshPayment();
+                            })
+                        }
+                    >
+                        Kiểm tra thanh toán MoMo · {money(attempt.amount)}
+                    </button>
+                ))}
             {data!.user.role !== "customer" &&
                 data!.permissions?.["payments.write"] &&
                 booking.status === "cancelled" &&
@@ -832,7 +909,12 @@ export default function Account({
                                     className="btn-outline text-xs"
                                     onClick={() =>
                                         run(async () => {
-                                            await api("payments/momo/" + p.id);
+                                            await api(
+                                                "payments/momo/" +
+                                                    p.id +
+                                                    "/sync",
+                                                "POST",
+                                            );
                                             await load();
                                             await refresh();
                                             toast(
@@ -1005,7 +1087,7 @@ export default function Account({
                         >
                             Đổi mật khẩu
                         </button>
-                        {!user.email_verified_at && (
+                        {!user.email_verified_at && data!.email_enabled && (
                             <button
                                 className="btn-outline"
                                 onClick={() => setForm("verifyEmail")}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import IntegrationPanel from "./IntegrationPanel";
 import { api, useHub } from "./hub";
 import { BRANCHES, money, stamp, type Row } from "./data";
 import { Card, Editor, Empty, Table, cell, type Field } from "./ui";
@@ -60,6 +61,7 @@ export default function AdvancedManagement({
                   ["permissions", "Phân quyền"],
                   ["assignments", "Phân chi nhánh"],
                   ["transactions", "Đối soát"],
+                  ["integrations", "Kết nối dịch vụ"],
               ]
             : []),
     ];
@@ -362,6 +364,7 @@ export default function AdvancedManagement({
                     </button>
                 ))}
             </div>
+            {tab === "integrations" && admin && <IntegrationPanel />}
             {["pricing", "coaches", "pages", "rewards"].includes(tab) && (
                 <div>
                     <button className="btn mb-4" onClick={() => edit(tab)}>

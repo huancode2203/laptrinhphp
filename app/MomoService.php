@@ -7,14 +7,17 @@ use App\Models\Payment;
 use App\Models\PaymentAttempt;
 use App\Models\User;
 use App\Notifications\HubNotification;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 class MomoService
 {
     public function enabled(): bool
     {
-        return (bool) config('momo.enabled') && config('momo.partner_code') && config('momo.access_key') && config('momo.secret_key') && str_starts_with(config('momo.ipn_url'), 'https://') && str_starts_with(config('momo.redirect_url'), 'https://');
+        return app(IntegrationStatus::class)->ready('momo');
     }
 
     public function sign(array $fields): string
@@ -85,35 +88,69 @@ class MomoService
             $fields[$key] = $d[$key];
         }
         abort_unless(config('momo.secret_key') && hash_equals($this->sign($fields), (string) ($d['signature'] ?? '')), 403, 'Chữ ký không hợp lệ.');
+        $attempt = PaymentAttempt::where('order_id', $d['orderId'])->firstOrFail();
+        abort_unless($attempt->partner_code === $d['partnerCode'] && $attempt->request_key === $d['requestId'] && (string) $attempt->amount === (string) $d['amount'] && $attempt->extra_data === $d['extraData'] && $attempt->order_info === $d['orderInfo'], 409, 'Nội dung giao dịch không khớp.');
+        $this->settle($attempt, (int) $d['resultCode'], (string) $d['transId']);
+    }
+
+    public function sync(PaymentAttempt $attempt): PaymentAttempt
+    {
+        abort_unless($this->enabled() && $attempt->partner_code === config('momo.partner_code'), 503, 'MoMo hiện chưa khả dụng.');
+        if (in_array($attempt->status, ['paid', 'credited'], true)) {
+            return $attempt;
+        }
+        $payload = ['partnerCode' => $attempt->partner_code, 'orderId' => $attempt->order_id, 'requestId' => (string) Str::uuid()];
+        $payload['signature'] = $this->sign(['accessKey' => config('momo.access_key'), ...$payload]);
+        $payload['lang'] = 'vi';
+        try {
+            $response = Http::connectTimeout(10)->timeout(35)->post(str_replace('/create', '/query', config('momo.endpoint')), $payload);
+        } catch (ConnectionException) {
+            abort(503, 'Chưa kiểm tra được MoMo. Tiền sẽ được cập nhật sau khi có xác nhận.');
+        }
+        $body = $response->json();
+        abort_unless($response->successful() && is_array($body) && ($body['partnerCode'] ?? null) === $attempt->partner_code && ($body['orderId'] ?? null) === $attempt->order_id && ($body['requestId'] ?? null) === $payload['requestId'] && is_int($body['resultCode'] ?? null), 502, 'Phản hồi kiểm tra MoMo không hợp lệ.');
+        if ($body['resultCode'] === 0) {
+            abort_unless((string) ($body['amount'] ?? '') === (string) $attempt->amount && ($body['extraData'] ?? '') === $attempt->extra_data, 502, 'Số tiền kiểm tra MoMo không khớp.');
+            $this->settle($attempt, 0, (string) ($body['transId'] ?? ''));
+        } else {
+            PaymentAttempt::whereKey($attempt->id)->whereNotIn('status', ['paid', 'credited'])->update(['result_code' => $body['resultCode']]);
+        }
+
+        return $attempt->refresh();
+    }
+
+    private function settle(PaymentAttempt $attempt, int $resultCode, string $transId): void
+    {
+        abort_if($resultCode === 0 && ! filter_var($transId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]), 400, 'Mã giao dịch không hợp lệ.');
         app(FeatureService::class)->expireBookings();
-        DB::transaction(function () use ($d): void {
-            $a = PaymentAttempt::where('order_id', $d['orderId'])->lockForUpdate()->firstOrFail();
-            abort_unless($a->partner_code === $d['partnerCode'] && $a->request_key === $d['requestId'] && (string) $a->amount === (string) $d['amount'] && $a->extra_data === $d['extraData'] && $a->order_info === $d['orderInfo'], 409, 'Nội dung giao dịch không khớp.');
+        DB::transaction(function () use ($attempt, $resultCode, $transId): void {
+            $a = PaymentAttempt::lockForUpdate()->findOrFail($attempt->id);
             if (in_array($a->status, ['paid', 'credited'], true)) {
-                return;
-            }
-            if ((int) $d['resultCode'] !== 0) {
-                $a->update(['result_code' => (int) $d['resultCode'], 'status' => (int) $d['resultCode'] === 9000 ? 'pending' : 'failed']);
+                abort_if($resultCode === 0 && $a->trans_id !== $transId, 409, 'Mã giao dịch không khớp.');
 
                 return;
             }
-            abort_if(PaymentAttempt::where('trans_id', (string) $d['transId'])->where('id', '!=', $a->id)->exists(), 409, 'Giao dịch đã xử lý.');
+            if ($resultCode !== 0) {
+                $a->update(['result_code' => $resultCode, 'status' => $resultCode === 9000 ? 'pending' : 'failed']);
+
+                return;
+            }
+            abort_if(PaymentAttempt::where('trans_id', $transId)->where('id', '!=', $a->id)->exists(), 409, 'Giao dịch đã xử lý.');
             $owner = User::lockForUpdate()->findOrFail($a->user_id);
             $booking = $a->booking_id ? Booking::lockForUpdate()->find($a->booking_id) : null;
-            $engine = app(BookingService::class);
-            $commerce = app(CommerceService::class);
-            if ($booking && $booking->status === 'confirmed' && $booking->total_amount - $booking->paid_amount === $a->amount) {
-                Payment::create(['booking_id' => $booking->id, 'received_by' => $owner->id, 'request_key' => $a->request_key, 'kind' => 'payment', 'method' => 'momo', 'amount' => $a->amount, 'notes' => 'MoMo '.$d['transId']]);
-                $booking->increment('paid_amount', $a->amount);
-                $a->status = 'paid';
-            } else {
-                $commerce->wallet($owner, $owner, $a->amount, 'momo_topup', $a->request_key, $booking ? 'MoMo nhận sau khi lịch đặt thay đổi' : 'Nạp ví qua MoMo', null, 'payment_attempt', $a->id);
-                $a->status = $booking ? 'credited' : 'paid';
+            $due = $booking && $booking->status === 'confirmed' ? max(0, $booking->total_amount - $booking->paid_amount) : 0;
+            $paid = min($a->amount, $due);
+            if ($paid > 0) {
+                Payment::create(['booking_id' => $booking->id, 'received_by' => $owner->id, 'request_key' => $a->request_key, 'kind' => 'payment', 'method' => 'momo', 'amount' => $paid, 'notes' => 'MoMo '.$transId]);
+                $booking->increment('paid_amount', $paid);
             }
-            $a->trans_id = (string) $d['transId'];
-            $a->result_code = 0;
-            $a->save();
-            $engine->audit($owner, 'momo.received', $a->id, ['amount' => $a->amount, 'trans_id' => $a->trans_id], 'payment_attempt');
+            $extra = $a->amount - $paid;
+            if ($extra > 0) {
+                $walletKey = $paid > 0 ? (string) Uuid::uuid5(Uuid::fromString($a->request_key), 'momo-excess') : $a->request_key;
+                app(CommerceService::class)->wallet($owner, $owner, $extra, 'momo_topup', $walletKey, $booking ? 'Tiền MoMo vượt số cần trả hoặc đến sau khi lịch thay đổi' : 'Nạp ví qua MoMo', null, 'payment_attempt', $a->id);
+            }
+            $a->forceFill(['status' => $booking && $paid === 0 ? 'credited' : 'paid', 'trans_id' => $transId, 'result_code' => 0])->save();
+            app(BookingService::class)->audit($owner, 'momo.received', $a->id, ['amount' => $a->amount, 'trans_id' => $transId, 'booking_paid' => $paid, 'wallet_credit' => $extra], 'payment_attempt');
             $owner->notify(new HubNotification(['type' => 'payment.received', 'title' => 'Đã xác nhận MoMo', 'body' => 'MoMo đã xác nhận số tiền '.number_format($a->amount).'đ.']));
         }, 5);
     }

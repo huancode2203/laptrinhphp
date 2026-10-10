@@ -113,13 +113,16 @@ Ollama cho cả hai tác vụ:
 AI_SEARCH_PROVIDER=ollama
 AI_SEARCH_MODEL=qwen3:4b
 AI_MODERATION_PROVIDER=ollama
-AI_MODERATION_MODEL=qwen3:4b
+AI_MODERATION_MODEL=qwen3:1.7b
 OLLAMA_URL=http://127.0.0.1:11434
-AI_TIMEOUT=60
+AI_SEARCH_TIMEOUT=60
+AI_MODERATION_TIMEOUT=60
 AI_AUTO_APPROVE=true
 ```
 
-Cài [Ollama Windows](https://docs.ollama.com/windows), tải model bằng `ollama pull qwen3:4b` hoặc model phù hợp bộ nhớ máy. Model phải hỗ trợ chat và JSON schema. Adapter gọi [Ollama /api/chat](https://docs.ollama.com/api/chat), `stream=false`, `think=false`. Ollama/model **không kèm ZIP và chưa cài ở máy này**.
+Cài [Ollama Windows](https://docs.ollama.com/windows), mở `chay-ai.bat` để bật dịch vụ trên `127.0.0.1:11434` và tải hai model, hoặc chạy `ollama pull qwen3:4b` và `ollama pull qwen3:1.7b`. Cần khoảng 4 GB cho hai model. Script nhận diện Ollama đã cài hoặc runtime local của workspace này; không sửa `.env`. Model phải hỗ trợ chat và JSON schema. Adapter gọi [Ollama /api/chat](https://docs.ollama.com/api/chat), `stream=false`, `think=false`, context 4096, giữ model 10 phút. Ollama/model **không kèm ZIP**.
+
+Trên máy thực hiện dự án đã bật Ollama v0.40.2 và nhận GPU RTX 3050 6 GB qua Vulkan. Hai model đang tải, **chưa có bằng chứng suy luận thật thành công**. Giữ provider `local` cho đến khi tải xong và kiểm tra model đạt. Runtime và dữ liệu model nằm ngoài Git, trong `work/ollama` của workspace.
 
 Ví dụ tìm sân OpenAI, duyệt bài Ollama:
 
@@ -128,7 +131,7 @@ OPENAI_API_KEY=
 AI_SEARCH_PROVIDER=openai
 AI_SEARCH_MODEL=gpt-4.1-mini
 AI_MODERATION_PROVIDER=ollama
-AI_MODERATION_MODEL=qwen3:4b
+AI_MODERATION_MODEL=qwen3:1.7b
 ```
 
 Có thể đặt `AI_MODERATION_PROVIDER=openai` và `AI_MODERATION_MODEL=gpt-4.1-mini` hoặc model khác hỗ trợ Structured Outputs. Adapter dùng Responses, JSON schema, `store=false`. [GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini) hỗ trợ Responses/Structured Outputs. Sau khi sửa `.env` chạy `php artisan optimize:clear`.
@@ -151,7 +154,9 @@ MOMO_REDIRECT_URL=https://ten-mien-cua-ban/#account
 MOMO_IPN_URL=https://ten-mien-cua-ban/api/v1/payments/momo/ipn
 ```
 
-Production dùng `https://payment.momo.vn/v2/gateway/api/create` và merchant production. IPN cần HTTPS công khai, localhost không nhận callback ngoài. Số tiền cọc do server tính; kiểm tra chữ ký/merchant/order/request/amount/extraData/transId. Redirect không tự ghi thanh toán; 9000 chưa coi là hoàn tất. Tiền đến muộn vào ví nếu lịch không còn hiệu lực.
+Đăng ký [MoMo for Business](https://business.momo.vn/), hoàn thiện [hồ sơ merchant](https://developers.momo.vn/v3/vi/docs/payment/onboarding/merchant-profile/). Trong **Thông tin tích hợp**, lấy Partner Code, Access Key, Secret Key của môi trường thử nghiệm. Dùng đúng bộ khóa và endpoint cùng môi trường. Chuyển sang chính thức cần MoMo duyệt merchant/UAT theo quy trình của họ.
+
+Production dùng `https://payment.momo.vn/v2/gateway/api/create` và merchant production. IPN cần HTTPS công khai, localhost không nhận callback ngoài. Số tiền cọc do server tính; kiểm tra chữ ký/merchant/order/request/amount/extraData/transId. Redirect không tự ghi thanh toán; 9000 chưa coi là hoàn tất. Cọc được ghi nhận một phần vào lịch; chỉ tiền dư hoặc tiền đến khi lịch không còn hiệu lực mới vào ví. Nút **Kiểm tra thanh toán MoMo** gọi API truy vấn giao dịch từ máy chủ, không coi redirect hoặc thao tác khách là đã thanh toán. Query và IPN dùng cùng cơ chế ghi tiền một lần.
 
 API hoàn giới hạn theo khoản gốc và phần chưa hoàn. Retry chỉ truy vấn kết quả, không gửi khoản hoàn thứ hai. Timeout/từ chối/chưa rõ giữ trạng thái chờ và chặn hoàn trùng; cần đối soát merchant trước khi xử lý tiếp. Không coi lỗi mạng là đã hoàn.
 
@@ -167,19 +172,82 @@ BANK_ACCOUNT_NAME=
 BANK_BIN=
 ```
 
-SePay gửi tới `https://ten-mien/api/v1/payments/bank/webhook`, header `Authorization: Apikey <khóa riêng>`. Chỉ ghi tiền đến đúng tài khoản, dedupe mã giao dịch, khớp mã lịch `BH-...`, tiền dư/muộn vào ví. Sai nội dung nằm ở hàng đối soát cho quản trị ghép lịch một lần. Quầy vẫn có thể ghi khoản ngân hàng thực nhận bằng thao tác thu tiền.
+Đăng ký [SePay](https://my.sepay.vn/), thêm tài khoản ngân hàng của bạn, mở **Webhook** và tạo webhook giao dịch **Có tiền vào**. Chọn xác thực **API Key**, đặt khóa riêng và điền cùng giá trị vào `SEPAY_WEBHOOK_KEY`; đây là khóa webhook, không phải token API quản lý tài khoản. Điền số tài khoản, tên chủ tài khoản và mã BIN đúng ngân hàng. Có thể bắt đầu bằng [Test Mode](https://docs.sepay.vn/test-mode.html).
+
+SePay gửi tới `https://ten-mien/api/v1/payments/bank/webhook`, header `Authorization: Apikey <khóa riêng>`. Chỉ ghi tiền đến đúng tài khoản, dedupe mã giao dịch, khớp mã lịch `BH-...`, tiền dư/muộn vào ví. Sai nội dung nằm ở hàng đối soát cho quản trị ghép lịch một lần. Quầy vẫn có thể ghi khoản ngân hàng thực nhận bằng thao tác thu tiền. Chi tiết lịch có VietQR với tiền cọc/còn thiếu và nội dung riêng, tự kiểm tra trạng thái mỗi 15 giây khi còn chờ thanh toán. QR dùng [quick link VietQR](https://www.vietqr.io/en/danh-sach-api/link-tao-ma-nhanh/), cần mạng; thông tin chuyển khoản dạng chữ vẫn hiển thị nếu ảnh không tải. Mẫu compact2 dành cho thử nghiệm; khi dùng quick link ở production cần mẫu riêng theo yêu cầu VietQR.
 
 ## Google, SMS, email và camera
 
-Google: điền `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, đăng ký callback `/auth/google/callback`. Kiểm tra state/email; tài khoản trùng email cần người đã đăng nhập liên kết. [Google OAuth](https://developers.google.com/identity/protocols/oauth2/web-server).
+**Đăng nhập Google**
 
-SMS: `SMS_ENABLED=true`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`. OTP do [Twilio Verify](https://www.twilio.com/docs/verify/api/verification-check) xác nhận; sau đó đăng nhập điện thoại + mật khẩu. Đổi số xóa xác thực cũ. Không giả lập OTP SMS trên giao diện.
+1. Mở [Google Cloud](https://console.cloud.google.com/auth/clients), tạo project.
+2. Trong **Google Auth Platform**, cấu hình Branding, Audience (External nếu dùng Gmail cá nhân) và thêm email của bạn vào Test users khi đang thử nghiệm.
+3. Mở **Clients → Create client → Web application**, đặt tên Badminton Hub.
+4. Thêm **Authorized redirect URI** chính xác: `http://127.0.0.1:8088/auth/google/callback`. Không thêm `#account`, không đổi `127.0.0.1` thành `localhost` nếu đang truy cập địa chỉ trên.
+5. Lấy Client ID và Client Secret của client vừa tạo, điền ba biến dưới vào `.env` riêng. Lưu secret lúc tạo theo hướng dẫn Google, không đưa JSON credentials vào Git.
 
-Email mặc định `MAIL_MAILER=log`, mã nằm ở `storage/logs/laravel.log`, chưa gửi hộp thư. Cấu hình SMTP để gửi thật. Mã hết hạn 10 phút, khóa sau 5 lần sai; token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
+```dotenv
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://127.0.0.1:8088/auth/google/callback
+```
+
+Ứng dụng chỉ yêu cầu `openid email profile`, không cần Gmail API. Tài khoản trùng email cần đăng nhập bằng mật khẩu rồi **Liên kết Google** trong Hồ sơ. Lỗi kết nối quay về đăng nhập với thông báo; không chuyển nhầm sang tài khoản khác khi liên kết. [Hướng dẫn Google OAuth](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred).
+
+**Email SMTP bằng Gmail**
+
+1. Trong tài khoản Google, bật **Xác minh 2 bước**.
+2. Mở [Mật khẩu ứng dụng](https://myaccount.google.com/apppasswords), tạo mật khẩu dành riêng cho Badminton Hub.
+3. Điền SMTP như bên dưới; `MAIL_PASSWORD` là mật khẩu ứng dụng, không dùng mật khẩu đăng nhập Gmail. Nếu nhà cung cấp khác, dùng thông tin SMTP của họ.
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=dia-chi-gmail-cua-ban
+MAIL_PASSWORD=mat-khau-ung-dung-cua-ban
+MAIL_FROM_ADDRESS=dia-chi-gmail-cua-ban
+MAIL_FROM_NAME="Badminton Hub"
+MAIL_TIMEOUT=15
+```
+
+Các giá trị `dia-chi-...`/`mat-khau-...` chỉ là chỗ cần thay, không phải thông tin dùng được. [Google giải thích mật khẩu ứng dụng](https://support.google.com/accounts/answer/185833): cần xác minh 2 bước, một số tài khoản tổ chức/Advanced Protection không có lựa chọn này. [Cấu hình Gmail SMTP](https://support.google.com/a/answer/176600).
+
+Mặc định `MAIL_MAILER=log` **không bật gửi OTP/khôi phục và không tạo mã sống trong nhật ký**. Chỉ bật luồng gửi thư khi cấu hình SMTP. Mã hết hạn 10 phút, khóa sau 5 lần sai; gửi lỗi thu hồi mã, token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
+
+**SMS OTP qua Twilio Verify**
+
+1. Đăng ký [Twilio Console](https://console.twilio.com/), lấy **Account SID** và **Auth Token**.
+2. Vào **Verify → Services → Create Service**, lấy **Service SID** bắt đầu bằng `VA`, cấu hình mã 6 chữ số.
+3. Bật kênh SMS và kiểm tra quyền gửi đến Việt Nam (Verify Geo Permissions). Tài khoản trial chỉ gửi được theo giới hạn thử nghiệm của Twilio; có thể cần xác minh số nhận/nâng cấp trước khi gửi thật.
+4. Điền cấu hình, sau đó vào Hồ sơ, gửi mã tới chính số điện thoại của bạn và nhập mã nhận được.
+
+```dotenv
+SMS_ENABLED=true
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_VERIFY_SERVICE_SID=
+```
+
+[Twilio Verify](https://www.twilio.com/docs/verify/quickstarts/go) gửi/kiểm tra OTP thật, số Việt Nam được chuyển sang dạng `+84`. Có 60 giây chờ gửi lại, tối đa 5 lần kiểm tra trong 10 phút. Đổi số xóa xác thực cũ. Sau xác thực có thể đăng nhập điện thoại + mật khẩu. Không giả lập OTP trên giao diện.
+
+**Kiểm tra sau khi điền cấu hình**
+
+```powershell
+php artisan optimize:clear
+php artisan hub:integrations
+php artisan hub:integrations --probe
+php artisan hub:integrations --email-to=email-nhan-thu-cua-ban
+```
+
+Lệnh mặc định chỉ đọc trạng thái, không lộ khóa và không gọi dịch vụ. `--probe` gọi thật hai model và chỉ báo đạt khi dùng kết quả model đúng; `--email-to` gửi một thư SMTP tới địa chỉ bạn chỉ định. SMTP chấp nhận thư chưa chứng minh hộp thư nhận được; kiểm tra Inbox/Spam. Lệnh trả mã lỗi khi kiểm tra không đạt.
+
+Quản trị mở **Quản lý → Vận hành & nội dung → Kết nối dịch vụ** để xem biến còn thiếu, hướng dẫn lấy thông tin và kiểm tra model. **Đã điền cấu hình** chỉ là đủ trường cần thiết, không phải bằng chứng dịch vụ đã kết nối thành công. MoMo/SePay cần endpoint HTTPS mà dịch vụ truy cập được để thử IPN/webhook; `127.0.0.1` của bạn không nhận thông báo từ máy chủ bên ngoài. Bản này chưa xuất bản công khai.
 
 Camera QR chỉ bật sau thao tác quét và cho phép, cần HTTPS hoặc localhost. Vẫn có ô nhập/dán QR. Một số ảnh/font nguồn cần mạng; hình sân ở trang chủ dựng SVG/CSS.
 
-**AI thực, OAuth, SMS, SMTP, SePay và MoMo chưa được chạy với dịch vụ thật** vì chưa có model/khóa/merchant. Chưa xuất bản lên hosting công khai.
+**Suy luận AI thật, OAuth, SMS, SMTP, SePay và MoMo chưa được xác minh với dịch vụ thật**: model còn tải và chưa có khóa/merchant. Bộ kết nối có kiểm thử bằng phản hồi giả lập; không đồng nghĩa giao dịch, SMS hoặc email thật đã chạy. Chưa xuất bản lên hosting công khai.
 
 ## Phát triển và kiểm thử
 

@@ -7,6 +7,7 @@ use App\BookingService;
 use App\FeatureService;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BranchResource;
+use App\IntegrationStatus;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CommunityPost;
@@ -44,7 +45,7 @@ class HubController extends Controller
         $today = Booking::whereDate('starts_at', now()->toDateString())->where('status', '!=', 'cancelled')->get(['status', 'starts_at']);
         $stats = ['members' => User::where('role', 'customer')->where('active', true)->count(), 'bookings' => $today->count(), 'checkins' => $today->whereIn('status', ['checked_in', 'completed'])->count(), 'playing' => $today->where('status', 'checked_in')->count(), 'hours' => collect(range(6, 19))->map(fn ($h) => $today->filter(fn ($b) => $b->starts_at->hour === $h)->count())->all()];
 
-        return response()->json(['data' => ['stats' => $stats, 'user' => $r->user(), 'branches' => BranchResource::collection($branches), 'plans' => MembershipPlan::where('active', true)->get(), 'ratings' => $ratings, 'momo_enabled' => app(MomoService::class)->enabled(), 'google_enabled' => (bool) config('integrations.google.client_id'), 'sms_enabled' => (bool) config('integrations.sms.enabled'), 'bank' => config('integrations.bank.enabled') ? collect(config('integrations.bank'))->only(['account', 'name', 'bank_bin'])->all() : null, 'permissions' => $r->user() ? collect(AccessService::PERMISSIONS)->mapWithKeys(fn ($p) => [$p => app(AccessService::class)->allows($r->user(), $p)])->all() : [], 'managed_branch_ids' => $r->user() ? app(AccessService::class)->branches($r->user()) : [], 'membership' => $r->user() ? Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first() : null]]);
+        return response()->json(['data' => ['stats' => $stats, 'user' => $r->user(), 'branches' => BranchResource::collection($branches), 'plans' => MembershipPlan::where('active', true)->get(), 'ratings' => $ratings, 'momo_enabled' => app(MomoService::class)->enabled(), 'google_enabled' => app(IntegrationStatus::class)->ready('google'), 'sms_enabled' => app(IntegrationStatus::class)->ready('sms'), 'email_enabled' => app(IntegrationStatus::class)->emailEnabled(), 'auth_notice' => $r->session()->pull('auth_notice'), 'bank' => app(IntegrationStatus::class)->ready('sepay') ? collect(config('integrations.bank'))->only(['account', 'name', 'bank_bin'])->all() : null, 'permissions' => $r->user() ? collect(AccessService::PERMISSIONS)->mapWithKeys(fn ($p) => [$p => app(AccessService::class)->allows($r->user(), $p)])->all() : [], 'managed_branch_ids' => $r->user() ? app(AccessService::class)->branches($r->user()) : [], 'membership' => $r->user() ? Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first() : null]]);
     }
 
     public function account(Request $r): JsonResponse

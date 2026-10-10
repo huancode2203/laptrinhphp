@@ -5,7 +5,7 @@ export default function AuthScreen({ done }: { done: () => void }) {
     const { refresh, data } = useHub();
     const [mode, setMode] = useState("login"),
         [d, set] = useState<Record<string, string>>({}),
-        [error, setError] = useState(""),
+        [error, setError] = useState(data?.auth_notice ?? ""),
         [busy, setBusy] = useState(false),
         [token, setToken] = useState("");
     function field(name: string, label: string, type = "text") {
@@ -190,6 +190,12 @@ export default function AuthScreen({ done }: { done: () => void }) {
                                 : "Chưa có tài khoản? Đăng ký"}
                         </button>
                         <button
+                            disabled={!data?.email_enabled}
+                            title={
+                                !data?.email_enabled
+                                    ? "Vui lòng liên hệ hỗ trợ để khôi phục tài khoản."
+                                    : undefined
+                            }
                             onClick={() => {
                                 setMode(mode === "send" ? "login" : "send");
                                 setError("");

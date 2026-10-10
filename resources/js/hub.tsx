@@ -95,6 +95,7 @@ export function HubProvider({ children }: { children: ReactNode }) {
         const [b, p] = await Promise.all([api("hub"), api("community/posts")]);
         hydrate(b.data, p.data.data ?? p.data);
         setData(b.data);
+        if (b.data.auth_notice) toast(b.data.auth_notice);
         setFailure("");
     }
     function toast(s: string) {

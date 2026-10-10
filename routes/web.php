@@ -90,6 +90,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::delete('waitlist/{entry}', [CommerceController::class, 'cancelWaitlist']);
         Route::post('payments/momo', [MomoController::class, 'create'])->middleware('throttle:book');
         Route::get('payments/momo/{attempt}', [MomoController::class, 'status']);
+        Route::post('payments/momo/{attempt}/sync', [MomoController::class, 'sync'])->middleware('throttle:sensitive');
         Route::post('community/posts', [CommunityController::class, 'save'])->middleware('throttle:book');
         Route::put('community/posts/{post}', [CommunityController::class, 'save']);
         Route::post('community/posts/{post}/join', [CommunityController::class, 'join']);
@@ -157,6 +158,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         });
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
 
+            Route::get('integrations', [IntegrationController::class, 'integrations']);
+            Route::post('integrations/ai-check', [IntegrationController::class, 'probeAi'])->middleware('throttle:sensitive');
             Route::get('hub', [HubController::class, 'admin']);
             Route::get('features', [FeatureController::class, 'admin']);
             Route::post('bank-transactions/{transaction}/match', [IntegrationController::class, 'bankMatch'])->whereNumber('transaction');

@@ -25,9 +25,16 @@ class MomoController extends Controller
         return response()->json(['data' => $attempt]);
     }
 
+    public function sync(Request $r, PaymentAttempt $attempt, MomoService $m): JsonResponse
+    {
+        abort_unless($attempt->user_id === $r->user()->id, 403);
+
+        return response()->json(['data' => $m->sync($attempt)]);
+    }
+
     public function ipn(Request $r, MomoService $m): Response
     {
-        $r->validate(['amount' => ['required', 'integer'], 'transId' => ['required'], 'resultCode' => ['required', 'integer'], 'signature' => ['required', 'string', 'size:64']]);
+        $r->validate(['amount' => ['required', 'integer'], 'transId' => ['required', 'integer', 'min:0'], 'resultCode' => ['required', 'integer'], 'signature' => ['required', 'string', 'size:64']]);
         $m->callback($r->all());
 
         return response()->noContent();

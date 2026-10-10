@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\IntegrationStatus;
 use App\Mail\RecoveryCodeMail;
 use App\Models\AuthCode;
 use App\Models\User;
@@ -17,6 +18,7 @@ class RecoveryController extends Controller
 {
     public function send(Request $r): JsonResponse
     {
+        abort_unless(app(IntegrationStatus::class)->emailEnabled(), 503, 'Email xác thực hiện chưa khả dụng. Vui lòng liên hệ hỗ trợ.');
         $d = $r->validate(['email' => ['required', 'email', 'max:255']]);
         $user = User::where('email', $d['email'])->where('active', true)->first();
         if ($user) {

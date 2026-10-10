@@ -47,6 +47,21 @@ class MomoPaymentTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_receipt_lists_pending_attempts_separately_and_restricts_access_to_owner(): void
+    {
+        $booking = Booking::factory()->create(['user_id' => $this->customer->id]);
+        $pending = $this->attempt(['booking_id' => $booking->id, 'purpose' => 'booking']);
+        $paid = $this->attempt(['booking_id' => $booking->id, 'purpose' => 'booking', 'status' => 'paid']);
+        $url = '/api/v1/bookings/'.$booking->id.'/receipt';
+        $this->actingAs($this->customer)->getJson($url)->assertOk()
+            ->assertJsonCount(1, 'data.pending_payment_attempts')
+            ->assertJsonPath('data.pending_payment_attempts.0.id', $pending->id)
+            ->assertJsonMissingPath('data.pending_payment_attempts.0.pay_url')
+            ->assertJsonCount(1, 'data.payment_attempts')
+            ->assertJsonPath('data.payment_attempts.0.id', $paid->id);
+        $this->actingAs(User::factory()->create())->getJson($url)->assertForbidden();
+    }
+
     public function test_create_signature_server_amount_and_retry_reuses_one_attempt(): void
     {
         $court = Court::factory()->create();
@@ -62,7 +77,7 @@ class MomoPaymentTest extends TestCase
                 $keys[$k] = $r[$k];
             }
 
-return $r['signature'] === app(MomoService::class)->sign($keys) && $r['amount'] === 100000;
+            return $r['signature'] === app(MomoService::class)->sign($keys) && $r['amount'] === 100000;
         });
         $this->assertEquals(0, Booking::find($b)->paid_amount);
     }
@@ -113,6 +128,72 @@ return $r['signature'] === app(MomoService::class)->sign($keys) && $r['amount'] 
         $this->postJson('/api/v1/payments/momo/ipn', $this->signedCallback($b, ['transId' => '222222']))->assertNoContent();
         $this->assertEquals('credited', $b->refresh()->status);
         $this->assertEquals(100000, $this->customer->refresh()->wallet_balance);
-        $this->assertEquals(0,$booking->refresh()->paid_amount);
+        $this->assertEquals(0, $booking->refresh()->paid_amount);
+    }
+
+    public function test_deposit_callback_records_partial_booking_payment_and_duplicate_is_harmless(): void
+    {
+        $booking = Booking::factory()->create(['user_id' => $this->customer->id, 'total_amount' => 200000, 'court_amount' => 200000, 'deposit_amount' => 60000, 'paid_amount' => 0]);
+        $attempt = $this->attempt(['booking_id' => $booking->id, 'purpose' => 'booking', 'amount' => 60000, 'extra_data' => base64_encode(json_encode(['purpose' => 'booking', 'deposit_only' => true]))]);
+        $callback = $this->signedCallback($attempt);
+        $this->postJson('/api/v1/payments/momo/ipn', $callback)->assertNoContent();
+        $this->postJson('/api/v1/payments/momo/ipn', $callback)->assertNoContent();
+        $this->assertSame(60000, $booking->fresh()->paid_amount);
+        $this->assertSame(0, $this->customer->fresh()->wallet_balance);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('wallet_entries', 0);
+    }
+
+    public function test_momo_money_after_another_payment_only_credits_the_excess_to_wallet(): void
+    {
+        $booking = Booking::factory()->create(['user_id' => $this->customer->id, 'total_amount' => 100000, 'court_amount' => 100000, 'paid_amount' => 70000]);
+        $attempt = $this->attempt(['booking_id' => $booking->id, 'purpose' => 'booking']);
+        $callback = $this->signedCallback($attempt);
+        $this->postJson('/api/v1/payments/momo/ipn', $callback)->assertNoContent();
+        $this->postJson('/api/v1/payments/momo/ipn', $callback)->assertNoContent();
+        $this->assertSame(100000, $booking->fresh()->paid_amount);
+        $this->assertSame(70000, $this->customer->fresh()->wallet_balance);
+        $this->assertDatabaseHas('payments', ['booking_id' => $booking->id, 'amount' => 30000]);
+        $this->assertDatabaseCount('wallet_entries', 1);
+    }
+
+    public function test_provider_query_recovers_a_missing_ipn_and_later_ipn_does_not_double_credit(): void
+    {
+        $attempt = $this->attempt();
+        Http::fake(['*/query' => fn ($r) => Http::response(['partnerCode' => 'TEST', 'orderId' => $r['orderId'], 'requestId' => $r['requestId'], 'amount' => $attempt->amount, 'extraData' => $attempt->extra_data, 'transId' => 123456789, 'resultCode' => 0])]);
+        $this->actingAs($this->customer)->postJson('/api/v1/payments/momo/'.$attempt->id.'/sync')->assertOk()->assertJsonPath('data.status', 'paid');
+        $this->postJson('/api/v1/payments/momo/ipn', $this->signedCallback($attempt))->assertNoContent();
+        $this->postJson('/api/v1/payments/momo/'.$attempt->id.'/sync')->assertOk();
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($r) => $r['signature'] === app(MomoService::class)->sign(['accessKey' => 'access', 'partnerCode' => 'TEST', 'orderId' => $attempt->order_id, 'requestId' => $r['requestId']]));
+        $this->assertSame(100000, $this->customer->fresh()->wallet_balance);
+        $this->assertDatabaseCount('wallet_entries', 1);
+    }
+
+    public function test_provider_query_checks_owner_amount_and_pending_results_never_credit_money(): void
+    {
+        $attempt = $this->attempt();
+        $url = '/api/v1/payments/momo/'.$attempt->id.'/sync';
+        $this->actingAs(User::factory()->create())->postJson($url)->assertForbidden();
+        Http::assertNothingSent();
+        Http::fake(['*/query' => function ($r) use ($attempt) {
+            static $calls = 0;
+            $calls++;
+
+            return Http::response(['partnerCode' => 'TEST', 'orderId' => $r['orderId'], 'requestId' => $r['requestId'], 'amount' => 1, 'extraData' => $attempt->extra_data, 'transId' => 123456789, 'resultCode' => $calls === 1 ? 0 : 9000]);
+        }]);
+        $this->actingAs($this->customer)->postJson($url)->assertStatus(502);
+        $this->postJson($url)->assertOk()->assertJsonPath('data.status', 'pending');
+        $this->assertSame(0, $this->customer->fresh()->wallet_balance);
+    }
+
+    public function test_zero_transaction_and_different_transaction_after_success_are_rejected(): void
+    {
+        $attempt = $this->attempt();
+        $this->postJson('/api/v1/payments/momo/ipn', $this->signedCallback($attempt, ['transId' => '0']))->assertStatus(400);
+        $this->assertDatabaseCount('wallet_entries', 0);
+        $this->postJson('/api/v1/payments/momo/ipn', $this->signedCallback($attempt))->assertNoContent();
+        $this->postJson('/api/v1/payments/momo/ipn', $this->signedCallback($attempt, ['transId' => '222222']))->assertConflict();
+        $this->assertDatabaseCount('wallet_entries', 1);
     }
 }

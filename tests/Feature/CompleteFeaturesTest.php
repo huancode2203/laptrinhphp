@@ -335,7 +335,9 @@ class CompleteFeaturesTest extends TestCase
         $this->get('/auth/google')->assertRedirect();
         Http::fake(['https://oauth2.googleapis.com/token' => Http::response(['access_token' => 'token']), 'https://openidconnect.googleapis.com/v1/userinfo' => Http::response(['sub' => 'google-id', 'email' => $this->customer->email, 'email_verified' => true, 'name' => 'Player'])]);
         $this->withSession(['google_oauth' => ['state' => 'safe-state', 'created' => now()->timestamp, 'user_id' => null]])->get('/auth/google/callback?state=wrong&code=x')->assertForbidden();
-        $this->withSession(['google_oauth' => ['state' => 'safe-state', 'created' => now()->timestamp, 'user_id' => null]])->get('/auth/google/callback?state=safe-state&code=x')->assertStatus(409);
+        $this->withSession(['google_oauth' => ['state' => 'safe-state', 'created' => now()->timestamp, 'user_id' => null]])->get('/auth/google/callback?state=safe-state&code=x')->assertRedirect('/#auth');
+        $this->assertGuest();
+        $this->assertStringContainsString('Email đã có tài khoản', session('auth_notice'));
         $this->assertNull($this->customer->fresh()->google_sub);
     }
 
