@@ -39,7 +39,16 @@ export default function AdvancedManagement({
         [ad, setAd] = useState<Row | null>(null),
         [users, setUsers] = useState<Row[]>([]),
         [reviews, setReviews] = useState<Row[]>([]),
-        [tab, setTab] = useState("support"),
+        [tab, setTab] = useState(() => {
+            try {
+                return (
+                    sessionStorage.getItem("hub:operations:" + data!.user.id) ??
+                    "support"
+                );
+            } catch {
+                return "support";
+            }
+        }),
         [editing, setEditing] = useState<Row | null>(null),
         [assign, setAssign] = useState<Row | null>(null),
         [assigned, setAssigned] = useState<number[]>([]);
@@ -68,6 +77,11 @@ export default function AdvancedManagement({
     useEffect(() => {
         if (nav.length && !nav.some(([id]) => id === tab)) setTab(nav[0][0]);
     }, [JSON.stringify(nav)]);
+    useEffect(() => {
+        try {
+            sessionStorage.setItem("hub:operations:" + data!.user.id, tab);
+        } catch {}
+    }, [tab]);
     async function load() {
         const r = await api("manage/features?branch_id=" + branch);
         setExtras(r.data);

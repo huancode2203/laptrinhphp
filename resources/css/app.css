@@ -2209,10 +2209,90 @@ input[type="radio"] {
     position: sticky;
     top: 80px;
     height: calc(100vh - 80px);
-    overflow-y: auto;
+    overflow: hidden;
     background: #1c3a2c;
     border-radius: 0 24px 0 0;
     padding: 25px 17px;
+}
+.management-nav {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    margin-top: 12px;
+}
+.management-nav .sidebar-link {
+    width: 100%;
+    font-size: 12px;
+}
+.management-nav-section {
+    margin: 14px 10px 7px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #a0b8a6;
+}
+.management-nav-search {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #526e5a;
+    border-radius: 10px;
+    color: white;
+    background: #294737;
+    font-size: 12px;
+}
+.management-nav-search::placeholder {
+    color: #bbcdbd;
+}
+.management-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid #f4c7c1;
+    background: #fff3f0;
+    color: #9f3025;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+.booking-resume {
+    max-width: 1180px;
+    margin: 18px auto 0;
+    padding: 0 20px;
+}
+.booking-resume > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 15px 18px;
+    margin-bottom: 8px;
+    border: 1px solid #d1e3a8;
+    border-radius: 14px;
+    background: #f0f8df;
+}
+.booking-resume b {
+    font-size: 13px;
+}
+.booking-resume small {
+    display: block;
+    margin-top: 4px;
+    color: #52674a;
+    font-size: 12px;
+}
+.booking-resume .btn,
+.booking-resume .btn-outline {
+    font-size: 12px;
+}
+@media (max-width: 600px) {
+    .booking-resume {
+        padding: 0 16px;
+    }
+    .booking-resume button {
+        width: 100%;
+    }
 }
 .management-sidebar .brand-wordmark {
     font-size: 18px;
@@ -2993,6 +3073,22 @@ input[type="radio"] {
     position: relative;
     min-height: 138px;
     padding-top: 23px;
+}
+@media (max-width: 639px) {
+    .management-shell .metric-card {
+        min-height: 118px;
+        padding: 18px;
+    }
+    .management-shell .metric-card .metric-icon {
+        top: 13px;
+        right: 12px;
+    }
+    .management-shell main .metric-card h2.text-3xl {
+        font-size: 18px;
+    }
+    .management-shell main .metric-card.metric-featured h2.text-3xl {
+        font-size: 18px;
+    }
 }
 .metric-card > p {
     padding-right: 30px;

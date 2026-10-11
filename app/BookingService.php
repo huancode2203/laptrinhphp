@@ -27,7 +27,7 @@ class BookingService
         $start = CarbonImmutable::parse($startsAt, $zone)->setTimezone($zone);
         $end = CarbonImmutable::parse($endsAt, $zone)->setTimezone($zone);
         $minutes = (int) $start->diffInMinutes($end, false);
-        if ($start->lt(now()->startOfMinute()) || ! $start->isSameDay($end) || $minutes < 30 || $minutes > 360 || $start->minute % 30 !== 0 || $end->minute % 30 !== 0 || $start->second !== 0 || $end->second !== 0) {
+        if ($start->lt(now()->startOfMinute()) || ! $start->isSameDay($end) || $minutes < 30 || $minutes > 360 || $start->minute % 30 !== 0 || $end->minute % 30 !== 0 || $start->second !== 0 || $end->second !== 0 || $start->microsecond !== 0 || $end->microsecond !== 0) {
             throw ValidationException::withMessages(['starts_at' => 'Chọn lịch tương lai, theo bước 30 phút và tối đa 6 giờ trong một ngày.']);
         }
 

@@ -16,6 +16,7 @@ use App\Models\Review;
 use App\Models\Service;
 use App\Models\User;
 use App\Notifications\HubNotification;
+use App\Rules\VietnamesePhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -207,6 +208,7 @@ class FeatureController extends Controller
 
     public function manage(Request $r, AccessService $access): JsonResponse
     {
+        $r->validate(['branch_id' => 'sometimes|integer|exists:branches,id']);
         $branch = $r->integer('branch_id', $r->user()->branch_id ?? 0);
         abort_unless($access->manages($r->user(), $branch), 403);
 
@@ -223,12 +225,12 @@ class FeatureController extends Controller
         $d = $r->validate(['branch_id' => 'required|integer|exists:branches,id', 'court_id' => 'nullable|integer|exists:courts,id', 'name' => 'required|string|max:100', 'weekday' => 'nullable|integer|between:0,6', 'date' => 'nullable|date_format:Y-m-d', 'from_minute' => 'required|integer|between:0,1410|multiple_of:30', 'to_minute' => 'required|integer|between:30,1440|multiple_of:30|gt:from_minute', 'hourly_rate' => 'required|integer|between:1000,10000000', 'priority' => 'required|integer|between:0,1000', 'active' => 'required|boolean']);
         app(BookingService::class)->assertManage($r->user(), $d['branch_id']);
         if (! empty($d['court_id'])) {
-            abort_unless(Court::findOrFail($d['court_id'])->branch_id === $d['branch_id'], 422);
+            abort_unless(Court::findOrFail($d['court_id'])->branch_id === (int) $d['branch_id'], 422);
         }
         if ($rule) {
             $old = DB::table('pricing_rules')->find($rule);
             abort_unless($old, 404);
-            abort_unless($old->branch_id === $d['branch_id'], 422);
+            abort_unless((int) $old->branch_id === (int) $d['branch_id'], 422);
             DB::table('pricing_rules')->where('id', $rule)->update($d + ['updated_at' => now()]);
         } else {
             $rule = DB::table('pricing_rules')->insertGetId($d + ['created_at' => now(), 'updated_at' => now()]);
@@ -245,7 +247,7 @@ class FeatureController extends Controller
         if ($coach) {
             $old = DB::table('coaches')->find($coach);
             abort_unless($old, 404);
-            abort_unless($old->branch_id === $d['branch_id'], 422);
+            abort_unless((int) $old->branch_id === (int) $d['branch_id'], 422);
             DB::table('coaches')->where('id', $coach)->update($d + ['updated_at' => now()]);
         } else {
             $coach = DB::table('coaches')->insertGetId($d + ['created_at' => now(), 'updated_at' => now()]);
@@ -281,7 +283,7 @@ class FeatureController extends Controller
 
     public function customer(Request $r): JsonResponse
     {
-        $d = $r->validate(['branch_id' => 'required|integer|exists:branches,id', 'name' => 'required|string|max:100', 'phone' => 'required|string|max:30', 'email' => 'nullable|email|unique:users,email']);
+        $d = $r->validate(['branch_id' => 'required|integer|exists:branches,id', 'name' => 'required|string|max:100', 'phone' => ['required', 'string', 'max:30', new VietnamesePhone], 'email' => 'nullable|email|unique:users,email']);
         app(BookingService::class)->assertManage($r->user(), $d['branch_id']);
         abort_if(User::where('phone', $d['phone'])->exists(), 422, 'Số điện thoại đã có tài khoản. Hãy tìm khách hiện có.');
         $user = User::create(['name' => $d['name'], 'phone' => $d['phone'], 'email' => $d['email'] ?? 'walkin-'.Str::uuid().'@walkin.invalid', 'password' => Str::random(50)]);
@@ -338,7 +340,7 @@ class FeatureController extends Controller
 
     public function assignments(Request $r, User $user): JsonResponse
     {
-        $d = $r->validate(['branch_ids' => 'present|array|max:30', 'branch_ids.*' => 'integer|distinct|exists:branches,id']);
+        $d = $r->validate(['branch_ids' => 'present|array|list|max:30', 'branch_ids.*' => 'integer|distinct|exists:branches,id']);
         abort_unless(in_array($user->role, ['manager', 'staff', 'cashier'], true), 422);
         DB::transaction(function () use ($r, $user, $d): void {
             DB::table('user_branches')->where('user_id', $user->id)->delete();

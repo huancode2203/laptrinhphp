@@ -49,8 +49,6 @@ export default function CourtMatrix({
 
     const drag = useRef<Row | null>(null);
     const anchor = useRef<Row | null>(null);
-    const pick = useRef(onPick);
-    pick.current = onPick;
     useEffect(() => {
         setRange(null);
         anchor.current = null;
@@ -88,8 +86,12 @@ export default function CourtMatrix({
             if (drag.current) {
                 const { court, start, end } = drag.current;
                 drag.current = null;
-                if (start !== end && valid(court, start, end))
-                    pick.current(selection(court, start, end));
+                if (valid(court, start, end))
+                    setRange({
+                        court_id: court.id,
+                        first: Math.min(start, end),
+                        last: Math.max(start, end),
+                    });
             }
         }
         function cancel() {
@@ -315,9 +317,6 @@ export default function CourtMatrix({
                                                                 i,
                                                             ),
                                                         });
-                                                        onPick(
-                                                            selection(c, a, i),
-                                                        );
                                                         anchor.current = {
                                                             court: c,
                                                             start: i,

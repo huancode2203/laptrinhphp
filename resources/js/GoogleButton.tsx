@@ -6,11 +6,11 @@ export default function GoogleButton({
     after,
 }: {
     linked?: boolean;
-    after: () => Promise<void> | void;
+    after: (role?: string) => Promise<void> | void;
 }) {
     const { data, run, toast, loading } = useHub();
     useEffect(() => {
-        if (data?.firebase) import("./firebaseGoogle");
+        if (data?.firebase) void import("./firebaseGoogle").catch(() => {});
     }, [data?.firebase?.projectId]);
     const label = linked ? "Liên kết Google" : "Tiếp tục với Google";
     const mark = (
@@ -50,7 +50,7 @@ export default function GoogleButton({
                     const { googleLogin } = await import("./firebaseGoogle");
                     const response = await googleLogin(data.firebase);
                     toast(response.message);
-                    await after();
+                    await after(response.data?.role);
                 })
             }
         >

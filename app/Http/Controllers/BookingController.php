@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\BookingService;
 use App\CommerceService;
+use App\FeatureService;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
@@ -19,8 +20,12 @@ class BookingController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $data = $request->validate(['status' => ['sometimes', Rule::in(['confirmed', 'checked_in', 'completed', 'cancelled'])]]);
+        $data = $request->validate(['status' => ['sometimes', Rule::in(['confirmed', 'checked_in', 'completed', 'cancelled'])], 'pending' => ['sometimes', 'boolean'], 'page' => ['sometimes', 'integer', 'between:1,100000']]);
         $query = Booking::query()->where('user_id', $request->user()->id);
+        app(FeatureService::class)->expireBookings();
+        if ($request->boolean('pending')) {
+            $query->where('status', 'confirmed')->where('ends_at', '>', now())->whereColumn('paid_amount', '<', 'total_amount')->orderBy('payment_expires_at');
+        }
         if (isset($data['status'])) {
             $query->where('status', $data['status']);
         }

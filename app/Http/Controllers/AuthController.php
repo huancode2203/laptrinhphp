@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CourtHold;
 use App\Models\User;
+use App\Rules\VietnamesePhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['nullable', 'string', 'max:30', new VietnamesePhone],
             'skill_level' => ['sometimes', 'string', 'max:40'], 'public_profile' => ['sometimes', 'boolean'],
             'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'],
         ]);

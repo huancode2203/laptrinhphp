@@ -82,7 +82,7 @@ class CommunityController extends Controller
             abort_unless($post->user_id === $request->user()->id && $post->status !== 'hidden', 403);
         }
         $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id'], 'title' => ['required', 'string', 'max:150'], 'content' => ['required', 'string', 'max:5000'], 'type' => ['required', Rule::in(['Tìm người đánh', 'Tìm đối thủ', 'Tuyển thành viên', 'Chia sẻ', 'Hỏi đáp', 'Giao lưu'])], 'skill_level' => ['required', 'string', 'max:40'], 'starts_at' => ['required', 'date', 'after:now'], 'capacity' => ['required', 'integer', 'between:1,100'], 'status' => ['sometimes', Rule::in(['open', 'closed'])]]);
-        $images = $request->validate(['images' => 'sometimes|array|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
+        $images = $request->validate(['images' => 'sometimes|array|list|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
         app(FeatureService::class)->media($images['images'] ?? [], $request->user());
         $data = array_merge($data, $images);
         $moderation = app(ModerationService::class)->inspect($data['title']."\n".$data['content']);
@@ -298,7 +298,10 @@ class CommunityController extends Controller
             $peers = $conversation->members()->where('users.id', '!=', $request->user()->id)->pluck('users.id');
             abort_if(DB::table('blocked_users')->where(fn ($q) => $q->where('user_id', $request->user()->id)->whereIn('blocked_id', $peers))->orWhere(fn ($q) => $q->whereIn('user_id', $peers)->where('blocked_id', $request->user()->id))->exists(), 403, 'Không thể gửi tin nhắn cho tài khoản đã chặn.');
         }
-        $data = $request->validate(['request_key' => ['required', 'uuid'], 'content' => ['required', 'string', 'max:2000'], 'attachments' => 'sometimes|array|max:4', 'attachments.*' => 'integer|distinct|exists:media_uploads,id']);
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'content' => ['required', 'string', 'max:2000'], 'attachments' => 'sometimes|array|list|max:4', 'attachments.*' => 'integer|distinct|exists:media_uploads,id']);
+        if (isset($data['attachments'])) {
+            $data['attachments'] = array_map('intval', $data['attachments']);
+        }
         app(FeatureService::class)->media($data['attachments'] ?? [], $request->user(), false);
         $message = DB::transaction(function () use ($request, $conversation, $data): ChatMessage {
             $conversation = Conversation::query()->lockForUpdate()->findOrFail($conversation->id);

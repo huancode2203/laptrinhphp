@@ -1,7 +1,8 @@
 import DemoCheckout from "./DemoCheckout";
+import BookingResume from "./BookingResume";
 import CourtMatrix from "./CourtMatrix";
 import { ContentSupport, Coaching } from "./FeaturePages";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import CustomerHome, { CourtIllustration } from "./CustomerHome";
 import SiteHeader from "./SiteHeader";
 import BookingFlow from "./BookingFlow";
@@ -156,6 +157,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
 }
 export default function App() {
     const { data, run, refresh } = useHub();
+    const loggingOut = useRef(false);
     const user = data!.user;
     const routePage = () => {
         const name = location.hash.slice(1).split("/")[0];
@@ -180,7 +182,7 @@ export default function App() {
         [branch, setBranch] = useState(
             Number(location.hash.split("/")[1]) || BRANCHES[0]?.id,
         ),
-        [afterAuth, setAfterAuth] = useState("account");
+        [afterAuth, setAfterAuth] = useState("");
     useEffect(() => {
         const cb = () => {
             setPage(routePage());
@@ -196,7 +198,7 @@ export default function App() {
         location.hash = p + (branchId ? "/" + branchId : "");
         window.scrollTo(0, 0);
     }
-    function auth(next = "account") {
+    function auth(next = "") {
         setAfterAuth(next);
         go("auth");
     }
@@ -208,18 +210,42 @@ export default function App() {
         }
         go("booking");
     }
+    function signInDestination(role?: string) {
+        return (
+            afterAuth ||
+            (["manager", "admin", "staff", "cashier"].includes(role ?? "")
+                ? "manage"
+                : "account")
+        );
+    }
     useEffect(() => {
-        if (user && page === "auth") go(afterAuth);
+        if (user && routePage() === "auth") go(signInDestination(user.role));
     }, [user?.id]);
     useEffect(() => {
-        const expired = () => {
-            setAfterAuth(page);
-            go("auth");
-            refresh();
+        let checking = false;
+        let live = true;
+        const expired = async () => {
+            if (!live || loggingOut.current || !user || checking) return;
+            checking = true;
+            try {
+                // A late response from an old request must not discard a new session.
+                const current = await api("hub");
+                if (!live || loggingOut.current || current.data.user) return;
+                setAfterAuth(location.hash.slice(1) || "account");
+                go("auth");
+                await refresh();
+            } catch {
+                /* Keep the current screen when the server cannot be reached. */
+            } finally {
+                checking = false;
+            }
         };
         window.addEventListener("hub:auth-expired", expired);
-        return () => window.removeEventListener("hub:auth-expired", expired);
-    }, [page]);
+        return () => {
+            live = false;
+            window.removeEventListener("hub:auth-expired", expired);
+        };
+    }, [page, user?.id]);
     const manager =
         user && ["manager", "admin", "staff", "cashier"].includes(user.role);
     return (
@@ -232,12 +258,23 @@ export default function App() {
                 manage={!!manager}
                 logout={() =>
                     run(async () => {
-                        await api("logout", "POST");
-                        await refresh();
-                        go("home");
+                        loggingOut.current = true;
+                        try {
+                            await api("logout", "POST");
+                            await refresh();
+                            go("home");
+                        } finally {
+                            loggingOut.current = false;
+                        }
                     })
                 }
             />
+            {user && page !== "booking" && page !== "auth" && (
+                <BookingResume
+                    resume={() => book({ resume: true })}
+                    pending={() => go("account/bookings/pending")}
+                />
+            )}
             {page === "home" ? (
                 <>
                     <CustomerHome
@@ -265,7 +302,7 @@ export default function App() {
                     />
                 </>
             ) : page === "auth" ? (
-                <AuthScreen done={() => go(afterAuth)} />
+                <AuthScreen done={(role) => go(signInDestination(role))} />
             ) : page === "booking" ? (
                 user ? (
                     <BookingFlow

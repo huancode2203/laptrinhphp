@@ -53,6 +53,18 @@ Nâng cấp hệ thống đang có dữ liệu: sao lưu database, chạy `compo
 
 ZIP có sẵn `public/build` nên có thể bỏ npm nếu không sửa giao diện. Git lưu mã nguồn, clone mới cần biên dịch. `database/badminton_hub.sql` có cấu trúc và dữ liệu mẫu sạch, có thể import vào database **trống** thay cho `migrate --seed`.
 
+Trên Apache Windows, bootstrap tắt bộ `putenv/getenv` để các luồng PHP không dùng chung biến môi trường; giữ nguyên `.env` và `APP_KEY` khi nâng cấp. Build giữ các chunk có tên hash cũ để phiên đang mở tiếp tục tải trang quản lý/báo cáo. Khi triển khai, giữ các chunk của bản trước trong thời gian các phiên cũ còn hoạt động; không xóa toàn bộ thư mục build giữa lúc người dùng đang thao tác.
+
+## Đặt sân và tiếp tục phiên làm việc
+
+- Chọn hoặc kéo khung giờ trên ma trận, bấm **Đặt khung giờ đã chọn** rồi tiếp tục các bước. Chọn giờ không tự chuyển màn hình.
+- Cơ sở đã chọn được khóa trong luồng đặt; **Đổi cơ sở** có xác nhận và xóa lựa chọn sân/dịch vụ/ưu đãi cũ, giải phóng chỗ đang giữ.
+- Tải lại trang khôi phục dữ liệu đặt trong trình duyệt và đối chiếu lượt giữ chỗ trên máy chủ. Thời hạn giữ chỗ tiếp tục đếm theo server, không được kéo dài do tải lại. Đóng luồng hoặc đặt thành công sẽ xóa bản nháp.
+- Thanh **Lịch đang chờ** dẫn tới chỗ đang giữ hoặc lịch chưa thanh toán. **Tài khoản → Sân đang chờ** hiển thị danh sách chờ với cơ sở, sân và giờ; nhận lời mời không tự đặt sân.
+- Khách đăng nhập vào tài khoản cá nhân; quản trị/nhân sự vào khu quản lý. Mục quản lý, cơ sở và ngày lọc được nhớ riêng cho từng tài khoản; các màn hình quản lý có liên kết riêng và nút thử lại khi tải lỗi.
+
+Form giữ giá trị đang nhập, chuẩn hóa số khi hoàn tất và hiển thị lỗi theo trường. Server vẫn kiểm tra số nguyên, giới hạn tiền/số lượng, thời gian 30 phút, cấu trúc danh sách, phạm vi chi nhánh và quyền thao tác. Định dạng điện thoại Việt Nam được kiểm tra ở đăng ký/hồ sơ/tạo tài khoản/khách tại quầy; vấn đề chuẩn hóa dữ liệu điện thoại cũ còn được ghi trong báo cáo rà soát.
+
 ## Tài khoản và dữ liệu thử
 
 Ba seeder tạo tổng cộng **30 chi nhánh, 186 sân, 95 tài khoản và 1.292 lịch đặt** trên database mới. Tên tài khoản là tên người Việt tự nhiên do bộ dữ liệu tạo; email `.test` và điện thoại dành cho thử nghiệm. Chi nhánh, lịch và khoản thu là dữ liệu demo, chưa phải thông tin sân đang kinh doanh. Khi vận hành, cập nhật địa chỉ, điện thoại, giá, giờ mở và tồn kho thật.
@@ -295,6 +307,8 @@ php artisan test --compact
 ```
 
 Test mặc định SQLite in-memory. MySQL cần database riêng, đặt `DB_CONNECTION=mysql`, `DB_DATABASE=<database test>`, `DB_URL=` trước khi chạy. RefreshDatabase có thể xóa bảng: **không trỏ vào database vận hành**. Kết quả ở `docs/VALIDATION.md`.
+
+Kiểm tra phiên đăng nhập đồng thời trên Apache local có các tài khoản demo: `node tests/runtime-session-smoke.mjs`. Chỉ chạy trên instance demo ở localhost, khi các tài khoản thử không có chỗ đang giữ; kiểm tra đăng nhập/đăng xuất cả 5 vai trò, không tạo booking hoặc thu tiền. Có thể đặt `HUB_TEST_URL` nếu đổi cổng.
 
 API `/api/v1` cùng origin, JSON/cookie; GET `/csrf` lấy token, mutation gửi `X-CSRF-TOKEN`. IPN MoMo/SePay miễn CSRF nhưng xác thực riêng. Danh sách API: `php artisan route:list --path=api/v1`.
 

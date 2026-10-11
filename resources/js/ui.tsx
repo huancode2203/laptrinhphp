@@ -1,7 +1,7 @@
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
 import { useState, type ReactNode } from "react";
-import { key, useHub } from "./hub";
+import { ApiError, key, useHub } from "./hub";
 import type { Row } from "./data";
 export function Modal({
     title,
@@ -49,6 +49,7 @@ export type Field = {
     max?: number | string;
     step?: number;
     help?: string;
+    maxLength?: number;
 };
 export function Editor({
     title,
@@ -68,6 +69,7 @@ export function Editor({
     const [d, set] = useState<Row>(initial),
         [error, fail] = useState(""),
         [busy, setBusy] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [transactionKey] = useState(key);
     return (
         <Modal title={title} close={close}>
@@ -77,10 +79,32 @@ export function Editor({
                     e.preventDefault();
                     setBusy(true);
                     try {
-                        await save({ ...d, request_key: transactionKey });
+                        const normalized: Row = {
+                            ...d,
+                            request_key: transactionKey,
+                        };
+                        for (const f of fields.filter(
+                            (f) => f.type === "number",
+                        )) {
+                            if (d[f.name] === "" || d[f.name] == null) {
+                                normalized[f.name] = null;
+                                continue;
+                            }
+                            const value = Number(d[f.name]);
+                            if (
+                                !Number.isFinite(value) ||
+                                (f.step !== undefined && f.step < 1
+                                    ? false
+                                    : !Number.isSafeInteger(value))
+                            )
+                                throw new Error(f.label + ": nhập số hợp lệ.");
+                            normalized[f.name] = value;
+                        }
+                        await save(normalized);
                         close();
                     } catch (err) {
                         fail((err as Error).message);
+                        setErrors(err instanceof ApiError ? err.fields : {});
                     } finally {
                         setBusy(false);
                     }
@@ -123,7 +147,7 @@ export function Editor({
                             <textarea
                                 className="input mt-1 min-h-28 w-full"
                                 required={f.required}
-                                maxLength={5000}
+                                maxLength={f.maxLength ?? 5000}
                                 value={d[f.name] ?? ""}
                                 onChange={(e) =>
                                     set({ ...d, [f.name]: e.target.value })
@@ -137,18 +161,47 @@ export function Editor({
                                 min={f.min}
                                 max={f.max}
                                 step={f.step}
+                                maxLength={
+                                    f.maxLength ??
+                                    (f.type === "text" || !f.type
+                                        ? 255
+                                        : undefined)
+                                }
+                                aria-invalid={!!errors[f.name]}
+                                aria-describedby={
+                                    errors[f.name]
+                                        ? "error-" + f.name
+                                        : undefined
+                                }
                                 value={d[f.name] ?? ""}
                                 onChange={(e) =>
                                     set({
                                         ...d,
-                                        [f.name]:
-                                            f.type === "number"
-                                                ? Number(e.target.value)
-                                                : e.target.value,
+                                        [f.name]: e.target.value,
                                     })
                                 }
+                                onBlur={() => {
+                                    if (
+                                        f.type === "number" &&
+                                        d[f.name] !== "" &&
+                                        d[f.name] != null &&
+                                        Number.isFinite(Number(d[f.name]))
+                                    )
+                                        set({
+                                            ...d,
+                                            [f.name]: String(Number(d[f.name])),
+                                        });
+                                }}
                             />
                         )}{" "}
+                        {errors[f.name] && (
+                            <small
+                                id={"error-" + f.name}
+                                className="block text-red-700"
+                            >
+                                {errors[f.name].join(" ")}
+                            </small>
+                        )}
                         {f.help && (
                             <small className="block text-[#6d8474]">
                                 {f.help}

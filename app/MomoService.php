@@ -29,6 +29,12 @@ class MomoService
 
     public function create(User $user, array $d, ?string $demoProvider = null): PaymentAttempt
     {
+        if (isset($d['booking_id'])) {
+            $d['booking_id'] = (int) $d['booking_id'];
+        }
+        if (isset($d['deposit_only'])) {
+            $d['deposit_only'] = (bool) $d['deposit_only'];
+        }
         abort_if($demoProvider !== null && $demoProvider !== 'DEMO_BANK', 422);
         abort_unless($this->enabled() || ($demoProvider === 'DEMO_BANK' && app(DemoService::class)->active()), 503, 'MoMo chưa được cấu hình.');
         $partner = $demoProvider ?? (app(DemoService::class)->uses('momo') ? 'DEMO_MOMO' : config('momo.partner_code'));

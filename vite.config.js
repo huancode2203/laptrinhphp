@@ -8,7 +8,8 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
-    build: { chunkSizeWarningLimit: 800 },
+    // Keep hashed chunks available to people already using an earlier build.
+    build: { chunkSizeWarningLimit: 800, emptyOutDir: false },
     server: {
         host: "127.0.0.1",
         watch: { ignored: ["**/storage/framework/views/**"] },

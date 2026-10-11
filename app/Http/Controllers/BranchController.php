@@ -61,7 +61,7 @@ class BranchController extends Controller
         abort_unless($court->status === 'active' && $court->branch->active, 404);
         $data = $request->validate([
             'starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'],
-            'services' => ['sometimes', 'array', 'max:20'],
+            'services' => ['sometimes', 'array', 'list', 'max:20'],
             'services.*.id' => ['required', 'integer', 'distinct', 'exists:services,id'],
             'services.*.quantity' => ['required', 'integer', 'min:1', 'max:10'],
             'coupon_code' => ['nullable', 'string', 'max:30'], 'fixed' => ['sometimes', 'boolean'],
@@ -70,7 +70,7 @@ class BranchController extends Controller
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
 
         $owner = $request->user();
-        if (isset($data['user_id']) && $data['user_id'] !== $owner?->id) {
+        if (isset($data['user_id']) && (int) $data['user_id'] !== $owner?->id) {
             abort_unless($owner, 403);
             $engine->assertManage($owner, $court->branch_id);
             $owner = User::where('role', 'customer')->findOrFail($data['user_id']);

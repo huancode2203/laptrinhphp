@@ -1,6 +1,6 @@
 import Profile from "./Profile";
 import { AccountExtras } from "./FeaturePages";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { api, key, useHub } from "./hub";
 import { money, stamp, statusText, type Row } from "./data";
@@ -20,13 +20,25 @@ export function BookingDetail({
         [receipt, setReceipt] = useState<Row | null>(null);
     const booking = receipt?.booking ?? initialBooking;
     useEffect(() => {
+        let live = true;
         api("bookings/" + booking.id + "/receipt")
-            .then((r) => setReceipt(r.data))
-            .catch((e) => toast(e.message));
+            .then((r) => {
+                if (live) setReceipt(r.data);
+            })
+            .catch((e) => {
+                if (live) toast(e.message);
+            });
         api("bookings/" + booking.id + "/checkin-token")
             .then((r) => QRCode.toDataURL(r.data.token, { width: 240 }))
-            .then(setQr)
-            .catch((e) => toast(e.message));
+            .then((value) => {
+                if (live) setQr(value);
+            })
+            .catch((e) => {
+                if (live) toast(e.message);
+            });
+        return () => {
+            live = false;
+        };
     }, [booking.id]);
     async function refreshPayment() {
         setReceipt((await api("bookings/" + booking.id + "/receipt")).data);
@@ -637,6 +649,7 @@ export default function Account({
     initialTab?: string;
 }) {
     const { data, refresh, toast, run } = useHub();
+    const loadVersion = useRef(0);
     const [tab, setTab] = useState(initialTab),
         [bookings, setBookings] = useState<Row[]>([]),
         [account, setAccount] = useState<Row | null>(null),
@@ -644,6 +657,9 @@ export default function Account({
         [selected, setSelected] = useState<Row | null>(null),
         [form, setForm] = useState(""),
         [status, setStatus] = useState(""),
+        [pendingOnly, setPendingOnly] = useState(
+            location.hash.endsWith("/pending"),
+        ),
         [emailSent, setEmailSent] = useState(false),
         [emailDemoCode, setEmailDemoCode] = useState(""),
         [page, setPage] = useState(1),
@@ -652,12 +668,15 @@ export default function Account({
             null,
         );
     useEffect(() => {
+        let live = true;
         const followLink = () => {
+            const hash = location.hash;
             const target = location.hash.split("/")[1];
             if (
                 location.hash.startsWith("#account/") &&
                 [
                     "bookings",
+                    "waiting",
                     "wallet",
                     "membership",
                     "notifications",
@@ -665,26 +684,56 @@ export default function Account({
                     "extras",
                     "activity",
                 ].includes(target)
-            )
+            ) {
                 setTab(target);
+                setPendingOnly(location.hash.endsWith("/pending"));
+            }
+            const detail = location.hash.match(/^#account\/bookings\/(\d+)$/);
+            if (detail)
+                api("bookings/" + detail[1])
+                    .then((r) => {
+                        if (live && location.hash === hash) setSelected(r.data);
+                    })
+                    .catch((e) => {
+                        if (live && location.hash === hash) toast(e.message);
+                    });
+            else setSelected(null);
         };
+        followLink();
         window.addEventListener("hashchange", followLink);
-        return () => window.removeEventListener("hashchange", followLink);
+        return () => {
+            live = false;
+            loadVersion.current++;
+            window.removeEventListener("hashchange", followLink);
+        };
     }, []);
     async function load() {
+        const version = ++loadVersion.current;
         const [b, a, n] = await Promise.all([
-            api("bookings?page=" + page + (status ? "&status=" + status : "")),
+            api(
+                "bookings?page=" +
+                    page +
+                    (status ? "&status=" + status : "") +
+                    (pendingOnly ? "&pending=1" : ""),
+            ),
             api("account"),
             api("notifications"),
         ]);
+        if (version !== loadVersion.current) return;
         setBookings(b.data);
         setLastPage(b.meta?.last_page ?? 1);
         setAccount(a.data);
         setNotifications(n.data.data);
     }
     useEffect(() => {
-        load().catch((e) => toast(e.message));
-    }, [page, status]);
+        let live = true;
+        load().catch((e) => {
+            if (live) toast(e.message);
+        });
+        return () => {
+            live = false;
+        };
+    }, [page, status, pendingOnly]);
     async function changed(fn: () => Promise<any>) {
         await fn();
         await refresh();
@@ -715,6 +764,7 @@ export default function Account({
             <div className="page-tabs">
                 {[
                     ["bookings", "Lịch của tôi"],
+                    ["waiting", "Sân đang chờ"],
                     ["wallet", "Ví HUB"],
                     ["membership", "Hội viên"],
                     ["notifications", "Thông báo"],
@@ -760,6 +810,19 @@ export default function Account({
                             ))}
                         </select>
                         <button
+                            className={pendingOnly ? "btn" : "btn-outline"}
+                            aria-pressed={pendingOnly}
+                            onClick={() => {
+                                setPage(1);
+                                setStatus("");
+                                location.hash = pendingOnly
+                                    ? "account/bookings"
+                                    : "account/bookings/pending";
+                            }}
+                        >
+                            Chờ thanh toán
+                        </button>
+                        <button
                             className="btn-outline"
                             onClick={() => run(load)}
                         >
@@ -787,7 +850,11 @@ export default function Account({
                                         <b>{money(b.total_amount)}</b>
                                         <button
                                             className="text-sm font-bold text-[#16a34a]"
-                                            onClick={() => setSelected(b)}
+                                            onClick={() => {
+                                                setSelected(b);
+                                                location.hash =
+                                                    "account/bookings/" + b.id;
+                                            }}
                                         >
                                             Chi tiết →
                                         </button>
@@ -817,14 +884,43 @@ export default function Account({
                             Sau
                         </button>
                     </div>
-                    <h2 className="my-4 text-lg font-bold">Danh sách chờ</h2>
+                </>
+            )}
+            {tab === "waiting" && (
+                <>
+                    <h2 className="my-4 text-lg font-bold">
+                        Sân đang chờ của bạn
+                    </h2>
+                    <p className="mb-4 text-sm text-[#6d8474]">
+                        Thông báo sân trống không tự động đặt sân. Kiểm tra lại
+                        lịch và xác nhận đặt khi nhận được thông báo.
+                    </p>
+                    {!account?.waitlist.length && (
+                        <Empty text="Bạn chưa đăng ký chờ sân nào." />
+                    )}
                     {account?.waitlist.map((e: Row) => (
                         <Card className="mb-3" key={e.id}>
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <span>
-                                    {e.court.name} · {stamp(e.starts_at)} ·{" "}
-                                    {statusText(e.status)}
+                                    <b>
+                                        {e.court.branch.name} · {e.court.name}
+                                    </b>
+                                    <small className="mt-1 block">
+                                        {stamp(e.starts_at)} –{" "}
+                                        {stamp(e.ends_at)} ·{" "}
+                                        {Date.parse(e.ends_at) <= Date.now()
+                                            ? "Đã qua khung giờ"
+                                            : statusText(e.status)}
+                                    </small>
                                 </span>
+                                {Date.parse(e.ends_at) > Date.now() && (
+                                    <a
+                                        className="btn-outline"
+                                        href={"#branch/" + e.court.branch_id}
+                                    >
+                                        Xem lịch sân
+                                    </a>
+                                )}
                                 {e.status === "waiting" && (
                                     <button
                                         className="btn-outline"
@@ -1158,7 +1254,12 @@ export default function Account({
             {selected && (
                 <BookingDetail
                     booking={selected}
-                    close={() => setSelected(null)}
+                    close={() => {
+                        setSelected(null);
+                        location.hash = pendingOnly
+                            ? "account/bookings/pending"
+                            : "account/bookings";
+                    }}
                     refreshBookings={load}
                 />
             )}

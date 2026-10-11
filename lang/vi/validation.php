@@ -11,6 +11,7 @@ return [
     'numeric' => ':attribute phải là số.',
     'boolean' => ':attribute không hợp lệ.',
     'array' => ':attribute phải là danh sách.',
+    'list' => ':attribute phải là danh sách tuần tự.',
     'email' => ':attribute không đúng định dạng email.',
     'uuid' => ':attribute không hợp lệ. Vui lòng thử lại.',
     'unique' => ':attribute đã được sử dụng.',

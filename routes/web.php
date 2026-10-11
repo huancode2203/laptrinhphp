@@ -86,6 +86,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::get('bookings/{booking}/receipt', [BookingController::class, 'receipt']);
         Route::patch('bookings/{booking}/reschedule', [BookingController::class, 'reschedule'])->middleware('throttle:book');
         Route::patch('bookings/{booking}/status', [BookingController::class, 'status']);
+        Route::get('holds/active', [CommerceController::class, 'activeHold']);
         Route::post('holds', [CommerceController::class, 'hold'])->middleware('throttle:book');
         Route::delete('holds/{hold}', [CommerceController::class, 'releaseHold']);
         Route::post('bookings/{booking}/wallet-payment', [CommerceController::class, 'walletPay'])->middleware('throttle:book');

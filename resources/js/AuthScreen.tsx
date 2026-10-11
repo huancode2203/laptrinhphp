@@ -2,7 +2,11 @@ import { useState } from "react";
 import GoogleButton from "./GoogleButton";
 import { Logo } from "./Brand";
 import { api, useHub } from "./hub";
-export default function AuthScreen({ done }: { done: () => void }) {
+export default function AuthScreen({
+    done,
+}: {
+    done: (role?: string) => void;
+}) {
     const { refresh, data } = useHub();
     const [mode, setMode] = useState("login"),
         [d, set] = useState<Record<string, string>>({}),
@@ -69,9 +73,9 @@ export default function AuthScreen({ done }: { done: () => void }) {
                     {mode === "login" && (
                         <div className="mb-4">
                             <GoogleButton
-                                after={async () => {
+                                after={async (role) => {
                                     await refresh();
-                                    done();
+                                    done(role);
                                 }}
                             />
                         </div>
@@ -83,9 +87,12 @@ export default function AuthScreen({ done }: { done: () => void }) {
                             onClick={async () => {
                                 setBusy(true);
                                 try {
-                                    await api("demo/google", "POST");
+                                    const response = await api(
+                                        "demo/google",
+                                        "POST",
+                                    );
                                     await refresh();
-                                    done();
+                                    done(response.data?.role);
                                 } catch (e) {
                                     setError((e as Error).message);
                                 } finally {
@@ -104,9 +111,9 @@ export default function AuthScreen({ done }: { done: () => void }) {
                             setError("");
                             try {
                                 if (mode === "login" || mode === "register") {
-                                    await api(mode, "POST", d);
+                                    const response = await api(mode, "POST", d);
                                     await refresh();
-                                    done();
+                                    done(response.data?.role);
                                 } else if (mode === "send") {
                                     const r = await api(
                                         "recovery/send",

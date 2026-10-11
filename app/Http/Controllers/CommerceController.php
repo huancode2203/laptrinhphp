@@ -25,6 +25,13 @@ use Illuminate\Validation\ValidationException;
 
 class CommerceController extends Controller
 {
+    public function activeHold(Request $request): JsonResponse
+    {
+        return response()->json(['data' => CourtHold::where('user_id', $request->user()->id)
+            ->where('released', false)->where('expires_at', '>', now())
+            ->with('court.branch')->latest('id')->first()]);
+    }
+
     public function hold(Request $request, BookingService $engine): JsonResponse
     {
         $data = $request->validate(['request_key' => ['required', 'uuid'], 'court_id' => ['required', 'integer', 'exists:courts,id'], 'starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at']]);
@@ -141,7 +148,7 @@ class CommerceController extends Controller
 
     public function sale(Request $request, CommerceService $commerce): JsonResponse
     {
-        $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'user_id' => ['nullable', 'integer', 'exists:users,id'], 'method' => ['required', Rule::in(['cash', 'bank', 'wallet', 'booking'])], 'items' => ['required', 'array', 'min:1', 'max:20'], 'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'user_id' => ['nullable', 'integer', 'exists:users,id'], 'method' => ['required', Rule::in(['cash', 'bank', 'wallet', 'booking'])], 'items' => ['required', 'array', 'list', 'min:1', 'max:20'], 'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
 
         $extra = $request->validate(['booking_id' => 'nullable|integer|exists:bookings,id']);
 
@@ -182,7 +189,7 @@ class CommerceController extends Controller
     public function review(Request $request, Booking $booking): JsonResponse
     {
         abort_unless($booking->user_id === $request->user()->id && $booking->status === 'completed', 403);
-        $data = $request->validate(['rating' => ['required', 'integer', 'between:1,5'], 'content' => ['required', 'string', 'max:2000'], 'images' => 'sometimes|array|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
+        $data = $request->validate(['rating' => ['required', 'integer', 'between:1,5'], 'content' => ['required', 'string', 'max:2000'], 'images' => 'sometimes|array|list|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
         app(FeatureService::class)->media($data['images'] ?? [], $request->user());
         $review = Review::updateOrCreate(['booking_id' => $booking->id], $data + ['user_id' => $request->user()->id, 'branch_id' => $booking->court->branch_id]);
 
@@ -194,7 +201,7 @@ class CommerceController extends Controller
         $data = $request->validate(['court_id' => ['required', 'integer', 'exists:courts,id'], 'starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at']]);
         [$start,$end] = $engine->window($data['starts_at'], $data['ends_at']);
         $court = Court::findOrFail($data['court_id']);
-        abort_unless($court->status === 'active' && $court->branch->active, 422);
+        abort_unless($court->status === 'active' && $court->branch->active, 422, 'Sân hiện không nhận đặt lịch.');
         $engine->assertOpen($court, $start, $end, $request->user());
         $entry = WaitlistEntry::updateOrCreate(['court_id' => $court->id, 'user_id' => $request->user()->id, 'starts_at' => $start, 'ends_at' => $end], ['status' => 'waiting']);
 

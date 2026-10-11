@@ -24,7 +24,7 @@ class StoreBookingRequest extends FormRequest
             'hold_id' => ['sometimes', 'integer', 'exists:court_holds,id'],
             'deposit_only' => 'sometimes|boolean',
             'pay_with_wallet' => ['sometimes', 'boolean'],
-            'services' => ['sometimes', 'array', 'max:20'],
+            'services' => ['sometimes', 'array', 'list', 'max:20'],
             'services.*.id' => ['required', 'integer', 'distinct', 'exists:services,id'],
             'services.*.quantity' => ['required', 'integer', 'min:1', 'max:10'],
         ];

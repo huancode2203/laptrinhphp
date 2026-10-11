@@ -31,6 +31,7 @@ use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Models\WalletEntry;
 use App\MomoService;
+use App\Rules\VietnamesePhone;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -159,7 +160,7 @@ class HubController extends Controller
 
     public function createUser(Request $r, BookingService $engine): JsonResponse
     {
-        $d = $r->validate(['name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'unique:users,email'], 'phone' => ['nullable', 'string', 'max:30'], 'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'], 'role' => ['required', Rule::in(['customer', 'staff', 'cashier', 'manager', 'admin'])], 'branch_id' => ['nullable', 'required_if:role,staff,cashier,manager', 'integer', 'exists:branches,id']]);
+        $d = $r->validate(['name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'unique:users,email'], 'phone' => ['nullable', 'string', 'max:30', new VietnamesePhone], 'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'], 'role' => ['required', Rule::in(['customer', 'staff', 'cashier', 'manager', 'admin'])], 'branch_id' => ['nullable', 'required_if:role,staff,cashier,manager', 'integer', 'exists:branches,id']]);
         $user = DB::transaction(function () use ($d, $r, $engine): User {
             $user = User::create(collect($d)->only(['name', 'email', 'phone', 'password'])->all());
             $user->forceFill(['role' => $d['role'], 'branch_id' => in_array($d['role'], ['staff', 'cashier', 'manager'], true) ? $d['branch_id'] : null])->save();

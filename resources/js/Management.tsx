@@ -6,7 +6,7 @@ import CalendarBoard from "./CalendarBoard";
 const ReportsView = lazy(() => import("./ReportsView"));
 const QRScanner = lazy(() => import("./QRScanner"));
 import Icon, { type IconName } from "./Icon";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
     BRANCHES,
@@ -60,15 +60,15 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         ["dashboard", "📊", "Tổng quan"],
         ["matrix", "🗓", "Ma trận sân"],
         ["bookings", "📋", "Quản lý lịch"],
+        ["calendar", "◷", "Lịch tuần / tháng"],
+        ["courts", "🏸", "Sân & bảng giá"],
+        ["maintenance", "🔧", "Bảo trì"],
         ["pos", "🛒", "Bán hàng / POS"],
         ["customers", "👥", "Khách hàng"],
-        ["courts", "🏸", "Sân & bảng giá"],
         ["services", "🎾", "Dịch vụ"],
         ["products", "📦", "Kho hàng"],
-        ["maintenance", "🔧", "Bảo trì"],
         ["events", "🏆", "Sự kiện"],
         ["reports", "📈", "Báo cáo"],
-        ["calendar", "◷", "Lịch tuần / tháng"],
         ["advanced", "✦", "Vận hành & nội dung"],
         ...(admin
             ? [
@@ -86,9 +86,33 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
             !tabPermissions[id] ||
             data!.permissions?.[tabPermissions[id]],
     );
-    const [tab, setTab] = useState(nav[0]?.[0] ?? "advanced"),
-        [branch, setBranch] = useState(user.branch_id ?? BRANCHES[0]?.id),
-        [date, setDate] = useState(day()),
+    const [savedView] = useState(() => {
+        try {
+            return JSON.parse(
+                localStorage.getItem("hub:manage:" + user.id) ?? "{}",
+            );
+        } catch {
+            return {};
+        }
+    });
+    const routeTab = location.hash.split("/")[1]?.split("?")[0];
+    const [tab, setTab] = useState(
+            nav.find(([id]) => id === (routeTab || savedView.tab))?.[0] ??
+                nav[0]?.[0] ??
+                "advanced",
+        ),
+        [branch, setBranch] = useState(
+            data!.managed_branch_ids?.includes(savedView.branch)
+                ? savedView.branch
+                : (user.branch_id ??
+                      data!.managed_branch_ids?.[0] ??
+                      BRANCHES[0]?.id),
+        ),
+        [date, setDate] = useState(
+            /^\d{4}-\d{2}-\d{2}$/.test(savedView.date ?? "")
+                ? savedView.date
+                : day(),
+        ),
         [hub, setHub] = useState<Row | null>(null),
         [adminData, setAdmin] = useState<Row | null>(null),
         [report, setReport] = useState<Row | null>(null),
@@ -106,13 +130,43 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         [sale, setSale] = useState<Row | null>(null),
         [found, setFound] = useState<Row | null>(null),
         [quick, setQuick] = useState<Row | null>(null),
-        [confirm, setConfirm] = useState<Row | null>(null);
+        [confirm, setConfirm] = useState<Row | null>(null),
+        [navSearch, setNavSearch] = useState(""),
+        [loadError, setLoadError] = useState(""),
+        [fetching, setFetching] = useState(false);
+    const generation = useRef(0);
+    const loadedScope = useRef("");
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                "hub:manage:" + user.id,
+                JSON.stringify({ tab, branch, date }),
+            );
+        } catch {}
+        const hash = "#manage/" + tab;
+        if (location.hash.split("/")[1]?.split("?")[0] !== tab)
+            location.hash = hash;
+    }, [tab, branch, date]);
+    useEffect(() => {
+        const follow = () => {
+            const target = location.hash.split("/")[1]?.split("?")[0];
+            if (
+                location.hash.startsWith("#manage/") &&
+                nav.some(([id]) => id === target)
+            )
+                setTab(target);
+        };
+        window.addEventListener("hashchange", follow);
+        return () => window.removeEventListener("hashchange", follow);
+    }, []);
     const query = "branch_id=" + branch;
     useEffect(() => {
         setCart({});
         setCategory("");
     }, [branch]);
     async function load() {
+        const request = ++generation.current;
+        setFetching(true);
         const requests = [
             api("manage/hub?" + query + "&date=" + date),
             data!.permissions?.["reports.read"]
@@ -123,13 +177,29 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 : Promise.resolve({ data: {} }),
             ...(admin ? [api("admin/hub")] : []),
         ];
-        const values = await Promise.all(requests);
-        setHub(values[0].data);
-        setReport(values[1].data);
-        setSchedule(values[2].data);
-        if (admin) setAdmin(values[3].data);
+        const values = await Promise.allSettled(requests);
+        if (generation.current !== request) return;
+        setFetching(false);
+        const rejected = values.find((v) => v.status === "rejected");
+        setLoadError(
+            rejected?.status === "rejected" ? rejected.reason.message : "",
+        );
+        if (values[0].status === "fulfilled") setHub(values[0].value.data);
+        if (values[1].status === "fulfilled") setReport(values[1].value.data);
+        if (values[2].status === "fulfilled") setSchedule(values[2].value.data);
+        if (admin && values[3]?.status === "fulfilled")
+            setAdmin(values[3].value.data);
     }
     useEffect(() => {
+        if (loadedScope.current !== branch + ":" + date) {
+            loadedScope.current = branch + ":" + date;
+            setHub(null);
+            setSchedule(null);
+            setSelected(null);
+            setQuick(null);
+            setEditing(null);
+            setFound(null);
+        }
         load().catch((e) => toast(e.message));
     }, [branch, date, from, to]);
     useEffect(() => {
@@ -171,7 +241,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         name: "branch_id",
         label: "Chi nhánh",
         required: true,
-        options: BRANCHES.map((b) => ({ value: b.id, label: b.rawName })),
+        options: BRANCHES.filter(
+            (b) => admin || data!.managed_branch_ids?.includes(b.id),
+        ).map((b) => ({ value: b.id, label: b.rawName })),
     };
     const num = (
         name: string,
@@ -537,7 +609,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 .filter(([, n]) => n > 0)
                 .map(([id, quantity]) => ({
                     product_id: Number(id),
-                    quantity,
+                    quantity: Number(quantity),
                 }));
         }
         const r = await api(path, method, d);
@@ -568,6 +640,43 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                           ? hub?.events
                           : [];
     const fieldsFor = fields[tab];
+    const invalidCart = Object.entries(cart).some(
+        ([id, n]) =>
+            n !== "" &&
+            (!Number.isInteger(Number(n)) ||
+                Number(n) < 0 ||
+                Number(n) >
+                    Math.min(
+                        100,
+                        hub?.products.find((p: Row) => p.id === Number(id))
+                            ?.stock ?? 0,
+                    )),
+    );
+    const sectionFor = (id: string) =>
+        [
+            "dashboard",
+            "matrix",
+            "bookings",
+            "calendar",
+            "courts",
+            "maintenance",
+        ].includes(id)
+            ? "LỊCH & SÂN"
+            : [
+                    "pos",
+                    "customers",
+                    "services",
+                    "products",
+                    "events",
+                    "reports",
+                ].includes(id)
+              ? "KINH DOANH"
+              : "QUẢN TRỊ";
+    const visibleNav = nav.filter(([, , label]) =>
+        label
+            .toLocaleLowerCase("vi")
+            .includes(navSearch.toLocaleLowerCase("vi")),
+    );
     return (
         <div className="management-shell flex min-h-[calc(100vh-80px)]">
             <aside className="management-sidebar hidden w-60 shrink-0 flex-col md:flex">
@@ -575,46 +684,64 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 <p className="mb-5 mt-2 text-xs text-white/40">
                     {admin ? "QUẢN TRỊ HỆ THỐNG" : "QUẢN LÝ CHI NHÁNH"}
                 </p>
-                {nav.map(([id, , label]) => (
-                    <button
-                        className={
-                            "sidebar-link mb-1 text-left " +
-                            (tab === id ? "active" : "")
-                        }
-                        key={id}
-                        onClick={() => setTab(id)}
-                    >
-                        <Icon
-                            name={
-                                (
-                                    {
-                                        dashboard: "grid",
-                                        matrix: "court",
-                                        bookings: "calendar",
-                                        pos: "bag",
-                                        customers: "people",
-                                        courts: "racket",
-                                        services: "spark",
-                                        products: "bag",
-                                        maintenance: "settings",
-                                        events: "trophy",
-                                        reports: "chart",
-                                        calendar: "calendar",
-                                        advanced: "settings",
-                                        branches: "pin",
-                                        users: "user",
-                                        plans: "star",
-                                        coupons: "gift",
-                                        moderation: "shield",
-                                        audit: "calendar",
-                                    } as Record<string, IconName>
-                                )[id] ?? "grid"
-                            }
-                            size={18}
-                        />
-                        {label}
-                    </button>
-                ))}
+                <input
+                    aria-label="Tìm mục quản lý"
+                    className="management-nav-search"
+                    placeholder="Tìm chức năng…"
+                    value={navSearch}
+                    onChange={(e) => setNavSearch(e.target.value)}
+                />
+                <nav aria-label="Chức năng quản lý" className="management-nav">
+                    {visibleNav.map(([id, , label], index) => (
+                        <div key={id}>
+                            {(index === 0 ||
+                                sectionFor(id) !==
+                                    sectionFor(visibleNav[index - 1][0])) && (
+                                <p className="management-nav-section">
+                                    {sectionFor(id)}
+                                </p>
+                            )}
+                            <button
+                                className={
+                                    "sidebar-link mb-1 text-left " +
+                                    (tab === id ? "active" : "")
+                                }
+                                aria-current={tab === id ? "page" : undefined}
+                                onClick={() => setTab(id)}
+                            >
+                                <Icon
+                                    name={
+                                        (
+                                            {
+                                                dashboard: "grid",
+                                                matrix: "court",
+                                                bookings: "calendar",
+                                                pos: "bag",
+                                                customers: "people",
+                                                courts: "racket",
+                                                services: "spark",
+                                                products: "bag",
+                                                maintenance: "settings",
+                                                events: "trophy",
+                                                reports: "chart",
+                                                calendar: "calendar",
+                                                advanced: "settings",
+                                                branches: "pin",
+                                                users: "user",
+                                                plans: "star",
+                                                coupons: "gift",
+                                                moderation: "shield",
+                                                audit: "calendar",
+                                            } as Record<string, IconName>
+                                        )[id] ?? "grid"
+                                    }
+                                    size={18}
+                                />
+                                {label}
+                            </button>
+                        </div>
+                    ))}
+                </nav>
                 <p className="mt-auto pt-6 text-xs text-white/50">
                     {user.name} · {statusText(user.role)}
                 </p>
@@ -633,9 +760,17 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                     ))}
                 </select>
                 <div className="management-toolbar mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="font-display text-3xl font-bold">
-                        {nav.find((n) => n[0] === tab)?.[2]}
-                    </h1>
+                    <div>
+                        <p className="eyebrow">
+                            {admin && tab === "dashboard"
+                                ? "Toàn hệ thống"
+                                : BRANCHES.find((b) => b.id === branch)
+                                      ?.rawName}
+                        </p>
+                        <h1 className="font-display text-3xl font-bold">
+                            {nav.find((n) => n[0] === tab)?.[2]}
+                        </h1>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                         {(data!.managed_branch_ids?.length ?? 0) > 1 && (
                             <select
@@ -660,6 +795,17 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                         />
+                        {allows("bookings.write") && (
+                            <button
+                                className="btn"
+                                disabled={fetching}
+                                onClick={() =>
+                                    book({ branch_id: branch, date })
+                                }
+                            >
+                                + Đặt sân
+                            </button>
+                        )}
                         <button
                             className="btn-outline"
                             onClick={() => run(load)}
@@ -668,6 +814,22 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         </button>
                     </div>
                 </div>
+                {loadError && (
+                    <div className="management-error" role="alert">
+                        <span>{loadError}</span>
+                        <button
+                            className="btn-outline"
+                            onClick={() => run(load)}
+                        >
+                            Tải lại dữ liệu
+                        </button>
+                    </div>
+                )}
+                {fetching && hub && (
+                    <p role="status" className="mb-3 text-sm text-[#6d8474]">
+                        Đang cập nhật dữ liệu…
+                    </p>
+                )}
                 {!hub ? (
                     <Empty text="Đang tải dữ liệu…" />
                 ) : (
@@ -686,7 +848,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                         {tab === "dashboard" && admin && (
                             <>
-                                <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                                     {[
                                         ["Chi nhánh", BRANCHES.length],
                                         [
@@ -752,7 +914,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         )}
                         {tab === "dashboard" && !admin && (
                             <>
-                                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                                     {[
                                         [
                                             "Doanh thu ròng",
@@ -1552,9 +1714,11 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                             setCart({
                                                                 ...cart,
                                                                 [p.id]:
-                                                                    (cart[
-                                                                        p.id
-                                                                    ] ?? 0) + 1,
+                                                                    Number(
+                                                                        cart[
+                                                                            p.id
+                                                                        ] ?? 0,
+                                                                    ) + 1,
                                                             })
                                                         }
                                                     >
@@ -1567,36 +1731,34 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         <h2 className="mb-4 text-xl font-bold">
                                             Giỏ hàng
                                         </h2>
-                                        {Object.entries(cart)
-                                            .filter(([, n]) => n > 0)
-                                            .map(([id, n]) => (
-                                                <div className="my-3" key={id}>
-                                                    <p className="text-sm">
-                                                        {
-                                                            hub.products.find(
-                                                                (p: Row) =>
-                                                                    p.id ===
-                                                                    Number(id),
-                                                            )?.name
-                                                        }
-                                                    </p>
-                                                    <input
-                                                        aria-label="Số lượng giỏ hàng"
-                                                        className="input mt-2 w-20"
-                                                        type="number"
-                                                        min={0}
-                                                        max={100}
-                                                        value={n}
-                                                        onChange={(e) =>
-                                                            setCart({
-                                                                ...cart,
-                                                                [id]: +e.target
-                                                                    .value,
-                                                            })
-                                                        }
-                                                    />
-                                                </div>
-                                            ))}
+                                        {Object.entries(cart).map(([id, n]) => (
+                                            <div className="my-3" key={id}>
+                                                <p className="text-sm">
+                                                    {
+                                                        hub.products.find(
+                                                            (p: Row) =>
+                                                                p.id ===
+                                                                Number(id),
+                                                        )?.name
+                                                    }
+                                                </p>
+                                                <input
+                                                    aria-label="Số lượng giỏ hàng"
+                                                    className="input mt-2 w-20"
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    value={n}
+                                                    onChange={(e) =>
+                                                        setCart({
+                                                            ...cart,
+                                                            [id]: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                        ))}
                                         <b className="my-4 block text-xl text-[#16a34a]">
                                             {money(
                                                 Object.entries(cart).reduce(
@@ -1615,6 +1777,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         <button
                                             className="btn w-full"
                                             disabled={
+                                                invalidCart ||
                                                 !Object.values(cart).some(
                                                     (n) => n > 0,
                                                 )
@@ -1623,6 +1786,15 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         >
                                             Thu tiền & xuất hóa đơn
                                         </button>
+                                        {invalidCart && (
+                                            <p
+                                                role="alert"
+                                                className="mt-2 text-sm text-red-700"
+                                            >
+                                                Số lượng phải là số nguyên, tối
+                                                đa 100 và không vượt tồn kho.
+                                            </p>
+                                        )}
                                     </Card>
                                 </div>
                                 <h2 className="my-5 text-xl font-bold">
@@ -1934,7 +2106,18 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                       }
                                     : {}),
                             }}
-                            fields={fields[editing.kind] ?? []}
+                            fields={(fields[editing.kind] ?? []).map((f) =>
+                                f.name === "branch_id" && editing.row.id
+                                    ? {
+                                          ...f,
+                                          options: (f.options ?? []).filter(
+                                              (o) =>
+                                                  Number(o.value) ===
+                                                  editing.row.branch_id,
+                                          ),
+                                      }
+                                    : f,
+                            )}
                             save={save}
                         />
                     ))}

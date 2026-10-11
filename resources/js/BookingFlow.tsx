@@ -3,7 +3,12 @@ import CourtMatrix from "./CourtMatrix";
 import CustomerPicker from "./CustomerPicker";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
-import { BRANCHES, day, money, type Row } from "./data";
+import { BRANCHES, day, localDateTime, money, type Row } from "./data";
+import {
+    clearBookingDraft,
+    readBookingDraft,
+    saveBookingDraft,
+} from "./bookingDraft";
 import { Card, Empty, Modal } from "./ui";
 export default function BookingFlow({
     initial = {},
@@ -15,28 +20,117 @@ export default function BookingFlow({
     close: () => void;
 }) {
     const { data, run, toast, loading, refresh } = useHub();
-    const [branch, setBranch] = useState(initial.branch_id ?? BRANCHES[0]?.id),
-        [date, setDate] = useState(initial.date ?? day(1)),
-        [time, setTime] = useState(initial.time ?? "18:00"),
-        [duration, setDuration] = useState(initial.duration ?? 2),
+    const [draft] = useState(() =>
+        Object.values(initial).some((v) => v !== undefined) && !initial.resume
+            ? initial
+            : readBookingDraft(data!.user.id),
+    );
+    const [restoring, setRestoring] = useState(true);
+    const [restoreError, setRestoreError] = useState(""),
+        [restoreAttempt, setRestoreAttempt] = useState(0);
+    const [changingBranch, setChangingBranch] = useState(false),
+        [nextBranch, setNextBranch] = useState<number | string>("");
+    const allowedBranches = BRANCHES.filter(
+        (b) =>
+            ["customer", "admin"].includes(data!.user.role) ||
+            data!.managed_branch_ids?.includes(b.id),
+    );
+    const [branch, setBranch] = useState(
+            allowedBranches.some((b) => b.id === draft.branch_id)
+                ? draft.branch_id
+                : allowedBranches[0]?.id,
+        ),
+        [date, setDate] = useState(draft.date ?? day(1)),
+        [time, setTime] = useState(draft.time ?? "18:00"),
+        [duration, setDuration] = useState(draft.duration ?? 2),
         [court, setCourt] = useState<Row | null>(null),
         [available, setAvailable] = useState<Row[]>([]),
         [schedule, setSchedule] = useState<Row | null>(null),
-        [services, setServices] = useState<Row>({}),
-        [coupon, setCoupon] = useState(""),
-        [notes, setNotes] = useState(""),
+        [services, setServices] = useState<Row>(draft.services ?? {}),
+        [coupon, setCoupon] = useState(draft.coupon ?? ""),
+        [notes, setNotes] = useState(draft.notes ?? ""),
         [quote, setQuote] = useState<Row | null>(null),
-        [fixed, setFixed] = useState(false),
-        [weeks, setWeeks] = useState(4),
+        [fixed, setFixed] = useState(!!draft.fixed),
+        [weeks, setWeeks] = useState<number | string>(draft.weeks ?? 4),
         [hold, setHold] = useState<Row | null>(null),
         [seconds, setSeconds] = useState(0),
         [step, setStep] = useState(0),
-        [requestKey] = useState(key),
+        [requestKey] = useState(draft.request_key ?? key()),
         [method, setMethod] = useState("cash"),
         [depositOnly, setDepositOnly] = useState(true),
-        [customer, setCustomer] = useState(initial.user_id ?? ""),
+        [customer, setCustomer] = useState(draft.user_id ?? ""),
         [error, setError] = useState("");
     const b = data!.branches.find((b: Row) => b.id === Number(branch));
+    useEffect(() => {
+        if (fixed || data!.user.role !== "customer")
+            setMethod((value) => (value === "momo" ? "cash" : value));
+    }, [fixed, data!.user.role]);
+    useEffect(() => {
+        let live = true;
+        api("holds/active")
+            .then(({ data: active }) => {
+                if (!live) return;
+                if (active) {
+                    const begin = localDateTime(active.starts_at);
+                    setBranch(active.court.branch_id);
+                    setDate(begin.slice(0, 10));
+                    setTime(begin.slice(11, 16));
+                    setDuration(
+                        (Date.parse(active.ends_at) -
+                            Date.parse(active.starts_at)) /
+                            3600000,
+                    );
+                    if (draft.branch_id !== active.court.branch_id) {
+                        setServices({});
+                        setCoupon("");
+                        setCustomer("");
+                        setFixed(false);
+                    }
+                    setHold(active);
+                    setStep(2);
+                }
+                setRestoring(false);
+            })
+            .catch((e) => {
+                if (live) {
+                    setRestoreError(e.message);
+                    setRestoring(false);
+                }
+            });
+        return () => {
+            live = false;
+        };
+    }, [restoreAttempt]);
+    useEffect(() => {
+        if (!restoring && !restoreError)
+            saveBookingDraft(data!.user.id, {
+                branch_id: branch,
+                date,
+                time,
+                duration,
+                court_id: court?.id,
+                services,
+                coupon,
+                notes,
+                fixed,
+                weeks,
+                user_id: customer,
+                request_key: requestKey,
+            });
+    }, [
+        restoring,
+        branch,
+        date,
+        time,
+        duration,
+        court?.id,
+        services,
+        coupon,
+        notes,
+        fixed,
+        weeks,
+        customer,
+    ]);
     const minuteOf = (v: string) =>
         Number(v.slice(0, 2)) * 60 + Number(v.slice(3));
     const timeOptions = Array.from({ length: 48 }, (_, i) => i * 30)
@@ -68,8 +162,22 @@ export default function BookingFlow({
         ":00+07:00";
     const selected = Object.entries(services)
         .filter(([, v]) => v > 0)
-        .map(([id, quantity]) => ({ id: Number(id), quantity }));
+        .map(([id, quantity]) => ({
+            id: Number(id),
+            quantity: Number(quantity),
+        }));
+    const invalidServices = Object.values(services).some(
+        (v) =>
+            v !== "" &&
+            (!Number.isInteger(Number(v)) || Number(v) < 0 || Number(v) > 10),
+    );
+    const invalidWeeks =
+        fixed &&
+        (!Number.isInteger(Number(weeks)) ||
+            Number(weeks) < 2 ||
+            Number(weeks) > 12);
     useEffect(() => {
+        if (restoring || restoreError || !branch) return;
         let active = true;
         setCourt(null);
         setQuote(null);
@@ -83,11 +191,11 @@ export default function BookingFlow({
             .then((r) => {
                 if (active) {
                     setAvailable(r.data);
-                    if (initial.court_id)
+                    const chosen = hold?.court_id ?? draft.court_id;
+                    if (chosen)
                         setCourt(
                             r.data.find(
-                                (c: Row) =>
-                                    c.id === initial.court_id && c.available,
+                                (c: Row) => c.id === chosen && c.available,
                             ) ?? null,
                         );
                 }
@@ -101,8 +209,9 @@ export default function BookingFlow({
         return () => {
             active = false;
         };
-    }, [branch, start, end]);
+    }, [branch, start, end, restoring, restoreError, hold?.id]);
     useEffect(() => {
+        if (restoring || !branch) return;
         let live = true;
         setSchedule(null);
         api("branches/" + branch + "/schedule?date=" + date)
@@ -115,9 +224,13 @@ export default function BookingFlow({
         return () => {
             live = false;
         };
-    }, [branch, date]);
+    }, [branch, date, restoring]);
     useEffect(() => {
-        if (!court) return;
+        if (!court || invalidServices) {
+            setQuote(null);
+            return;
+        }
+        setQuote(null);
         let active = true;
         const timer = setTimeout(
             () =>
@@ -147,7 +260,16 @@ export default function BookingFlow({
             active = false;
             clearTimeout(timer);
         };
-    }, [court, start, end, JSON.stringify(selected), coupon, fixed, customer]);
+    }, [
+        court,
+        start,
+        end,
+        JSON.stringify(selected),
+        coupon,
+        fixed,
+        customer,
+        invalidServices,
+    ]);
     useEffect(() => {
         if (!hold) return;
         const update = () =>
@@ -166,6 +288,10 @@ export default function BookingFlow({
     }, [hold]);
     async function confirm() {
         if (!court || !quote) return;
+        if (invalidServices || invalidWeeks)
+            throw new Error(
+                "Kiểm tra số lượng dịch vụ và số tuần trước khi đặt sân.",
+            );
         if (data!.user.role === "customer" && hold && seconds === 0)
             throw new Error("Giữ chỗ đã hết hạn. Quay lại chọn sân.");
         const payload: Row = {
@@ -189,12 +315,17 @@ export default function BookingFlow({
             ...(fixed ? { occurrences: weeks } : {}),
         });
         const booked = fixed ? r.data : r.data ? [r.data] : [];
+        clearBookingDraft(data!.user.id);
 
         if (method === "momo") {
-            if (fixed)
-                throw new Error(
+            if (fixed) {
+                await refresh().catch(() => {});
+                toast(
                     "Lịch cố định đã đặt. Thanh toán từng lịch trong Lịch của tôi.",
                 );
+                done(booked[0]);
+                return;
+            }
             try {
                 const p = await api("payments/momo", "POST", {
                     request_key: key(),
@@ -205,7 +336,7 @@ export default function BookingFlow({
                 location.assign(p.data.pay_url);
                 return;
             } catch (e) {
-                await refresh();
+                await refresh().catch(() => {});
                 toast(
                     "Lịch đã tạo. " +
                         (e as Error).message +
@@ -215,7 +346,7 @@ export default function BookingFlow({
                 return;
             }
         }
-        await refresh();
+        await refresh().catch(() => {});
         toast(
             "Đã xác nhận " +
                 booked.length +
@@ -233,6 +364,32 @@ export default function BookingFlow({
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [step]);
+    if (restoring)
+        return (
+            <div className="product-page p-10">
+                Đang khôi phục lựa chọn của bạn…
+            </div>
+        );
+    if (restoreError)
+        return (
+            <div className="product-page mx-auto max-w-xl p-10">
+                <p role="alert">{restoreError}</p>
+                <button
+                    className="btn mt-4"
+                    onClick={() => {
+                        setRestoreError("");
+                        setRestoring(true);
+                        setRestoreAttempt((v) => v + 1);
+                    }}
+                >
+                    Thử khôi phục lại
+                </button>
+            </div>
+        );
+    if (!b)
+        return (
+            <Empty text="Bạn chưa có cơ sở được phép đặt sân. Liên hệ quản lý để được phân công." />
+        );
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
             <div className="page-heading">
@@ -247,6 +404,8 @@ export default function BookingFlow({
                     onClick={() =>
                         run(async () => {
                             if (hold) await api("holds/" + hold.id, "DELETE");
+                            clearBookingDraft(data!.user.id);
+                            await refresh().catch(() => {});
                             close();
                         })
                     }
@@ -287,9 +446,12 @@ export default function BookingFlow({
                                 <select
                                     className="input mt-1 w-full"
                                     value={branch}
+                                    disabled={!!draft.branch_id}
                                     onChange={(e) => {
                                         setBranch(+e.target.value);
                                         setServices({});
+                                        setCoupon("");
+                                        setCustomer("");
                                     }}
                                 >
                                     {BRANCHES.filter(
@@ -305,6 +467,18 @@ export default function BookingFlow({
                                         </option>
                                     ))}
                                 </select>
+                                {!!draft.branch_id && (
+                                    <button
+                                        type="button"
+                                        className="btn-outline mt-2"
+                                        onClick={() => {
+                                            setNextBranch(branch);
+                                            setChangingBranch(true);
+                                        }}
+                                    >
+                                        Đổi cơ sở
+                                    </button>
+                                )}
                             </label>
                             <div className="grid gap-4 sm:grid-cols-3">
                                 <label>
@@ -392,10 +566,18 @@ export default function BookingFlow({
                                         max={12}
                                         value={weeks}
                                         onChange={(e) =>
-                                            setWeeks(+e.target.value)
+                                            setWeeks(e.target.value)
                                         }
                                     />
                                 </label>
+                            )}
+                            {invalidWeeks && (
+                                <p
+                                    role="alert"
+                                    className="text-sm text-red-700"
+                                >
+                                    Số tuần phải là số nguyên từ 2 đến 12.
+                                </p>
                             )}
                             {data!.user.role !== "customer" && (
                                 <CustomerPicker
@@ -408,6 +590,7 @@ export default function BookingFlow({
                                 className="btn"
                                 disabled={
                                     !available.length ||
+                                    invalidWeeks ||
                                     !!error ||
                                     (data!.user.role !== "customer" &&
                                         !customer)
@@ -490,17 +673,27 @@ export default function BookingFlow({
                                                 min={0}
                                                 max={10}
                                                 className="input w-20"
-                                                value={services[s.id] ?? 0}
+                                                value={services[s.id] ?? ""}
+                                                placeholder="0"
                                                 onChange={(e) =>
                                                     setServices({
                                                         ...services,
-                                                        [s.id]: +e.target.value,
+                                                        [s.id]: e.target.value,
                                                     })
                                                 }
                                             />
                                         </label>
                                     ))}
                             </div>
+                            {invalidServices && (
+                                <p
+                                    role="alert"
+                                    className="mt-3 text-sm text-red-700"
+                                >
+                                    Số lượng dịch vụ phải là số nguyên từ 0 đến
+                                    10.
+                                </p>
+                            )}
                             {!fixed && (
                                 <label className="mt-4 block">
                                     Mã ưu đãi
@@ -535,7 +728,11 @@ export default function BookingFlow({
                                 <button
                                     className="btn"
                                     disabled={
-                                        !court || !quote || loading || !!error
+                                        !court ||
+                                        !quote ||
+                                        loading ||
+                                        !!error ||
+                                        invalidServices
                                     }
                                     onClick={() =>
                                         run(async () => {
@@ -561,6 +758,13 @@ export default function BookingFlow({
                     )}
                     {step === 2 && (
                         <>
+                            {data!.user.role !== "customer" && (
+                                <CustomerPicker
+                                    branch={Number(branch)}
+                                    value={customer}
+                                    onChange={setCustomer}
+                                />
+                            )}
                             <h2 className="text-xl font-bold">
                                 Phương thức thanh toán
                             </h2>
@@ -669,7 +873,16 @@ export default function BookingFlow({
                                 </button>
                                 <button
                                     className="btn"
-                                    disabled={loading || seconds === 0}
+                                    disabled={
+                                        (data!.user.role !== "customer" &&
+                                            !customer) ||
+                                        loading ||
+                                        seconds === 0 ||
+                                        !quote ||
+                                        !!error ||
+                                        invalidServices ||
+                                        invalidWeeks
+                                    }
                                     onClick={() => run(confirm)}
                                 >
                                     Xác nhận đặt sân
@@ -725,6 +938,58 @@ export default function BookingFlow({
                     )}
                 </Card>
             </div>
+            {changingBranch && (
+                <Modal
+                    title="Đổi cơ sở đặt sân"
+                    close={() => setChangingBranch(false)}
+                >
+                    <p className="mb-4 text-sm">
+                        Chọn cơ sở khác sẽ xóa sân, dịch vụ và ưu đãi đang chọn.
+                        Bạn sẽ chọn lại lịch phù hợp với cơ sở mới.
+                    </p>
+                    <select
+                        aria-label="Cơ sở mới"
+                        className="input w-full"
+                        value={nextBranch}
+                        onChange={(e) => setNextBranch(e.target.value)}
+                    >
+                        {allowedBranches.map((v) => (
+                            <option key={v.id} value={v.id}>
+                                {v.rawName}
+                            </option>
+                        ))}
+                    </select>
+                    <button
+                        className="btn mt-4 w-full"
+                        disabled={
+                            loading ||
+                            !nextBranch ||
+                            Number(nextBranch) === branch
+                        }
+                        onClick={() =>
+                            run(async () => {
+                                if (hold)
+                                    await api("holds/" + hold.id, "DELETE");
+                                setHold(null);
+                                setCourt(null);
+                                setQuote(null);
+                                setServices({});
+                                setCoupon("");
+                                setNotes("");
+                                setCustomer("");
+                                setFixed(false);
+                                setMethod("cash");
+                                setDepositOnly(true);
+                                setBranch(Number(nextBranch));
+                                setStep(0);
+                                setChangingBranch(false);
+                            })
+                        }
+                    >
+                        Xác nhận đổi cơ sở
+                    </button>
+                </Modal>
+            )}
         </div>
     );
 }

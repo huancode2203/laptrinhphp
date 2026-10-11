@@ -26,6 +26,8 @@ Ngân hàng nhập trong trang quản trị được lưu tại `integration_set
 
 ## 2. Các lỗi đã sửa trong đợt này
 
+Đợt ổn định phiên/đặt sân: sửa cấu hình môi trường dùng chung luồng Apache gây thiếu APP_KEY/nhầm SQLite; đầu vào array ngày gây 500; phản hồi async cũ và lazy chunk bị xóa khi build. Client giữ route, có nút thử lại, không tự trả về trang chủ khi dịch vụ lỗi. Khôi phục giữ chỗ theo server, lưu bản nháp theo người dùng, khóa cơ sở và xác nhận trước đổi, thêm nút xác nhận giờ và mục “Sân đang chờ” riêng. Sửa nhập số ở form chung/dịch vụ/POS/tuần cố định, bổ sung kiểm tra kiểu và giới hạn server; kiểm tra điện thoại đúng định dạng nhưng chưa chuẩn hóa toàn bộ dữ liệu cũ. Quản lý nhớ mục/cơ sở/ngày, bỏ dữ liệu phản hồi cũ khi đổi phạm vi, có tìm mục và nhóm thao tác. Đăng nhập mặc định dẫn nhân sự vào khu quản lý, khách vào tài khoản. Bộ 150 kiểm thử đạt ở hai database và kiểm tra HTTP đồng thời 172 lượt trên 5 vai trò; phạm vi thử thủ công nằm trong VALIDATION.
+
 Hồ sơ đã làm lại, tách thông tin cá nhân và bảo mật; avatar đúng tỷ lệ trên desktop/mobile, tên không còn bị ẩn bởi kiểu menu. Thống kê đọc booking và sân yêu thích thật. Bộ dữ liệu mở rộng có tối thiểu 30 dòng ở 46 bảng nghiệp vụ; bản cài mới có 95 người dùng tên Việt tự nhiên, 30 chi nhánh, 186 sân và 1.292 lịch. Không reset database đang dùng. Bộ lọc khu vực xử lý được nhiều chi nhánh cùng quận. Các giải vòng tròn trong fixture có đủ lịch 7 vòng/28 trận cho 8 người. Chi tiết dữ liệu, lệnh cài và phạm vi xác minh Firebase nằm trong README/VALIDATION.
 
 | Vấn đề trước sửa | Hành vi hiện tại |

@@ -6,6 +6,7 @@ use App\BookingService;
 use App\FeatureService;
 use App\Models\AuthCode;
 use App\Models\User;
+use App\Rules\VietnamesePhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class ProfileController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($request->user()->id)],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['nullable', 'string', 'max:30', new VietnamesePhone],
             'skill_level' => ['sometimes', 'string', 'max:40'], 'public_profile' => ['sometimes', 'boolean'],
             'current_password' => ['nullable', 'string', 'max:72'], 'avatar_id' => 'sometimes|nullable|integer',
         ]);

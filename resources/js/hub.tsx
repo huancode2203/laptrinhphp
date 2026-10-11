@@ -2,22 +2,60 @@ import {
     createContext,
     useContext,
     useEffect,
+    useRef,
     useState,
     type ReactNode,
 } from "react";
-import { hydrate, type Row } from "./data";
-let csrf = "";
+import { COMMUNITY_POSTS, hydrate, type Row } from "./data";
+export class ApiError extends Error {
+    constructor(
+        message: string,
+        public status: number,
+        public fields: Record<string, string[]> = {},
+    ) {
+        super(message);
+    }
+}
+async function responseBody(r: Response) {
+    let j: any = {};
+    try {
+        j = await r.json();
+    } catch {}
+    if (r.status === 401) {
+        window.dispatchEvent(new CustomEvent("hub:auth-expired"));
+        throw new ApiError(
+            "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+            401,
+        );
+    }
+    if (!r.ok)
+        throw new ApiError(
+            r.status >= 500
+                ? "Hệ thống đang gặp sự cố. Lựa chọn của bạn vẫn được giữ; vui lòng thử lại."
+                : r.status === 419
+                  ? "Phiên bảo mật đã thay đổi. Vui lòng thử lại thao tác."
+                  : Object.values(j.errors ?? {})
+                        .flat()
+                        .join(" ") ||
+                    j.message ||
+                    "Chưa thực hiện được yêu cầu. Vui lòng thử lại.",
+            r.status,
+            j.errors ?? {},
+        );
+    return j;
+}
 export async function api(
     path: string,
     method = "GET",
     body?: Row,
 ): Promise<any> {
+    let csrf = "";
     if (method !== "GET") {
         const c = await fetch("/api/v1/csrf", {
             credentials: "same-origin",
             headers: { Accept: "application/json" },
         });
-        csrf = (await c.json()).csrf_token;
+        csrf = (await responseBody(c)).csrf_token;
     }
     const r = await fetch("/api/v1/" + path, {
         method,
@@ -29,30 +67,14 @@ export async function api(
         },
         body: body ? JSON.stringify(body) : undefined,
     });
-    let j: any = {};
-    try {
-        j = await r.json();
-    } catch {}
-    if (r.status === 401) {
-        window.dispatchEvent(new CustomEvent("hub:auth-expired"));
-        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-    }
-    if (!r.ok)
-        throw new Error(
-            Object.values(j.errors ?? {})
-                .flat()
-                .join(" ") ||
-                j.message ||
-                "Không thực hiện được yêu cầu (" + r.status + ").",
-        );
-    return j;
+    return responseBody(r);
 }
 export async function upload(file: File) {
     const c = await fetch("/api/v1/csrf", {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
     });
-    const token = (await c.json()).csrf_token;
+    const token = (await responseBody(c)).csrf_token;
     const body = new FormData();
     body.append("file", file);
     const r = await fetch("/api/v1/media", {
@@ -61,20 +83,7 @@ export async function upload(file: File) {
         headers: { Accept: "application/json", "X-CSRF-TOKEN": token },
         body,
     });
-    const j = await r.json();
-    if (r.status === 401) {
-        window.dispatchEvent(new CustomEvent("hub:auth-expired"));
-        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-    }
-    if (!r.ok)
-        throw new Error(
-            Object.values(j.errors ?? {})
-                .flat()
-                .join(" ") ||
-                j.message ||
-                "Chưa tải được tệp.",
-        );
-    return j;
+    return responseBody(r);
 }
 export const key = () => crypto.randomUUID();
 type Hub = {
@@ -91,24 +100,39 @@ export function HubProvider({ children }: { children: ReactNode }) {
         [message, setMessage] = useState(""),
         [loading, setLoading] = useState(false),
         [failure, setFailure] = useState("");
+    const refreshVersion = useRef(0),
+        running = useRef(false);
     async function refresh() {
-        const [b, p] = await Promise.all([api("hub"), api("community/posts")]);
-        hydrate(b.data, p.data.data ?? p.data);
-        setData(b.data);
-        if (b.data.auth_notice) toast(b.data.auth_notice);
+        const version = ++refreshVersion.current;
+        const [b, p] = await Promise.allSettled([
+            api("hub"),
+            api("community/posts"),
+        ]);
+        if (b.status === "rejected") throw b.reason;
+        if (version !== refreshVersion.current) return;
+        hydrate(
+            b.value.data,
+            p.status === "fulfilled"
+                ? (p.value.data.data ?? p.value.data)
+                : COMMUNITY_POSTS,
+        );
+        setData(b.value.data);
+        if (b.value.data.auth_notice) toast(b.value.data.auth_notice);
         setFailure("");
     }
     function toast(s: string) {
         setMessage(s);
     }
     async function run(fn: () => Promise<void>) {
-        if (loading) return;
+        if (running.current) return;
+        running.current = true;
         setLoading(true);
         try {
             await fn();
         } catch (e) {
             toast((e as Error).message);
         } finally {
+            running.current = false;
             setLoading(false);
         }
     }

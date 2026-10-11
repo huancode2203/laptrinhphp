@@ -8,26 +8,37 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
-import { api, useHub } from "./hub";
+import { api } from "./hub";
 import { day, money, type Row } from "./data";
 import { Card, Table, cell } from "./ui";
 const td = (value: React.ReactNode) => <td className={cell}>{value}</td>;
 
 export default function ReportsView({ branch }: { branch: number | null }) {
-    const { toast } = useHub();
     const [from, setFrom] = useState(day(-30)),
         [to, setTo] = useState(day()),
-        [report, setReport] = useState<Row | null>(null);
+        [report, setReport] = useState<Row | null>(null),
+        [error, setError] = useState(""),
+        [attempt, setAttempt] = useState(0);
     const query = new URLSearchParams({
         ...(branch ? { branch_id: String(branch) } : {}),
         from,
         to,
     }).toString();
     useEffect(() => {
+        let live = true;
+        setReport(null);
+        setError("");
         api("manage/reports?" + query)
-            .then((r) => setReport(r.data))
-            .catch((e) => toast(e.message));
-    }, [query]);
+            .then((r) => {
+                if (live) setReport(r.data);
+            })
+            .catch((e) => {
+                if (live) setError(e.message);
+            });
+        return () => {
+            live = false;
+        };
+    }, [query, attempt]);
     return (
         <section>
             <div className="mb-6 flex flex-wrap items-end gap-3">
@@ -59,6 +70,22 @@ export default function ReportsView({ branch }: { branch: number | null }) {
                     </a>
                 ))}
             </div>
+            {error && (
+                <div className="management-error mb-5" role="alert">
+                    <span>{error}</span>
+                    <button
+                        className="btn-outline"
+                        onClick={() => setAttempt((v) => v + 1)}
+                    >
+                        Tải lại báo cáo
+                    </button>
+                </div>
+            )}
+            {!report && !error && (
+                <p role="status" className="mb-5 text-sm text-[#6d8474]">
+                    Đang tải báo cáo…
+                </p>
+            )}
             {report && (
                 <>
                     <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

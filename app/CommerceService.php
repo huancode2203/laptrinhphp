@@ -139,6 +139,12 @@ class CommerceService
 
     public function sale(User $actor, array $data): Sale
     {
+        foreach (['user_id', 'booking_id'] as $field) {
+            if (isset($data[$field])) {
+                $data[$field] = (int) $data[$field];
+            }
+        }
+
         return DB::transaction(function () use ($actor, $data): Sale {
             app(BookingService::class)->assertManage($actor, (int) $data['branch_id']);
             $booking = isset($data['booking_id']) ? Booking::whereKey($data['booking_id'])->lockForUpdate()->firstOrFail() : null;

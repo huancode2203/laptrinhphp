@@ -54,8 +54,9 @@ class EventController extends Controller
 
     public function save(Request $request, BookingService $engine, ?GameEvent $event = null): JsonResponse
     {
-        $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id'], 'title' => ['required', 'string', 'max:150'], 'type' => ['required', Rule::in(['friendly', 'league', 'training', 'workshop'])], 'description' => ['required', 'string', 'max:5000'], 'format' => ['required', 'string', 'max:255'], 'skill_level' => ['required', 'string', 'max:40'], 'starts_at' => ['required', 'date', 'after:now'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'capacity' => ['required', 'integer', 'between:2,500'], 'fee' => ['required', 'integer', 'between:0,10000000'], 'court_ids' => ['required', 'array', 'min:1', 'max:30'], 'court_ids.*' => ['required', 'integer', 'distinct', 'exists:courts,id']]);
+        $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id'], 'title' => ['required', 'string', 'max:150'], 'type' => ['required', Rule::in(['friendly', 'league', 'training', 'workshop'])], 'description' => ['required', 'string', 'max:5000'], 'format' => ['required', 'string', 'max:255'], 'skill_level' => ['required', 'string', 'max:40'], 'starts_at' => ['required', 'date', 'after:now'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'capacity' => ['required', 'integer', 'between:2,500'], 'fee' => ['required', 'integer', 'between:0,10000000'], 'court_ids' => ['required', 'array', 'list', 'min:1', 'max:30'], 'court_ids.*' => ['required', 'integer', 'distinct', 'exists:courts,id']]);
         $engine->assertManage($request->user(), (int) $data['branch_id']);
+        $data['court_ids'] = array_map('intval', $data['court_ids']);
         $event = DB::transaction(function () use ($request, $event, $data, $engine): GameEvent {
             $start = CarbonImmutable::parse($data['starts_at'], config('app.timezone'))->setTimezone(config('app.timezone'));
             $end = CarbonImmutable::parse($data['ends_at'], config('app.timezone'))->setTimezone(config('app.timezone'));
