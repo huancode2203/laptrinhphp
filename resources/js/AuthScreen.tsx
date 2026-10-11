@@ -7,7 +7,8 @@ export default function AuthScreen({ done }: { done: () => void }) {
         [d, set] = useState<Record<string, string>>({}),
         [error, setError] = useState(data?.auth_notice ?? ""),
         [busy, setBusy] = useState(false),
-        [token, setToken] = useState("");
+        [token, setToken] = useState(""),
+        [demoCode, setDemoCode] = useState("");
     function field(name: string, label: string, type = "text") {
         return (
             <label className="block text-sm font-semibold">
@@ -72,6 +73,26 @@ export default function AuthScreen({ done }: { done: () => void }) {
                             Tiếp tục với Google
                         </a>
                     )}
+                    {mode === "login" && data?.demo?.google && (
+                        <button
+                            className="btn-outline mb-4 w-full"
+                            disabled={busy}
+                            onClick={async () => {
+                                setBusy(true);
+                                try {
+                                    await api("demo/google", "POST");
+                                    await refresh();
+                                    done();
+                                } catch (e) {
+                                    setError((e as Error).message);
+                                } finally {
+                                    setBusy(false);
+                                }
+                            }}
+                        >
+                            Thử đăng nhập Google · Demo
+                        </button>
+                    )}
                     <form
                         className="space-y-4"
                         onSubmit={async (e) => {
@@ -90,6 +111,7 @@ export default function AuthScreen({ done }: { done: () => void }) {
                                         { email: d.email },
                                     );
                                     setError(r.message);
+                                    setDemoCode(r.demo_code ?? "");
                                     setMode("verify");
                                 } else if (mode === "verify") {
                                     const r = await api(
@@ -149,8 +171,27 @@ export default function AuthScreen({ done }: { done: () => void }) {
                         {mode === "verify" && (
                             <>
                                 <p className="text-sm">
-                                    Nhập mã 6 chữ số đã gửi tới {d.email}.
+                                    {demoCode ? (
+                                        "Nhập mã demo hiển thị bên dưới."
+                                    ) : (
+                                        <>
+                                            Nhập mã 6 chữ số đã gửi tới{" "}
+                                            {d.email}.
+                                        </>
+                                    )}
                                 </p>
+                                {demoCode && (
+                                    <p
+                                        role="status"
+                                        className="rounded-xl bg-amber-50 p-4 text-sm"
+                                    >
+                                        Mã demo:{" "}
+                                        <b className="text-xl tracking-widest">
+                                            {demoCode}
+                                        </b>{" "}
+                                        · Không gửi email thật.
+                                    </p>
+                                )}
                                 {field("code", "Mã xác nhận")}
                             </>
                         )}

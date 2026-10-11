@@ -74,7 +74,7 @@ Lệnh `php artisan db:seed --class=RealisticDemoSeeder` tạo **đúng 280 bả
 
 Dữ liệu có lịch đã hoàn tất, lịch sắp tới, lịch đã hủy và bài chờ duyệt; ngày được tính theo ngày chạy seeder. Có dữ liệu cho tài khoản `customer@badminton.test`. Khách mới: `player01@badminton.test` đến `player20@badminton.test`, mật khẩu `Demo@12345`. Chạy lại không tạo trùng, không thay thế dữ liệu đã có. Seeder chỉ chạy trong `local` hoặc `testing`; mọi khoản thu đều là dữ liệu mẫu, không gọi cổng thanh toán.
 
-SQL đi kèm được xuất từ database cài mới riêng: 62 bảng, 25 tài khoản, 8 chi nhánh, 77 sân và bộ 280 bản ghi. Không chứa phiên đăng nhập, upload, lịch thử từ database đang vận hành hoặc khóa dịch vụ. SQL chứa ngày cố định tại lúc xuất; dùng seeder trên database mới để có lịch mẫu theo ngày cài đặt.
+SQL đi kèm được xuất từ database cài mới riêng: 63 bảng, 25 tài khoản, 8 chi nhánh, 77 sân và bộ 280 bản ghi. Không chứa phiên đăng nhập, upload, lịch thử từ database đang vận hành hoặc khóa dịch vụ. SQL chứa ngày cố định tại lúc xuất; dùng seeder trên database mới để có lịch mẫu theo ngày cài đặt.
 
 Các luồng đã đối chiếu với source `huancode2203/SNCUCAHuNRose` và hai chat “Kiểm tra hệ thống đặt sân”, “Kiểm tra tính năng layout”: ma trận công khai chỉ hiện trạng thái; bước chọn sân giữ đúng ngày/giờ; quản lý chọn nhiều ô để đặt nhanh bằng tên/số điện thoại; mở lịch đã đặt từ ma trận theo quyền; POS gộp vào hóa đơn sân và trừ kho một lần; khách theo chi nhánh có lịch/chi tiêu/hội viên; báo cáo toàn hệ thống; thông báo mở đối tượng liên quan/xóa; voucher, bài/trận cá nhân, bình luận lồng nhau và danh sách chờ sự kiện.
 
@@ -111,7 +111,7 @@ Ollama cho cả hai tác vụ:
 
 ```dotenv
 AI_SEARCH_PROVIDER=ollama
-AI_SEARCH_MODEL=qwen3:4b
+AI_SEARCH_MODEL=qwen3:1.7b
 AI_MODERATION_PROVIDER=ollama
 AI_MODERATION_MODEL=qwen3:1.7b
 OLLAMA_URL=http://127.0.0.1:11434
@@ -120,9 +120,9 @@ AI_MODERATION_TIMEOUT=60
 AI_AUTO_APPROVE=true
 ```
 
-Cài [Ollama Windows](https://docs.ollama.com/windows), mở `chay-ai.bat` để bật dịch vụ trên `127.0.0.1:11434` và tải hai model, hoặc chạy `ollama pull qwen3:4b` và `ollama pull qwen3:1.7b`. Cần khoảng 4 GB cho hai model. Script nhận diện Ollama đã cài hoặc runtime local của workspace này; không sửa `.env`. Model phải hỗ trợ chat và JSON schema. Adapter gọi [Ollama /api/chat](https://docs.ollama.com/api/chat), `stream=false`, `think=false`, context 4096, giữ model 10 phút. Ollama/model **không kèm ZIP**.
+Cài [Ollama Windows](https://docs.ollama.com/windows), mở `chay-ai.bat` để bật dịch vụ trên `127.0.0.1:11434` và tải model `qwen3:1.7b` cho cả hai tác vụ. Có thể chạy `chay-ai.bat --full` để tải thêm `qwen3:4b`, rồi đặt riêng `AI_SEARCH_MODEL=qwen3:4b`; tổng dung lượng hai model khoảng 4 GB. Script nhận diện Ollama đã cài hoặc runtime local của workspace này; không sửa `.env`. Model phải hỗ trợ chat và JSON schema. Adapter gọi [Ollama /api/chat](https://docs.ollama.com/api/chat), `stream=false`, `think=false`, context 4096, giữ model 10 phút. Ollama/model **không kèm ZIP**.
 
-Trên máy thực hiện dự án đã bật Ollama v0.40.2 và nhận GPU RTX 3050 6 GB qua Vulkan. Hai model đang tải, **chưa có bằng chứng suy luận thật thành công**. Giữ provider `local` cho đến khi tải xong và kiểm tra model đạt. Runtime và dữ liệu model nằm ngoài Git, trong `work/ollama` của workspace.
+Trên máy thực hiện dự án đã bật Ollama v0.40.2, tải xong `qwen3:1.7b` và kiểm tra suy luận thật cho tìm sân/duyệt bài ngày 11/10/2026. Hai tác vụ đang dùng cùng model này; chưa xác nhận tải xong 4b. Khi chạy trên máy khác, đặt provider `ollama` sau khi tải model và kiểm tra đạt. Runtime và dữ liệu model nằm ngoài Git, trong `work/ollama` của workspace.
 
 Ví dụ tìm sân OpenAI, duyệt bài Ollama:
 
@@ -142,7 +142,21 @@ Kiểm duyệt gửi nội dung bài/bình luận cho provider đã chọn. `AI_
 
 ## MoMo và chuyển khoản
 
-MoMo mặc định tắt. Điền merchant vào `.env` riêng:
+### Demo môn học và ngân hàng cá nhân
+
+`.env.example` bật `DEMO_ENABLED=true`. Demo chỉ hoạt động trong `APP_ENV=local/testing`; dịch vụ đủ cấu hình thật được ưu tiên. Khi thiếu merchant, MoMo có màn hình mô phỏng thu cọc/thu đủ/nạp ví; thiếu ngân hàng có mô phỏng chuyển khoản. Mỗi giao dịch ghi nhãn demo, chống ghi lặp, không chuyển tiền thật. Google có tài khoản khách mẫu; email/SMS có mã thử hiển thị trên màn hình, không đánh dấu email/số điện thoại đã xác thực thật. Khôi phục demo khi chưa đăng nhập chỉ dành cho tài khoản email `.test` và cùng phiên trình duyệt.
+
+Để nhận chuyển khoản cá nhân: đăng nhập admin → **Quản lý → Vận hành & nội dung → Kết nối dịch vụ → Tài khoản nhận chuyển khoản**, chọn ngân hàng, nhập số tài khoản và tên chủ tài khoản thật. Khách nhận VietQR/nội dung riêng của lịch; quầy đối chiếu sao kê rồi ghi khoản ngân hàng thực nhận. Luồng thủ công không cần merchant MoMo hoặc SePay. Chưa nhập tài khoản thì không tạo QR ngân hàng giả.
+
+Thông tin ngân hàng ở trang quản trị lưu trong database; bộ `BANK_*` đầy đủ trong `.env` có ưu tiên. Muốn xác nhận tự động bằng SePay, điền bộ `BANK_*`, `SEPAY_ENABLED` và khóa webhook trong `.env`. [Kết nối MB API của SePay](https://docs.sepay.vn/ket-noi-mb-api.html) hỗ trợ cá nhân; điều kiện ngân hàng khác cần kiểm tra riêng.
+
+Email thật dùng SMTP ở mục dưới. Thiếu SMTP có OTP demo; đã cấu hình SMTP mà gửi lỗi sẽ báo lỗi và thu hồi mã, không giả vờ đã gửi. Số dư và báo cáo trong bản môn học là dữ liệu thử; dùng dữ liệu sạch, `DEMO_ENABLED=false` khi vận hành thật.
+
+Danh sách đầy đủ chức năng, lỗi đã sửa và phần còn thiếu theo từng vai trò: [Báo cáo rà soát project](docs/PROJECT_AUDIT.md).
+
+### Merchant MoMo tùy chọn
+
+`MOMO_ENABLED` mặc định tắt adapter thật. Nếu cần merchant, điền `.env` riêng:
 
 ```dotenv
 MOMO_ENABLED=true
@@ -214,7 +228,7 @@ MAIL_TIMEOUT=15
 
 Các giá trị `dia-chi-...`/`mat-khau-...` chỉ là chỗ cần thay, không phải thông tin dùng được. [Google giải thích mật khẩu ứng dụng](https://support.google.com/accounts/answer/185833): cần xác minh 2 bước, một số tài khoản tổ chức/Advanced Protection không có lựa chọn này. [Cấu hình Gmail SMTP](https://support.google.com/a/answer/176600).
 
-Mặc định `MAIL_MAILER=log` **không bật gửi OTP/khôi phục và không tạo mã sống trong nhật ký**. Chỉ bật luồng gửi thư khi cấu hình SMTP. Mã hết hạn 10 phút, khóa sau 5 lần sai; gửi lỗi thu hồi mã, token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
+`MAIL_MAILER=log` không gửi email thật và không ghi mã sống vào nhật ký. Khi bật demo local, mã thử hiện trên giao diện; khi tắt demo, cần SMTP để dùng luồng gửi thư. Mã hết hạn 10 phút, khóa sau 5 lần sai; gửi lỗi thu hồi mã, token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
 
 **SMS OTP qua Twilio Verify**
 
@@ -230,7 +244,7 @@ TWILIO_AUTH_TOKEN=
 TWILIO_VERIFY_SERVICE_SID=
 ```
 
-[Twilio Verify](https://www.twilio.com/docs/verify/quickstarts/go) gửi/kiểm tra OTP thật, số Việt Nam được chuyển sang dạng `+84`. Có 60 giây chờ gửi lại, tối đa 5 lần kiểm tra trong 10 phút. Đổi số xóa xác thực cũ. Sau xác thực có thể đăng nhập điện thoại + mật khẩu. Không giả lập OTP trên giao diện.
+[Twilio Verify](https://www.twilio.com/docs/verify/quickstarts/go) gửi/kiểm tra OTP thật, số Việt Nam được chuyển sang dạng `+84`. Có 60 giây chờ gửi lại, tối đa 5 lần kiểm tra trong 10 phút. Đổi số xóa xác thực cũ. Sau xác thực thật có thể đăng nhập điện thoại + mật khẩu. Thiếu cấu hình và bật demo local thì có mã thử trên màn hình; mã này không xác thực số thật.
 
 **Kiểm tra sau khi điền cấu hình**
 
@@ -247,7 +261,7 @@ Quản trị mở **Quản lý → Vận hành & nội dung → Kết nối dị
 
 Camera QR chỉ bật sau thao tác quét và cho phép, cần HTTPS hoặc localhost. Vẫn có ô nhập/dán QR. Một số ảnh/font nguồn cần mạng; hình sân ở trang chủ dựng SVG/CSS.
 
-**Suy luận AI thật, OAuth, SMS, SMTP, SePay và MoMo chưa được xác minh với dịch vụ thật**: model còn tải và chưa có khóa/merchant. Bộ kết nối có kiểm thử bằng phản hồi giả lập; không đồng nghĩa giao dịch, SMS hoặc email thật đã chạy. Chưa xuất bản lên hosting công khai.
+**Ollama đã có kết quả suy luận thật cho hai tác vụ trên một số câu thử. OAuth, SMS, SMTP, SePay và MoMo chưa được xác minh với tài khoản/dịch vụ thật** do chưa có cấu hình của chủ dự án. Bộ kết nối có kiểm thử bằng phản hồi giả lập và các luồng demo; không đồng nghĩa giao dịch, SMS hoặc email thật đã chạy. Chưa xuất bản lên hosting công khai.
 
 ## Phát triển và kiểm thử
 

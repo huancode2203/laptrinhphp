@@ -215,7 +215,7 @@ class EventController extends Controller
             if ($data['status'] === 'completed') {
                 abort_if(now()->lt($event->ends_at) || $event->matches()->whereNull('winner_id')->exists(), 422, 'Chưa hết giờ hoặc còn trận chưa chốt kết quả.');
             } else {
-                foreach ($event->registrations()->whereIn('status', ['pending', 'confirmed'])->lockForUpdate()->get() as $reg) {
+                foreach ($event->registrations()->whereIn('status', ['pending', 'confirmed', 'waiting', 'expired'])->lockForUpdate()->get() as $reg) {
                     $this->cancelRegistration($request, $reg, $commerce);
                     $reg->user->notify(new HubNotification(['type' => 'event.cancelled', 'title' => 'Sự kiện đã được hủy', 'body' => $event->title, 'event_id' => $event->id]));
                 }

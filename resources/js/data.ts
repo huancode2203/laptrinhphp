@@ -24,6 +24,8 @@ export const statusText = (s: string) =>
     (
         ({
             customer: "Khách hàng",
+            demo_bank: "Ngân hàng · Demo",
+            demo_momo: "MoMo · Demo",
             manager: "Quản lý",
             staff: "Nhân viên",
             cashier: "Thu ngân",

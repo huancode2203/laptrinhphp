@@ -13,7 +13,8 @@ export function AccountExtras() {
         [avatar, setAvatar] = useState<number[]>([]),
         [phone, setPhone] = useState(data!.user.phone ?? ""),
         [code, setCode] = useState(""),
-        [sent, setSent] = useState(false);
+        [sent, setSent] = useState(false),
+        [demoCode, setDemoCode] = useState("");
     const load = async () => setExtras((await api("features/account")).data);
     useEffect(() => {
         load().catch((e) => toast(e.message));
@@ -227,16 +228,35 @@ export function AccountExtras() {
                                 className="btn-outline"
                                 onClick={() =>
                                     run(async () => {
-                                        await api("me/phone/send", "POST", {
-                                            phone,
-                                        });
+                                        const response = await api(
+                                            "me/phone/send",
+                                            "POST",
+                                            {
+                                                phone,
+                                            },
+                                        );
                                         setSent(true);
-                                        toast("Đã gửi mã xác thực.");
+                                        setDemoCode(response.demo_code ?? "");
+                                        toast(response.message);
                                     })
                                 }
                             >
-                                Gửi mã xác thực
+                                {data!.demo?.sms
+                                    ? "Thử OTP điện thoại · Demo"
+                                    : "Gửi mã xác thực"}
                             </button>
+                            {demoCode && (
+                                <p
+                                    role="status"
+                                    className="rounded-xl bg-amber-50 p-3 text-sm"
+                                >
+                                    Mã demo:{" "}
+                                    <b className="text-xl tracking-widest">
+                                        {demoCode}
+                                    </b>{" "}
+                                    · Không gửi SMS thật.
+                                </p>
+                            )}
                             {sent && (
                                 <>
                                     <input
@@ -254,13 +274,14 @@ export function AccountExtras() {
                                         className="btn"
                                         onClick={() =>
                                             run(async () => {
-                                                await changed(() =>
-                                                    api(
+                                                await changed(async () => {
+                                                    const response = await api(
                                                         "me/phone/verify",
                                                         "POST",
                                                         { code },
-                                                    ),
-                                                );
+                                                    );
+                                                    toast(response.message);
+                                                });
                                                 setSent(false);
                                             })
                                         }

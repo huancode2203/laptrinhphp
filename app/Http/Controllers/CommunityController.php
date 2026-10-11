@@ -60,6 +60,9 @@ class CommunityController extends Controller
 
     public function show(Request $request, CommunityPost $post): JsonResponse
     {
+        if ($request->user()?->role !== 'admin') {
+            $this->assertNotBlocked($request->user(), $post->user_id);
+        }
         abort_if(($post->status === 'hidden' || $post->moderation_status !== 'approved') && $post->user_id !== $request->user()?->id && $request->user()?->role !== 'admin', 404);
         $post->load(['user:id,name,skill_level', 'branch:id,name,district', 'comments.user:id,name'])->loadCount(['likes', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')]);
         $data = $post->toArray();
@@ -104,6 +107,7 @@ class CommunityController extends Controller
 
     public function join(Request $request, CommunityPost $post): JsonResponse
     {
+        $this->assertNotBlocked($request->user(), $post->user_id);
         $join = DB::transaction(function () use ($request, $post): PostJoin {
             $post = CommunityPost::query()->lockForUpdate()->findOrFail($post->id);
             abort_if($post->user_id === $request->user()->id, 422, 'Bạn là người tổ chức.');
@@ -133,6 +137,7 @@ class CommunityController extends Controller
                 return $join;
             }
             if ($data['status'] === 'accepted') {
+                $this->assertNotBlocked($request->user(), $join->user_id);
                 abort_unless($post->status === 'open' && $post->moderation_status === 'approved' && $post->starts_at->gt(now()), 422);
                 abort_if($post->joins()->where('status', 'accepted')->where('id', '!=', $join->id)->count() >= $post->capacity, 422, 'Đội đã đủ người.');
                 $conversation = Conversation::firstOrCreate(['community_post_id' => $post->id], ['title' => $post->title]);
@@ -163,6 +168,7 @@ class CommunityController extends Controller
 
     public function like(Request $request, CommunityPost $post): JsonResponse
     {
+        $this->assertNotBlocked($request->user(), $post->user_id);
         abort_if($post->status === 'hidden' || $post->moderation_status !== 'approved', 404);
         $data = $request->validate(['liked' => ['required', 'boolean']]);
         DB::transaction(function () use ($request, $post, $data): void {
@@ -179,6 +185,7 @@ class CommunityController extends Controller
 
     public function comment(Request $request, CommunityPost $post): JsonResponse
     {
+        $this->assertNotBlocked($request->user(), $post->user_id);
         abort_if($post->status === 'hidden' || $post->moderation_status !== 'approved', 404);
         $data = $request->validate(['content' => ['required', 'string', 'max:2000'], 'parent_id' => 'nullable|integer|exists:post_comments,id']);
         if (! empty($data['parent_id'])) {
@@ -229,6 +236,17 @@ class CommunityController extends Controller
         }
 
         return response()->json(['data' => $query->limit(40)->get(['id', 'name', 'skill_level'])]);
+    }
+
+    private function assertNotBlocked(?User $viewer, int $peerId): void
+    {
+        if (! $viewer || $viewer->id === $peerId) {
+            return;
+        }
+        abort_if(DB::table('blocked_users')
+            ->where(fn ($q) => $q->where('user_id', $viewer->id)->where('blocked_id', $peerId))
+            ->orWhere(fn ($q) => $q->where('user_id', $peerId)->where('blocked_id', $viewer->id))
+            ->exists(), 403, 'Không thể tương tác với tài khoản đã chặn.');
     }
 
     public function conversations(Request $request): JsonResponse

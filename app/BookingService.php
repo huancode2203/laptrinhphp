@@ -236,7 +236,7 @@ class BookingService
                     return $booking->load(['court.branch', 'services', 'payments']);
                 }
                 if ($status !== 'cancelled' || $booking->starts_at->lte(now())) {
-                    throw ValidationException::withMessages(['status' => 'Chỉ tự hủy lịch chưa thanh toán, trước giờ chơi. Lịch đã trả tiền cần liên hệ quầy.']);
+                    throw ValidationException::withMessages(['status' => 'Chỉ tự hủy lịch trước giờ chơi. Lịch trả bằng ví cần hủy trước ít nhất 4 tiếng; phương thức khác cần quầy xử lý.']);
                 }
                 if ($booking->paid_amount > 0) {
                     if ($booking->starts_at->lt(now()->addHours(4))) {

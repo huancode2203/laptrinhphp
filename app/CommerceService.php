@@ -73,7 +73,7 @@ class CommerceService
         return DB::transaction(function () use ($actor, $booking, $key, $depositOnly): Payment {
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
             if ($actor->id !== $booking->user_id) {
-                app(BookingService::class)->assertManage($actor, $booking->court->branch_id);
+                app(BookingService::class)->assertManage($actor, $booking->court->branch_id, 'payments.write');
             }
             $existing = Payment::where('request_key', $key)->first();
             if ($existing) {
@@ -81,7 +81,7 @@ class CommerceService
 
                 return $existing;
             }
-            if ($booking->status !== 'confirmed' || $booking->total_amount <= $booking->paid_amount) {
+            if (! in_array($booking->status, ['confirmed', 'checked_in'], true) || $booking->total_amount <= $booking->paid_amount) {
                 throw ValidationException::withMessages(['booking' => 'Lịch không còn khoản cần thanh toán.']);
             }
             $amount = ($depositOnly ? $booking->deposit_amount : $booking->total_amount) - $booking->paid_amount;

@@ -1,4 +1,20 @@
-# Kiểm tra bản Laravel / MySQL · 10/10/2026
+# Kiểm tra bản Laravel / MySQL · cập nhật 11/10/2026
+
+## Ngân hàng cá nhân, demo và rà soát vai trò · 11/10/2026
+
+- **131/131 kiểm thử, 1.073 assertions** đạt trên cả SQLite in-memory và MySQL `badminton_hub_codex_test_20261008`. Mở rộng 20 bài so với bộ 111: quyền thu ví/hội viên/vé, QR, giữ chỗ, báo cáo chi nhánh, trả phần hàng bổ sung khi đang chơi, hủy người chờ, chặn cộng đồng hai chiều, chuẩn hóa lịch/ngân sách AI, ngân hàng cá nhân và các provider demo.
+- Demo thanh toán kiểm tra số tiền server, chủ tài khoản, khoản thu cọc, thành công lặp, hủy, hết hạn, tiền tới sau hủy và chỉ ghi ví một lần. Giao dịch thật không được mô phỏng; demo không hoạt động trong production. Cấu hình thật được ưu tiên dù demo bật.
+- Email/SMS demo có cooldown, hết hạn/giới hạn sai, dùng một lần và không ghi trạng thái xác thực danh tính thật. Khôi phục demo gắn phiên, guest chỉ thử email `.test`; reset token một lần được kiểm thử tự động. SMTP thật có test không trả mã demo; không gửi thư ngoài khi kiểm thử.
+- Admin lưu ngân hàng cá nhân trong database, khách có VietQR với xác nhận thủ công khi không dùng SePay. Bộ `.env` có ưu tiên; khi chưa có tài khoản thì không tạo QR giả. Cấu hình thử ngân hàng trong kiểm thử không được ghi vào database đang sử dụng.
+- **Suy luận thật Ollama `qwen3:1.7b` đã đạt probe cho hai tác vụ**: câu “Ngày mai ... 13h đến 15h ở toàn thành phố Hồ Chí Minh” đối chiếu 77 sân trong MySQL; bài giao lưu phù hợp được đề xuất allow, bài xúc phạm/đe dọa được đề xuất review. Laravel chuẩn hóa ngày giờ rõ ràng trong câu trước khi truy vấn; model không tạo sân/giá. Đây là một số câu thử, chưa phải đánh giá chất lượng rộng. Hai tác vụ dùng cùng model 1.7b, model 4b chưa được xác minh hoàn tất.
+- TypeScript, Vite production build (881 modules), Pint và kiểm tra diff đạt. Không thêm thư viện. `chay-ai.bat` mặc định tải 1.7b; `--full` tải thêm 4b. Scheduler local được bật lại cho `hub:maintain`.
+- Kiểm tra trình duyệt sau khi nạp build mới: Google demo vào tài khoản khách mẫu; nạp thử 100.000đ chuyển sang đã thanh toán, ví có đúng một dòng `[DEMO]` và số dư 100.000đ. OTP điện thoại/email demo được tạo và xác nhận trên màn hình; database vẫn giữ `email_verified_at`/`phone_verified_at` là NULL. Không thử đổi mật khẩu bằng thao tác trình duyệt.
+- Quản trị mở được 7 thẻ dịch vụ, trạng thái demo, hướng dẫn và form ngân hàng cá nhân 6 lựa chọn. Thử bố cục 390×844: `clientWidth=scrollWidth=386px`, không tràn ngang; kiểm tra thêm desktop 1366×900. Không lưu tài khoản ngân hàng giả vào database đang dùng.
+- SQL xuất từ database cài mới `badminton_hub_export_20261011`, import thành công vào `badminton_hub_import_20261011`: **63 bảng, 25 tài khoản, 60 booking, manifest 280 bản ghi, 0 session, 0 cấu hình ngân hàng cá nhân**. Database đang sử dụng giữ 26 tài khoản/67 booking trong lúc kiểm tra, không dùng làm nguồn SQL xuất và không bị RefreshDatabase tác động.
+- Báo cáo [PROJECT_AUDIT.md](PROJECT_AUDIT.md) tổng hợp chức năng chính/phụ, lỗi đã sửa, điểm còn chưa hợp lý, giới hạn chính sách và phần chưa xây dựng theo 5 vai trò. Không coi bộ kết nối đã viết là bằng chứng provider thật đã hoạt động.
+- Chưa có cấu hình ngân hàng/SMTP/Google/Twilio/merchant của chủ dự án: chưa xác minh chuyển khoản thật, email vào Inbox, SMS trên điện thoại, Google OAuth hay MoMo IPN/hoàn tiền thật. Bản demo không thực hiện chuyển tiền ngoài hệ thống và chưa xuất bản hosting.
+
+## Giao diện và nghiệp vụ trước ngày 11/10/2026
 
 - Giao diện làm lại ngày 10/10/2026: trang chủ nền sáng với ảnh cầu lông, thẻ chi nhánh/giá/giờ mở, SVG đồng bộ, thanh điều hướng chung và menu điện thoại; các trang đặt sân, chat, sự kiện, tài khoản, huấn luyện viên và quản lý được đồng bộ.
 - TypeScript và Vite production build đạt sau thay đổi giao diện. Không sửa nghiệp vụ PHP/MySQL trong đợt này.

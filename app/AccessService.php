@@ -82,7 +82,7 @@ class AccessService
         if (str_contains($path, 'reports')) {
             return 'reports.read';
         }
-        if (str_contains($path, 'payments') || str_contains($path, 'topup') || str_contains($path, 'refund')) {
+        if (str_contains($path, 'payments') || str_contains($path, 'topup') || str_contains($path, 'refund') || preg_match('~/manage/(users/\d+/membership|registrations/\d+/confirm)$~', '/'.$path)) {
             return 'payments.write';
         }
         if (str_contains($path, 'sales')) {

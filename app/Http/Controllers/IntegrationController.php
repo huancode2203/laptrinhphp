@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\BankSettings;
 use App\BookingService;
 use App\CommerceService;
+use App\DemoService;
 use App\FeatureService;
 use App\IntegrationStatus;
 use App\Models\Booking;
@@ -20,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
@@ -91,7 +94,26 @@ class IntegrationController extends Controller
 
     public function integrations(): JsonResponse
     {
-        return response()->json(['data' => app(IntegrationStatus::class)->all()]);
+        $demo = app(DemoService::class);
+
+        return response()->json(['data' => collect(app(IntegrationStatus::class)->all())->map(fn ($item) => [...$item, 'demo' => ($item['id'] !== 'sepay' || (app(BankSettings::class)->details()['mode'] ?? null) === 'demo') && $demo->uses($item['id']) && in_array($item['id'], ['momo', 'google', 'sms', 'email', 'sepay'], true)])->all(), 'bank' => app(BankSettings::class)->details(), 'demo_enabled' => $demo->active()]);
+    }
+
+    public function saveBank(Request $r): JsonResponse
+    {
+        $d = $r->validate(['account' => 'required|string|regex:/^[0-9]{5,30}$/', 'name' => 'required|string|min:2|max:100', 'bank_bin' => 'required|string|regex:/^970[0-9]{3}$/']);
+        DB::table('integration_settings')->updateOrInsert(['key' => 'personal_bank'], ['value' => json_encode($d, JSON_UNESCAPED_UNICODE), 'created_at' => now(), 'updated_at' => now()]);
+        app(BookingService::class)->audit($r->user(), 'bank.settings_updated', 0, ['bank_bin' => $d['bank_bin']], 'integration');
+
+        return response()->json(['message' => 'Đã lưu tài khoản ngân hàng. Nhân viên xác nhận tiền tại quầy sau khi kiểm tra sao kê.', 'data' => app(BankSettings::class)->details()]);
+    }
+
+    public function deleteBank(Request $r): JsonResponse
+    {
+        DB::table('integration_settings')->where('key', 'personal_bank')->delete();
+        app(BookingService::class)->audit($r->user(), 'bank.settings_removed', 0, [], 'integration');
+
+        return response()->json(['message' => 'Đã xóa cấu hình ngân hàng lưu trên website. Cấu hình .env, nếu có, vẫn được ưu tiên.']);
     }
 
     public function probeAi(Request $r): JsonResponse
@@ -103,16 +125,20 @@ class IntegrationController extends Controller
 
     public function phoneSend(Request $r): JsonResponse
     {
-        abort_unless(app(IntegrationStatus::class)->ready('sms'), 503, 'Xác thực điện thoại hiện chưa khả dụng.');
+        $demo = app(DemoService::class)->uses('sms');
+        abort_unless(app(IntegrationStatus::class)->ready('sms') || $demo, 503, 'Xác thực điện thoại hiện chưa khả dụng.');
         $previous = $r->session()->get('phone_verification');
         abort_if($previous && ($previous['sent_at'] ?? 0) > now()->subMinute()->timestamp, 429, 'Vui lòng chờ một phút trước khi gửi lại mã.');
         $d = $r->validate(['phone' => ['required', 'regex:/^(0[35789][0-9]{8}|[+]84[35789][0-9]{8})$/']]);
         $phone = str_starts_with($d['phone'], '0') ? '+84'.substr($d['phone'], 1) : $d['phone'];
         abort_if(User::where('phone', $phone)->whereNotNull('phone_verified_at')->where('id', '!=', $r->user()->id)->exists(), 422, 'Số điện thoại đã được tài khoản khác xác thực.');
-        app(PhoneVerificationService::class)->send($phone);
-        $r->session()->put('phone_verification', ['phone' => $phone, 'user_id' => $r->user()->id, 'expires' => now()->addMinutes(10)->timestamp, 'sent_at' => now()->timestamp, 'attempts' => 0]);
+        $code = $demo ? (string) random_int(100000, 999999) : null;
+        if (! $demo) {
+            app(PhoneVerificationService::class)->send($phone);
+        }
+        $r->session()->put('phone_verification', ['phone' => $phone, 'user_id' => $r->user()->id, 'expires' => now()->addMinutes(10)->timestamp, 'sent_at' => now()->timestamp, 'attempts' => 0, 'demo' => $demo, 'code_hash' => $code ? Hash::make($code) : null]);
 
-        return response()->json(['message' => 'Mã xác thực đã được gửi tới điện thoại.']);
+        return response()->json(['message' => $demo ? 'Mã demo chỉ hiển thị tại đây, không gửi SMS thật.' : 'Mã xác thực đã được gửi tới điện thoại.', ...($demo ? ['demo_code' => $code] : [])]);
     }
 
     public function phoneVerify(Request $r): JsonResponse
@@ -122,15 +148,22 @@ class IntegrationController extends Controller
         abort_unless($pending && $pending['user_id'] === $r->user()->id && $pending['expires'] > now()->timestamp && $pending['attempts'] < 5, 422, 'Yêu cầu xác thực đã hết hạn.');
         $pending['attempts']++;
         $r->session()->put('phone_verification', $pending);
-        app(PhoneVerificationService::class)->verify($pending['phone'], $d['code']);
+        $demo = $pending['demo'] ?? false;
+        if ($demo) {
+            abort_unless(app(DemoService::class)->active() && Hash::check($d['code'], $pending['code_hash']), 422, 'Mã demo không đúng hoặc demo đã tắt.');
+        } else {
+            app(PhoneVerificationService::class)->verify($pending['phone'], $d['code']);
+        }
         DB::transaction(function () use ($r, $pending): void {
             $user = User::lockForUpdate()->findOrFail($r->user()->id);
             abort_if(User::where('phone', $pending['phone'])->whereNotNull('phone_verified_at')->where('id', '!=', $user->id)->lockForUpdate()->exists(), 422);
-            $user->forceFill(['phone' => $pending['phone'], 'phone_verified_at' => now()])->save();
+            if (! ($pending['demo'] ?? false)) {
+                $user->forceFill(['phone' => $pending['phone'], 'phone_verified_at' => now()])->save();
+            }
         }, 5);
         $r->session()->forget('phone_verification');
 
-        return response()->json(['message' => 'Đã xác thực số điện thoại.']);
+        return response()->json(['message' => $demo ? 'Đã thử OTP thành công. Số điện thoại chưa được xác thực thật.' : 'Đã xác thực số điện thoại.']);
     }
 
     public function bank(Request $r, CommerceService $commerce): JsonResponse
@@ -169,7 +202,7 @@ class IntegrationController extends Controller
     private function creditBank(Booking $booking, int $amount, string $transaction, int $id, User $actor, CommerceService $commerce): void
     {
         $key = (string) Uuid::uuid5(Uuid::NAMESPACE_URL, 'sepay-'.$transaction);
-        $due = $booking->status === 'confirmed' ? max(0, $booking->total_amount - $booking->paid_amount) : 0;
+        $due = in_array($booking->status, ['confirmed', 'checked_in'], true) ? max(0, $booking->total_amount - $booking->paid_amount) : 0;
         $paid = min($due, $amount);
         if ($paid > 0) {
             Payment::create(['request_key' => $key, 'booking_id' => $booking->id, 'received_by' => $actor->id, 'kind' => 'payment', 'method' => 'bank', 'amount' => $paid, 'notes' => 'SePay '.$transaction]);
@@ -207,7 +240,7 @@ class IntegrationController extends Controller
     public function momoRefund(Request $r, Booking $booking, MomoService $m): JsonResponse
     {
         app(BookingService::class)->assertManage($r->user(), $booking->court->branch_id);
-        abort_unless($m->enabled(), 503, 'MoMo hiện chưa khả dụng.');
+        abort_unless(app(IntegrationStatus::class)->ready('momo'), 503, 'Hoàn MoMo thật cần cấu hình merchant; giao dịch demo dùng hoàn tại quầy.');
         $d = $r->validate(['request_key' => 'required|uuid', 'attempt_id' => 'required|integer|exists:payment_attempts,id', 'amount' => 'required|integer|between:1000,50000000']);
         $refund = DB::transaction(function () use ($booking, $d): object {
             $b = Booking::lockForUpdate()->findOrFail($booking->id);
@@ -219,7 +252,7 @@ class IntegrationController extends Controller
                 return $existing;
             }
             $a = PaymentAttempt::lockForUpdate()->findOrFail($d['attempt_id']);
-            abort_unless($a->booking_id === $b->id && $a->status === 'paid' && $a->trans_id, 422);
+            abort_unless($a->booking_id === $b->id && $a->status === 'paid' && $a->trans_id && $a->partner_code === config('momo.partner_code'), 422);
             $reserved = DB::table('refund_requests')->where('payment_attempt_id', $a->id)->whereIn('status', ['pending', 'paid'])->sum('amount');
             abort_if($reserved + $d['amount'] > $a->amount || $d['amount'] > $b->paid_amount, 422, 'Số tiền vượt phần có thể hoàn.');
             $id = DB::table('refund_requests')->insertGetId(['booking_id' => $b->id, 'payment_attempt_id' => $a->id, 'request_key' => $d['request_key'], 'order_id' => 'REF-'.str_replace('-', '', $d['request_key']), 'amount' => $d['amount'], 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);

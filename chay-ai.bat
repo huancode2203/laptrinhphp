@@ -28,12 +28,15 @@ if errorlevel 1 (
   exit /b 1
  )
 )
-echo Tải hoặc kiểm tra hai model. Cần mạng và khoảng 4 GB dung lượng cho model.
-call "%HUB_OLLAMA%" pull qwen3:4b
-if errorlevel 1 goto pull_failed
+echo Tải hoặc kiểm tra model qwen3:1.7b. Cần khoảng 1.4 GB dung lượng.
 call "%HUB_OLLAMA%" pull qwen3:1.7b
 if errorlevel 1 goto pull_failed
-echo Hai model đã tải. Cấu hình provider ollama trong .env theo README.md.
+if /i "%~1"=="--full" (
+ call "%HUB_OLLAMA%" pull qwen3:4b
+ if errorlevel 1 goto pull_failed
+)
+echo Model đã tải. Cấu hình provider ollama trong .env theo README.md.
+echo Mặc định dùng qwen3:1.7b cho hai tác vụ; --full tải thêm model 4b tùy chọn.
 echo Sau đó chạy php artisan optimize:clear và php artisan hub:integrations --probe.
 pause
 exit /b 0

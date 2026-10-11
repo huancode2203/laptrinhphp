@@ -35,7 +35,7 @@ export function BookingDetail({
     useEffect(() => {
         if (
             !data?.bank ||
-            booking.status !== "confirmed" ||
+            !["confirmed", "checked_in"].includes(booking.status) ||
             booking.remaining_amount <= 0
         )
             return;
@@ -89,7 +89,8 @@ export function BookingDetail({
                 </p>
             )}
             {data!.bank &&
-                booking.status === "confirmed" &&
+                data!.bank.mode !== "demo" &&
+                ["confirmed", "checked_in"].includes(booking.status) &&
                 booking.remaining_amount > 0 && (
                     <Card className="mt-4">
                         <h3 className="font-bold">Chuyển khoản ngân hàng</h3>
@@ -157,31 +158,78 @@ export function BookingDetail({
                             Kiểm tra chuyển khoản
                         </button>
                         <p className="mt-3 text-xs text-slate-500">
-                            Chuyển khoản đúng nội dung để tiền được ghi nhận vào
-                            lịch. Trạng thái tự cập nhật khi ngân hàng xác nhận.
+                            {data!.bank.mode === "automatic"
+                                ? "Chuyển đúng nội dung; trạng thái cập nhật khi nhận xác nhận từ SePay."
+                                : "Sau khi chuyển khoản, liên hệ chi nhánh. Nhân viên kiểm tra tiền vào tài khoản và xác nhận thanh toán; lịch chưa được thanh toán chỉ vì bạn quét QR."}
                         </p>
+                    </Card>
+                )}
+            {data!.bank?.mode === "demo" &&
+                data!.user.id === booking.user_id &&
+                ["confirmed", "checked_in"].includes(booking.status) &&
+                booking.remaining_amount > 0 && (
+                    <Card className="mt-4">
+                        <h3 className="font-bold">
+                            Chuyển khoản ngân hàng · Demo
+                        </h3>
+                        <p className="my-3 text-sm text-slate-500">
+                            Chưa có tài khoản nhận tiền. Thử luồng thanh toán mà
+                            không chuyển tiền thật.
+                        </p>
+                        <button
+                            className="btn-outline"
+                            disabled={loading}
+                            onClick={() =>
+                                run(async () => {
+                                    const response = await api(
+                                        "demo/bookings/" + booking.id + "/bank",
+                                        "POST",
+                                        {
+                                            request_key: key(),
+                                            deposit_only:
+                                                booking.deposit_remaining > 0,
+                                        },
+                                    );
+                                    location.assign(response.data.pay_url);
+                                    close();
+                                })
+                            }
+                        >
+                            Thử chuyển khoản
+                        </button>
                     </Card>
                 )}
             {data!.user.id === booking.user_id &&
                 data!.momo_enabled &&
-                receipt?.pending_payment_attempts?.map((attempt: Row) => (
-                    <button
-                        key={attempt.id}
-                        className="btn-outline mt-4"
-                        disabled={loading}
-                        onClick={() =>
-                            run(async () => {
-                                await api(
-                                    "payments/momo/" + attempt.id + "/sync",
-                                    "POST",
-                                );
-                                await refreshPayment();
-                            })
-                        }
-                    >
-                        Kiểm tra thanh toán MoMo · {money(attempt.amount)}
-                    </button>
-                ))}
+                receipt?.pending_payment_attempts?.map((attempt: Row) =>
+                    attempt.partner_code?.startsWith("DEMO_") ? (
+                        <a
+                            key={attempt.id}
+                            className="btn-outline mt-3 inline-block"
+                            href={"#demo-payment/" + attempt.id}
+                            onClick={close}
+                        >
+                            Tiếp tục thanh toán demo · {money(attempt.amount)}
+                        </a>
+                    ) : (
+                        <button
+                            key={attempt.id}
+                            className="btn-outline mt-4"
+                            disabled={loading}
+                            onClick={() =>
+                                run(async () => {
+                                    await api(
+                                        "payments/momo/" + attempt.id + "/sync",
+                                        "POST",
+                                    );
+                                    await refreshPayment();
+                                })
+                            }
+                        >
+                            Kiểm tra thanh toán MoMo · {money(attempt.amount)}
+                        </button>
+                    ),
+                )}
             {data!.user.role !== "customer" &&
                 data!.permissions?.["payments.write"] &&
                 booking.status === "cancelled" &&
@@ -294,10 +342,12 @@ export function BookingDetail({
                                 })
                             }
                         >
-                            Đặt cọc MoMo
+                            {data!.demo?.momo
+                                ? "Đặt cọc MoMo · Demo"
+                                : "Đặt cọc MoMo"}
                         </button>
                     )}
-                {booking.status === "confirmed" && (
+                {["confirmed", "checked_in"].includes(booking.status) && (
                     <>
                         {booking.remaining_amount > 0 && (
                             <>
@@ -325,25 +375,30 @@ export function BookingDetail({
                                             })
                                         }
                                     >
-                                        Thanh toán MoMo
+                                        {data!.demo?.momo
+                                            ? "Thanh toán MoMo · Demo"
+                                            : "Thanh toán MoMo"}
                                     </button>
                                 )}
                             </>
                         )}
-                        {!booking.paid_amount && (
+                        {booking.status === "confirmed" &&
+                            !booking.paid_amount && (
+                                <button
+                                    className="btn-outline"
+                                    onClick={() => setForm("reschedule")}
+                                >
+                                    Đổi lịch
+                                </button>
+                            )}
+                        {booking.status === "confirmed" && (
                             <button
-                                className="btn-outline"
-                                onClick={() => setForm("reschedule")}
+                                className="btn-outline text-red-600"
+                                onClick={() => setForm("cancel")}
                             >
-                                Đổi lịch
+                                Hủy lịch
                             </button>
                         )}
-                        <button
-                            className="btn-outline text-red-600"
-                            onClick={() => setForm("cancel")}
-                        >
-                            Hủy lịch
-                        </button>
                     </>
                 )}
                 {booking.status === "completed" && (
@@ -399,8 +454,9 @@ export function BookingDetail({
                     </p>
                     {booking.payments?.map((p: Row) => (
                         <p key={p.id} className="text-xs">
-                            {stamp(p.created_at)} · {p.kind} · {p.method} ·{" "}
-                            {money(p.amount)}
+                            {stamp(p.created_at)} ·{" "}
+                            {p.kind === "refund" ? "Hoàn tiền" : "Thu tiền"} ·{" "}
+                            {statusText(p.method)} · {money(p.amount)}
                         </p>
                     ))}
                 </div>
@@ -588,6 +644,7 @@ export default function Account({
         [form, setForm] = useState(""),
         [status, setStatus] = useState(""),
         [emailSent, setEmailSent] = useState(false),
+        [emailDemoCode, setEmailDemoCode] = useState(""),
         [page, setPage] = useState(1),
         [lastPage, setLastPage] = useState(1),
         [deletingNotification, setDeletingNotification] = useState<Row | null>(
@@ -835,7 +892,9 @@ export default function Account({
                             disabled={!data!.momo_enabled}
                             onClick={() => setForm("topup")}
                         >
-                            Nạp qua MoMo
+                            {data?.demo?.momo
+                                ? "Nạp ví · Demo"
+                                : "Nạp qua MoMo"}
                         </button>
                         <p className="mt-3 text-sm text-[#6d8474]">
                             Bạn có thể nạp tiền tại quầy.{" "}
@@ -897,7 +956,9 @@ export default function Account({
             )}
             {tab === "wallet" && account?.payment_attempts?.length > 0 && (
                 <>
-                    <h2 className="my-5 text-xl font-bold">Giao dịch MoMo</h2>
+                    <h2 className="my-5 text-xl font-bold">
+                        Giao dịch thanh toán
+                    </h2>
                     {account!.payment_attempts.map((p: Row) => (
                         <Card key={p.id} className="mb-3">
                             <div className="flex flex-wrap justify-between gap-2">
@@ -934,7 +995,9 @@ export default function Account({
                                         className="mt-3 inline-block text-sm font-bold text-[#16a34a]"
                                         href={p.pay_url}
                                     >
-                                        Tiếp tục trên MoMo →
+                                        {p.partner_code?.startsWith("DEMO_")
+                                            ? "Tiếp tục thanh toán demo →"
+                                            : "Tiếp tục trên MoMo →"}
                                     </a>
                                 )}
                         </Card>
@@ -1092,7 +1155,9 @@ export default function Account({
                                 className="btn-outline"
                                 onClick={() => setForm("verifyEmail")}
                             >
-                                Xác nhận email
+                                {data?.demo?.email
+                                    ? "Thử OTP email · Demo"
+                                    : "Xác nhận email"}
                             </button>
                         )}
                     </div>
@@ -1160,7 +1225,13 @@ export default function Account({
             {form === "verifyEmail" &&
                 (emailSent ? (
                     <Editor
-                        title="Xác nhận email"
+                        title={
+                            emailDemoCode
+                                ? "Mã demo: " +
+                                  emailDemoCode +
+                                  " · Không gửi email thật"
+                                : "Xác nhận email"
+                        }
                         close={() => setForm("")}
                         fields={[
                             {
@@ -1170,30 +1241,45 @@ export default function Account({
                             },
                         ]}
                         save={async (d) => {
-                            await changed(() =>
-                                api("recovery/verify", "POST", {
-                                    email: user.email,
-                                    code: d.code,
-                                }),
-                            );
-                            toast("Đã xác nhận email.");
+                            await changed(async () => {
+                                const response = await api(
+                                    "recovery/verify",
+                                    "POST",
+                                    {
+                                        email: user.email,
+                                        code: d.code,
+                                    },
+                                );
+                                toast(response.message);
+                            });
                             setEmailSent(false);
                         }}
                     />
                 ) : (
                     <Confirm
-                        title="Gửi mã xác nhận"
+                        title={
+                            data?.demo?.email
+                                ? "Thử mã email · Demo"
+                                : "Gửi mã xác nhận"
+                        }
                         close={() => setForm("")}
                         action={async () => {
-                            await api("recovery/send", "POST", {
-                                email: user.email,
-                            });
+                            const response = await api(
+                                "recovery/send",
+                                "POST",
+                                {
+                                    email: user.email,
+                                },
+                            );
+                            setEmailDemoCode(response.demo_code ?? "");
+                            toast(response.message);
                             setEmailSent(true);
                             setTimeout(() => setForm("verifyEmail"), 0);
                         }}
                     >
-                        Gửi mã tới {user.email}. Nếu chưa nhận được email, liên
-                        hệ quản trị để kiểm tra dịch vụ gửi thư.
+                        {data?.demo?.email
+                            ? "Mã thử sẽ hiện trên màn hình. Không gửi email và không xác thực địa chỉ email thật."
+                            : `Gửi mã tới ${user.email}. Nếu chưa nhận được email, liên hệ quản trị để kiểm tra dịch vụ gửi thư.`}
                     </Confirm>
                 ))}
             {form === "password" && (
@@ -1225,7 +1311,11 @@ export default function Account({
             )}
             {form === "topup" && (
                 <Editor
-                    title="Nạp ví qua MoMo"
+                    title={
+                        data!.demo?.momo
+                            ? "Nạp ví demo · Không chuyển tiền thật"
+                            : "Nạp ví qua MoMo"
+                    }
                     close={() => setForm("")}
                     initial={{ amount: 100000 }}
                     fields={[

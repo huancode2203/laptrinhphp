@@ -103,8 +103,8 @@ class BookingController extends Controller
         $booking->load('user');
 
         return response()->json(['data' => [
-            'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
-            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at']),
+            'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->whereNotIn('partner_code', ['DEMO_MOMO', 'DEMO_BANK'])->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
+            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at', 'partner_code']),
             'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',
             'customer' => ['name' => $booking->user->name, 'phone' => $booking->user->phone],
             'branch' => ['name' => $booking->court->branch->name, 'address' => $booking->court->branch->address],

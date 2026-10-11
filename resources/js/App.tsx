@@ -1,3 +1,4 @@
+import DemoCheckout from "./DemoCheckout";
 import CourtMatrix from "./CourtMatrix";
 import { ContentSupport, Coaching } from "./FeaturePages";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -169,6 +170,7 @@ export default function App() {
             "account",
             "content",
             "coaching",
+            "demo-payment",
         ].includes(name)
             ? name
             : "home";
@@ -273,6 +275,12 @@ export default function App() {
                     />
                 ) : (
                     <AuthScreen done={() => go("booking")} />
+                )
+            ) : page === "demo-payment" ? (
+                user ? (
+                    <DemoCheckout />
+                ) : (
+                    <AuthScreen done={() => go("account")} />
                 )
             ) : page === "branch" ? (
                 <BranchDetail id={branch} book={book} />

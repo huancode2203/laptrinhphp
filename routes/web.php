@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CommerceController;
 use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\DemoController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\HubController;
@@ -26,6 +27,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('hub', [HubController::class, 'bootstrap']);
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:register');
+    Route::post('demo/google', [DemoController::class, 'google'])->middleware('throttle:login');
     Route::post('recovery/send', [RecoveryController::class, 'send'])->middleware('throttle:login');
     Route::post('recovery/verify', [RecoveryController::class, 'verify'])->middleware('throttle:login');
     Route::post('recovery/reset', [RecoveryController::class, 'reset'])->middleware('throttle:login');
@@ -48,6 +50,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::post('payments/bank/webhook', [IntegrationController::class, 'bank']);
     Route::post('payments/momo/ipn', [MomoController::class, 'ipn']);
     Route::middleware('auth')->group(function (): void {
+        Route::post('demo/payments/{attempt}', [DemoController::class, 'payment'])->middleware('throttle:book');
+        Route::post('demo/bookings/{booking}/bank', [DemoController::class, 'bank'])->middleware('throttle:book');
         Route::get('me', [AuthController::class, 'me']);
 
         Route::get('features/account', [FeatureController::class, 'account']);
@@ -159,6 +163,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
 
             Route::get('integrations', [IntegrationController::class, 'integrations']);
+            Route::put('integrations/bank', [IntegrationController::class, 'saveBank']);
+            Route::delete('integrations/bank', [IntegrationController::class, 'deleteBank']);
             Route::post('integrations/ai-check', [IntegrationController::class, 'probeAi'])->middleware('throttle:sensitive');
             Route::get('hub', [HubController::class, 'admin']);
             Route::get('features', [FeatureController::class, 'admin']);

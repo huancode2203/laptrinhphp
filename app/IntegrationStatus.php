@@ -57,22 +57,26 @@ class IntegrationStatus
             return ['id' => $id, 'success' => false, 'message' => 'Cần điền cấu hình AI trước khi kiểm tra.'];
         }
         $started = microtime(true);
+        $details = [];
         try {
             if ($task === 'search') {
                 $result = app(CourtSearchService::class)->search('Ngày mai tôi muốn đánh cầu từ 13h đến 15h ở toàn thành phố Hồ Chí Minh.');
+                $details = ['filters' => $result['filters'], 'source' => $result['mode'], 'model_issue' => $result['model_issue'] ?? null];
                 $success = $result['mode'] === 'model' && $result['filters']['date'] === now()->addDay()->toDateString() && $result['filters']['start_time'] === '13:00' && $result['filters']['end_time'] === '15:00' && ! $result['filters']['district'];
-                $message = $success ? 'Model đã đọc đúng ngày và giờ; hệ thống đối chiếu được '.($result['total_count'] ?? 0).' sân phù hợp trong cơ sở dữ liệu.' : 'Model chưa trả nhu cầu tìm sân đúng trong lượt kiểm tra.';
+                $message = $success ? 'Đã nhận kết quả từ model; hệ thống chuẩn hóa ngày giờ và đối chiếu được '.($result['total_count'] ?? 0).' sân phù hợp trong cơ sở dữ liệu.' : 'Model chưa trả nhu cầu tìm sân đúng trong lượt kiểm tra.';
             } else {
                 $result = app(ModerationService::class)->inspect('Tìm bạn giao lưu cầu lông vui vẻ vào chiều mai, chào đón mọi trình độ.');
-                $success = $result['source'] === 'model' && $result['decision'] === 'allow';
-                $message = $success ? 'Model đã phân tích và đề xuất duyệt bài giao lưu phù hợp.' : 'Chưa có đề xuất chắc chắn từ model; bài vẫn cần người duyệt.';
+                $flagged = app(ModerationService::class)->inspect('Mày là đồ vô dụng, cút khỏi sân này ngay, tao sẽ đánh mày.');
+                $success = $result['source'] === 'model' && $result['decision'] === 'allow' && $flagged['source'] === 'model' && $flagged['decision'] === 'review';
+                $details = ['samples' => ['appropriate' => $result['decision'], 'abusive' => $flagged['decision']]];
+                $message = $success ? 'Model đề xuất duyệt bài giao lưu phù hợp và chuyển bài xúc phạm, đe dọa sang chờ người duyệt.' : 'Chưa có đề xuất chắc chắn từ model; bài vẫn cần người duyệt.';
             }
         } catch (\Throwable) {
             $success = false;
             $message = 'Chưa kết nối được model. Kiểm tra Ollama đang chạy, model đã tải hoặc khóa OpenAI.';
         }
 
-        return ['id' => $id, 'success' => $success, 'message' => $message, 'seconds' => round(microtime(true) - $started, 2), 'checked_at' => now()->toIso8601String()];
+        return ['id' => $id, 'success' => $success, 'message' => $message, 'seconds' => round(microtime(true) - $started, 2), 'checked_at' => now()->toIso8601String(), ...$details];
     }
 
     public function emailEnabled(): bool

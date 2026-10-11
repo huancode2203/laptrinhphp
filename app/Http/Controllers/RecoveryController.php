@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DemoService;
 use App\IntegrationStatus;
 use App\Mail\RecoveryCodeMail;
 use App\Models\AuthCode;
@@ -18,14 +19,21 @@ class RecoveryController extends Controller
 {
     public function send(Request $r): JsonResponse
     {
-        abort_unless(app(IntegrationStatus::class)->emailEnabled(), 503, 'Email xác thực hiện chưa khả dụng. Vui lòng liên hệ hỗ trợ.');
+        $demo = app(DemoService::class)->uses('email') && ! app(IntegrationStatus::class)->emailEnabled();
+        abort_unless(app(IntegrationStatus::class)->emailEnabled() || $demo, 503, 'Email xác thực hiện chưa khả dụng. Vui lòng liên hệ hỗ trợ.');
         $d = $r->validate(['email' => ['required', 'email', 'max:255']]);
         $user = User::where('email', $d['email'])->where('active', true)->first();
         if ($user) {
+            abort_if($demo && ! str_ends_with($user->email, '.test') && $r->user()?->id !== $user->id, 503, 'Khôi phục email thật cần cấu hình SMTP. Hãy dùng tài khoản mẫu để thử demo.');
             abort_if(AuthCode::where('user_id', $user->id)->where('created_at', '>', now()->subMinute())->exists(), 429, 'Vui lòng chờ một phút trước khi gửi lại.');
             $code = (string) random_int(100000, 999999);
             AuthCode::where('user_id', $user->id)->whereNull('used_at')->update(['used_at' => now()]);
-            $record = AuthCode::create(['user_id' => $user->id, 'email' => $user->email, 'code_hash' => Hash::make($code), 'attempts' => 0, 'expires_at' => now()->addMinutes(10)]);
+            $record = AuthCode::create(['user_id' => $user->id, 'email' => $user->email, 'code_hash' => Hash::make($code), 'attempts' => 0, 'expires_at' => now()->addMinutes(10), 'demo' => $demo]);
+            if ($demo) {
+                $r->session()->put('demo_recovery_id', $record->id);
+
+                return response()->json(['message' => 'Mã demo chỉ hiển thị trên trình duyệt này, không gửi email thật.', 'demo_code' => $code]);
+            }
             try {
                 Mail::to($user->email)->send(new RecoveryCodeMail($code));
             } catch (\Throwable $e) {
@@ -35,18 +43,23 @@ class RecoveryController extends Controller
             }
         }
 
-        return response()->json(['message' => 'Nếu email có tài khoản đang hoạt động, mã xác nhận đã được gửi.']);
+        return response()->json(['message' => $demo ? 'Hãy dùng email tài khoản mẫu đang hoạt động để thử mã demo.' : 'Nếu email có tài khoản đang hoạt động, mã xác nhận đã được gửi.']);
     }
 
     public function verify(Request $r): JsonResponse
     {
         $d = $r->validate(['email' => ['required', 'email'], 'code' => ['required', 'digits:6']]);
         $token = Str::random(64);
-        $ok = DB::transaction(function () use ($d, $token): bool {
+        $demo = false;
+        $ok = DB::transaction(function () use ($r, $d, $token, &$demo): bool {
             $record = AuthCode::where('email', $d['email'])->whereNull('used_at')->latest('id')->lockForUpdate()->first();
             if (! $record || $record->expires_at->isPast() || $record->attempts >= 5 || $record->verified_at) {
                 return false;
             }
+            if ($record->demo && (! app(DemoService::class)->active() || $r->session()->get('demo_recovery_id') !== $record->id)) {
+                return false;
+            }
+            $demo = $record->demo;
             $owner = User::lockForUpdate()->find($record->user_id);
             if (! $owner || ! $owner->active || $owner->email !== $record->email) {
                 return false;
@@ -56,7 +69,9 @@ class RecoveryController extends Controller
                 return false;
             }
             $record->update(['verified_at' => now(), 'reset_hash' => hash('sha256', $token)]);
-            User::whereKey($record->user_id)->update(['email_verified_at' => now()]);
+            if (! $demo) {
+                User::whereKey($record->user_id)->update(['email_verified_at' => now()]);
+            }
 
             return true;
         }, 5);
@@ -64,17 +79,18 @@ class RecoveryController extends Controller
             throw ValidationException::withMessages(['code' => 'Mã không đúng hoặc đã hết hạn.']);
         }
 
-        return response()->json(['data' => ['reset_token' => $token], 'message' => 'Đã xác nhận email.']);
+        return response()->json(['data' => ['reset_token' => $token], 'message' => $demo ? 'Đã thử xác nhận mã demo; email chưa được xác thực thật.' : 'Đã xác nhận email.']);
     }
 
     public function reset(Request $r): JsonResponse
     {
         $d = $r->validate(['email' => ['required', 'email'], 'reset_token' => ['required', 'string', 'size:64'], 'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed']]);
-        DB::transaction(function () use ($d): void {
+        DB::transaction(function () use ($r, $d): void {
             $record = AuthCode::where('email', $d['email'])->whereNull('used_at')->whereNotNull('verified_at')->latest('id')->lockForUpdate()->first();
             if (! $record || $record->expires_at->isPast() || ! hash_equals((string) $record->reset_hash, hash('sha256', $d['reset_token']))) {
                 throw ValidationException::withMessages(['reset_token' => 'Phiên xác nhận đã hết hạn.']);
             }
+            abort_if($record->demo && (! app(DemoService::class)->active() || $r->session()->get('demo_recovery_id') !== $record->id), 403);
             $user = User::whereKey($record->user_id)->lockForUpdate()->firstOrFail();
             abort_unless($user->active && $user->email === $record->email, 403);
             $user->forceFill(['password' => $d['password'], 'remember_token' => Str::random(60)])->save();

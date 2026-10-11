@@ -35,7 +35,7 @@ class CommerceController extends Controller
             abort_unless($court->status === 'active' && $court->branch->active, 422);
             $engine->assertOpen($court, $start, $end, $request->user());
             if ($actor->role !== 'customer') {
-                $engine->assertManage($actor, $court->branch_id);
+                $engine->assertManage($actor, $court->branch_id, 'bookings.write');
             }
             $existing = CourtHold::where('request_key', $data['request_key'])->first();
             if ($existing) {
@@ -212,7 +212,7 @@ class CommerceController extends Controller
     public function checkinToken(Request $request, Booking $booking, BookingService $engine): JsonResponse
     {
         if ($booking->user_id !== $request->user()->id) {
-            $engine->assertManage($request->user(), $booking->court->branch_id);
+            $engine->assertManage($request->user(), $booking->court->branch_id, 'bookings.read');
         }
 
         return response()->json(['data' => ['token' => Crypt::encryptString(json_encode(['booking_id' => $booking->id, 'expires_at' => $booking->ends_at->addHour()->timestamp], JSON_THROW_ON_ERROR))]]);
