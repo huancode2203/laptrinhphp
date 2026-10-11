@@ -9,6 +9,7 @@ use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\DemoController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeatureController;
+use App\Http\Controllers\FirebaseAuthController;
 use App\Http\Controllers\HubController;
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ManagementController;
@@ -27,6 +28,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('hub', [HubController::class, 'bootstrap']);
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:register');
+    Route::post('auth/firebase', [FirebaseAuthController::class, 'login'])->middleware('throttle:login');
     Route::post('demo/google', [DemoController::class, 'google'])->middleware('throttle:login');
     Route::post('recovery/send', [RecoveryController::class, 'send'])->middleware('throttle:login');
     Route::post('recovery/verify', [RecoveryController::class, 'verify'])->middleware('throttle:login');
@@ -163,6 +165,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
 
             Route::get('integrations', [IntegrationController::class, 'integrations']);
+            Route::put('integrations/firebase', [FirebaseAuthController::class, 'settings'])->middleware('throttle:sensitive');
             Route::put('integrations/bank', [IntegrationController::class, 'saveBank']);
             Route::delete('integrations/bank', [IntegrationController::class, 'deleteBank']);
             Route::post('integrations/ai-check', [IntegrationController::class, 'probeAi'])->middleware('throttle:sensitive');

@@ -26,9 +26,10 @@ const guides: Record<string, string[]> = {
         "URL webhook là /api/v1/payments/bank/webhook. Điền số tài khoản, tên chủ tài khoản và mã BIN ngân hàng để hiển thị thanh toán.",
     ],
     google: [
-        "Trong Google Cloud, tạo project rồi cấu hình Google Auth Platform: tên ứng dụng, Audience và tài khoản thử nghiệm.",
-        "Tạo OAuth client loại Web application. Thêm URI chuyển hướng chính xác như ở bên dưới.",
-        "Sao chép Client ID và Client Secret vào máy chủ. Người có tài khoản hiện tại đăng nhập bằng mật khẩu rồi liên kết Google trong Hồ sơ.",
+        "Firebase Console → Authentication → Sign-in method → Google: bật đăng nhập Google và chọn email hỗ trợ.",
+        "Trong Authentication → Settings → Authorized domains, thêm tên miền đang chạy website, gồm localhost hoặc 127.0.0.1 khi thử trên máy.",
+        "Project settings → Your apps → Web app: lấy cấu hình Firebase và nhập ở biểu mẫu phía trên. Không cần service account hay khóa riêng để sử dụng Google trên website.",
+        "Người có tài khoản hiện tại đăng nhập bằng mật khẩu rồi liên kết Google trong Hồ sơ cá nhân.",
     ],
     sms: [
         "Đăng ký Twilio, lấy Account SID và Auth Token trong Console.",
@@ -89,6 +90,12 @@ export default function IntegrationPanel() {
                     Demo. OTP demo không xác thực email hay điện thoại thật.
                 </p>
             )}
+            <FirebaseSetup
+                after={async () => {
+                    await load();
+                    await refresh();
+                }}
+            />
             <Card>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -298,5 +305,96 @@ export default function IntegrationPanel() {
                 ))}
             </div>
         </div>
+    );
+}
+function FirebaseSetup({ after }: { after: () => Promise<void> }) {
+    const { data, run, loading, toast } = useHub();
+    const [open, setOpen] = useState(false);
+    const [json, setJson] = useState("");
+    return (
+        <Card>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-bold">Google qua Firebase</h3>
+                    <p className="mt-2 text-sm text-slate-500">
+                        {data?.firebase
+                            ? "Đã cấu hình project: " + data.firebase.projectId
+                            : "Kết nối tài khoản Google cho người chơi."}
+                    </p>
+                </div>
+                <button className="btn-outline" onClick={() => setOpen(!open)}>
+                    {open
+                        ? "Đóng biểu mẫu"
+                        : data?.firebase
+                          ? "Đổi cấu hình"
+                          : "Cấu hình Firebase"}
+                </button>
+            </div>
+            {open && (
+                <form
+                    className="mt-5 space-y-4"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        run(async () => {
+                            let parsed: Record<string, string>;
+                            try {
+                                parsed = JSON.parse(json);
+                            } catch {
+                                throw new Error(
+                                    "Nhập cấu hình dạng JSON với apiKey, authDomain, projectId và appId.",
+                                );
+                            }
+                            const body = Object.fromEntries(
+                                [
+                                    "apiKey",
+                                    "authDomain",
+                                    "projectId",
+                                    "appId",
+                                ].map((k) => [k, parsed[k]]),
+                            );
+                            const reply = await api(
+                                "admin/integrations/firebase",
+                                "PUT",
+                                body,
+                            );
+                            toast(reply.message);
+                            await after();
+                            setOpen(false);
+                            setJson("");
+                        });
+                    }}
+                >
+                    <p className="text-sm leading-6 text-slate-500">
+                        Bật Google trong Firebase Authentication, thêm{" "}
+                        <b>{location.hostname}</b> vào Authorized domains và
+                        đăng ký Web app. Nhập bốn giá trị từ cấu hình web của
+                        project.{" "}
+                        <a
+                            className="font-bold text-green-700 underline"
+                            href="https://console.firebase.google.com/"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Mở Firebase Console
+                        </a>
+                    </p>
+                    <label className="block text-sm font-bold">
+                        Cấu hình web Firebase (JSON)
+                        <textarea
+                            className="input mt-2 min-h-40 w-full font-mono text-xs"
+                            required
+                            value={json}
+                            onChange={(e) => setJson(e.target.value)}
+                            placeholder={
+                                '{\n  "apiKey": "AIza...",\n  "authDomain": "project.firebaseapp.com",\n  "projectId": "project-id",\n  "appId": "1:...:web:..."\n}'
+                            }
+                        />
+                    </label>
+                    <button className="btn" disabled={loading}>
+                        Lưu kết nối Google
+                    </button>
+                </form>
+            )}
+        </Card>
     );
 }

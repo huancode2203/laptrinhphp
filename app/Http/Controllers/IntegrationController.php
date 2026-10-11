@@ -31,7 +31,7 @@ class IntegrationController extends Controller
 {
     public function google(Request $r): RedirectResponse
     {
-        abort_unless(app(IntegrationStatus::class)->ready('google'), 503, 'Đăng nhập Google hiện chưa khả dụng.');
+        abort_unless(config('integrations.google.client_id') && config('integrations.google.client_secret'), 503, 'Đăng nhập Google hiện chưa khả dụng.');
         $state = Str::random(48);
         $r->session()->put('google_oauth', ['state' => $state, 'created' => now()->timestamp, 'user_id' => $r->user()?->id]);
 

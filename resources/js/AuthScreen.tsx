@@ -1,4 +1,5 @@
 import { useState } from "react";
+import GoogleButton from "./GoogleButton";
 import { Logo } from "./Brand";
 import { api, useHub } from "./hub";
 export default function AuthScreen({ done }: { done: () => void }) {
@@ -65,13 +66,15 @@ export default function AuthScreen({ done }: { done: () => void }) {
                     <p className="mb-6 mt-2 text-[#6d8474]">
                         Tài khoản dành cho cộng đồng cầu lông
                     </p>
-                    {mode === "login" && data?.google_enabled && (
-                        <a
-                            className="btn-outline mb-4 block text-center"
-                            href="/auth/google"
-                        >
-                            Tiếp tục với Google
-                        </a>
+                    {mode === "login" && (
+                        <div className="mb-4">
+                            <GoogleButton
+                                after={async () => {
+                                    await refresh();
+                                    done();
+                                }}
+                            />
+                        </div>
                     )}
                     {mode === "login" && data?.demo?.google && (
                         <button

@@ -57,7 +57,7 @@ export default function CustomerHome(p: Props) {
     const [area, setArea] = useState(""),
         [date, setDate] = useState(day(1)),
         [time, setTime] = useState("18:00");
-    const filtered = BRANCHES.filter((b) => !area || b.name === area);
+    const filtered = BRANCHES.filter((b) => !area || b.district === area);
     const courts =
         data?.branches.reduce(
             (n: number, b: any) =>
@@ -177,18 +177,20 @@ export default function CustomerHome(p: Props) {
                             >
                                 Tất cả khu vực
                             </button>
-                            {BRANCHES.map((b) => (
-                                <button
-                                    key={b.id}
-                                    className={
-                                        area === b.name ? "selected" : ""
-                                    }
-                                    aria-pressed={area === b.name}
-                                    onClick={() => setArea(b.name)}
-                                >
-                                    {b.name}
-                                </button>
-                            ))}
+                            {[...new Set(BRANCHES.map((b) => b.district))].map(
+                                (district) => (
+                                    <button
+                                        key={district}
+                                        className={
+                                            area === district ? "selected" : ""
+                                        }
+                                        aria-pressed={area === district}
+                                        onClick={() => setArea(district)}
+                                    >
+                                        {district}
+                                    </button>
+                                ),
+                            )}
                         </div>
                         <div className="venue-date-filters">
                             <label>

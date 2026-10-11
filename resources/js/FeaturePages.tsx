@@ -9,12 +9,7 @@ const td = (value: React.ReactNode) => <td className={cell}>{value}</td>;
 export function AccountExtras() {
     const { data, run, refresh, toast } = useHub();
     const [extras, setExtras] = useState<Row | null>(null),
-        [reward, setReward] = useState<Row | null>(null),
-        [avatar, setAvatar] = useState<number[]>([]),
-        [phone, setPhone] = useState(data!.user.phone ?? ""),
-        [code, setCode] = useState(""),
-        [sent, setSent] = useState(false),
-        [demoCode, setDemoCode] = useState("");
+        [reward, setReward] = useState<Row | null>(null);
     const load = async () => setExtras((await api("features/account")).data);
     useEffect(() => {
         load().catch((e) => toast(e.message));
@@ -169,135 +164,6 @@ export function AccountExtras() {
                     </tr>
                 ))}
             </Table>
-            <div className="grid gap-5 md:grid-cols-2">
-                <Card>
-                    <h2 className="text-xl font-bold">Ảnh đại diện</h2>
-                    {data!.user.avatar_path && (
-                        <img
-                            className="my-3 h-20 w-20 rounded-full object-cover"
-                            src={data!.user.avatar_path}
-                            alt="Ảnh đại diện"
-                        />
-                    )}
-                    <MediaPicker max={1} value={avatar} onChange={setAvatar} />
-                    <button
-                        className="btn mt-3"
-                        disabled={!avatar.length}
-                        onClick={() =>
-                            run(() =>
-                                changed(() =>
-                                    api("me", "PATCH", {
-                                        name: data!.user.name,
-                                        email: data!.user.email,
-                                        phone: data!.user.phone,
-                                        avatar_id: avatar[0],
-                                    }),
-                                ),
-                            )
-                        }
-                    >
-                        Lưu ảnh
-                    </button>
-                </Card>
-                <Card>
-                    <h2 className="text-xl font-bold">Liên kết đăng nhập</h2>
-                    {data!.google_enabled && (
-                        <a
-                            className="btn-outline mt-4 inline-block"
-                            href="/auth/google"
-                        >
-                            Liên kết Google
-                        </a>
-                    )}
-                    {data!.user.phone_verified_at && (
-                        <p className="mt-3 text-sm text-[#168449]">
-                            ✓ Điện thoại đã xác thực
-                        </p>
-                    )}
-                    {data!.sms_enabled ? (
-                        <div className="mt-4 space-y-3">
-                            <input
-                                className="input w-full"
-                                aria-label="Số điện thoại"
-                                type="tel"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                placeholder="Số điện thoại"
-                            />
-                            <button
-                                className="btn-outline"
-                                onClick={() =>
-                                    run(async () => {
-                                        const response = await api(
-                                            "me/phone/send",
-                                            "POST",
-                                            {
-                                                phone,
-                                            },
-                                        );
-                                        setSent(true);
-                                        setDemoCode(response.demo_code ?? "");
-                                        toast(response.message);
-                                    })
-                                }
-                            >
-                                {data!.demo?.sms
-                                    ? "Thử OTP điện thoại · Demo"
-                                    : "Gửi mã xác thực"}
-                            </button>
-                            {demoCode && (
-                                <p
-                                    role="status"
-                                    className="rounded-xl bg-amber-50 p-3 text-sm"
-                                >
-                                    Mã demo:{" "}
-                                    <b className="text-xl tracking-widest">
-                                        {demoCode}
-                                    </b>{" "}
-                                    · Không gửi SMS thật.
-                                </p>
-                            )}
-                            {sent && (
-                                <>
-                                    <input
-                                        className="input w-full"
-                                        aria-label="Mã xác thực"
-                                        inputMode="numeric"
-                                        maxLength={6}
-                                        value={code}
-                                        onChange={(e) =>
-                                            setCode(e.target.value)
-                                        }
-                                        placeholder="Mã 6 chữ số"
-                                    />
-                                    <button
-                                        className="btn"
-                                        onClick={() =>
-                                            run(async () => {
-                                                await changed(async () => {
-                                                    const response = await api(
-                                                        "me/phone/verify",
-                                                        "POST",
-                                                        { code },
-                                                    );
-                                                    toast(response.message);
-                                                });
-                                                setSent(false);
-                                            })
-                                        }
-                                    >
-                                        Xác thực điện thoại
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <p className="mt-3 text-sm text-slate-500">
-                            Quản lý email và mật khẩu trong mục Tài khoản.
-                        </p>
-                    )}
-                </Card>
-            </div>
             <h2 className="text-xl font-bold">Tài khoản đã chặn</h2>
             <div className="flex flex-wrap gap-3">
                 {extras.blocked.map((v: Row) => (

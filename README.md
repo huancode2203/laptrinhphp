@@ -30,6 +30,7 @@ Yêu cầu PHP **8.3+**, MySQL **8.0+**, Composer 2, Node **22.12+** hoặc Node
    ```powershell
    php artisan migrate --seed
    php artisan db:seed --class=RealisticDemoSeeder
+   php artisan db:seed --class=ExpandedDemoSeeder
    npm ci
    npm run build
    ```
@@ -54,7 +55,7 @@ ZIP có sẵn `public/build` nên có thể bỏ npm nếu không sửa giao di�
 
 ## Tài khoản và dữ liệu thử
 
-Seeder tạo 8 chi nhánh, 77 sân, 64 dịch vụ, 48 sản phẩm, gói hội viên, 3 hạng điểm, 2 phần thưởng và hướng dẫn. Đây là **danh mục thử từ thiết kế**, chưa phải xác nhận thông tin sân đang kinh doanh. Khi vận hành, cập nhật địa chỉ, điện thoại, giá, giờ mở và tồn kho thật. Bộ dữ liệu giao dịch dưới đây chỉ dùng để trải nghiệm và kiểm thử, không phải doanh thu kinh doanh.
+Ba seeder tạo tổng cộng **30 chi nhánh, 186 sân, 95 tài khoản và 1.292 lịch đặt** trên database mới. Tên tài khoản là tên người Việt tự nhiên do bộ dữ liệu tạo; email `.test` và điện thoại dành cho thử nghiệm. Chi nhánh, lịch và khoản thu là dữ liệu demo, chưa phải thông tin sân đang kinh doanh. Khi vận hành, cập nhật địa chỉ, điện thoại, giá, giờ mở và tồn kho thật.
 
 Mật khẩu dùng thử: **Demo@12345**.
 
@@ -68,13 +69,17 @@ Mật khẩu dùng thử: **Demo@12345**.
 
 Seeder tài khoản chỉ dành cho local/testing. Quản trị tạo nhân sự trong **Tài khoản & quyền**, phân nhiều chi nhánh và chỉnh ma trận quyền trong **Vận hành & nội dung**.
 
-## 280 bản ghi trải nghiệm
+## Dữ liệu trải nghiệm
 
 Lệnh `php artisan db:seed --class=RealisticDemoSeeder` tạo **đúng 280 bản ghi liên kết**, ngoài danh mục cơ bản: 20 khách, 60 lịch sân, 50 khoản thu, 20 đánh giá, 20 bài cộng đồng, 20 bình luận (gồm trả lời), 8 huấn luyện viên, 8 sự kiện, 8 lịch chặn sân sự kiện, 16 vé, 26 giao dịch vé/hội viên, 8 voucher, 10 gói hội viên đã mua và 6 lịch bảo trì.
 
 Dữ liệu có lịch đã hoàn tất, lịch sắp tới, lịch đã hủy và bài chờ duyệt; ngày được tính theo ngày chạy seeder. Có dữ liệu cho tài khoản `customer@badminton.test`. Khách mới: `player01@badminton.test` đến `player20@badminton.test`, mật khẩu `Demo@12345`. Chạy lại không tạo trùng, không thay thế dữ liệu đã có. Seeder chỉ chạy trong `local` hoặc `testing`; mọi khoản thu đều là dữ liệu mẫu, không gọi cổng thanh toán.
 
-SQL đi kèm được xuất từ database cài mới riêng: 63 bảng, 25 tài khoản, 8 chi nhánh, 77 sân và bộ 280 bản ghi. Không chứa phiên đăng nhập, upload, lịch thử từ database đang vận hành hoặc khóa dịch vụ. SQL chứa ngày cố định tại lúc xuất; dùng seeder trên database mới để có lịch mẫu theo ngày cài đặt.
+`php artisan db:seed --class=ExpandedDemoSeeder` bổ sung **7.255 bản ghi liên kết**, trong đó **1.232 lịch sân**: lịch hôm nay, lịch hoàn tất, lịch sắp tới, hủy/hoàn, thu cọc/thu đủ, dịch vụ, huấn luyện viên, bảo trì và chờ sân. Có tối thiểu **30 dòng ở 46 bảng nghiệp vụ**, gồm ví/điểm/POS/kho, bài/đội/chat, vé/sự kiện/giải và phản hồi. Giải vòng tròn 8 người có đủ 7 vòng/28 trận. Bảng cấu hình, gói hội viên, migration, phiên, OTP và upload giữ số lượng phù hợp; không tạo thêm khóa hoặc phiên giả để đủ 30 dòng. Khách mới `rally01@badminton.test` đến `rally40@badminton.test`; nhân sự `team01@badminton.test` đến `team30@badminton.test` được phân chi nhánh.
+
+Seeder mở rộng chỉ chạy local/testing, không gọi cổng thanh toán. Chạy lại không tạo trùng và giữ chỉnh sửa của người dùng; chỉ bổ sung các vòng đấu còn thiếu trong bộ fixture cũ chưa có kết quả và thay phần hướng dẫn mặc định cũ. Không reset database đang sử dụng. Hồ sơ hiển thị số buổi hoàn tất, giờ chơi và sân yêu thích từ dữ liệu của chính tài khoản.
+
+SQL đi kèm được xuất từ database cài mới riêng: **63 bảng, 95 tài khoản, 30 chi nhánh, 186 sân, 1.292 booking**, không chứa phiên đăng nhập, upload hoặc thông tin liên kết Google của người dùng trên máy. Không xuất database đang vận hành. SQL chứa ngày cố định tại lúc xuất; dùng seeder trên database mới để có lịch theo ngày cài đặt.
 
 Các luồng đã đối chiếu với source `huancode2203/SNCUCAHuNRose` và hai chat “Kiểm tra hệ thống đặt sân”, “Kiểm tra tính năng layout”: ma trận công khai chỉ hiện trạng thái; bước chọn sân giữ đúng ngày/giờ; quản lý chọn nhiều ô để đặt nhanh bằng tên/số điện thoại; mở lịch đã đặt từ ma trận theo quyền; POS gộp vào hóa đơn sân và trừ kho một lần; khách theo chi nhánh có lịch/chi tiêu/hội viên; báo cáo toàn hệ thống; thông báo mở đối tượng liên quan/xóa; voucher, bài/trận cá nhân, bình luận lồng nhau và danh sách chờ sự kiện.
 
@@ -194,6 +199,21 @@ SePay gửi tới `https://ten-mien/api/v1/payments/bank/webhook`, header `Autho
 
 **Đăng nhập Google**
 
+Firebase Authentication là phương thức Google ưu tiên. Project môn học **`badminton-hub-huan-20261011`**, ứng dụng **Badminton Hub Web**, dùng SDK Firebase chính thức ở trình duyệt; Laravel xác minh chữ ký, project, thời hạn, provider, trạng thái và thu hồi tài khoản trước khi tạo phiên. MySQL tiếp tục lưu hồ sơ, quyền và toàn bộ nghiệp vụ. Tài khoản Google mới luôn là khách hàng; email trùng tài khoản cũ cần đăng nhập bằng mật khẩu rồi liên kết trong Hồ sơ để tránh chiếm tài khoản.
+
+Đổi sang project Firebase của bạn: bật Google trong Authentication, cho phép `localhost` và `127.0.0.1` (không thêm cổng), rồi nhập cấu hình Web vào **Quản lý → Vận hành & nội dung → Kết nối dịch vụ → Firebase Google** hoặc bốn biến `.env`:
+
+```dotenv
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_APP_ID=
+```
+
+Bộ bốn giá trị Web trong `.env.example` là cấu hình client công khai của project môn học; [Firebase API key không phải khóa quản trị](https://firebase.google.com/docs/projects/api-keys). Không đưa service-account private key, OAuth secret, ID token hoặc refresh token vào Git. Bộ `.env` đầy đủ có ưu tiên hơn cấu hình lưu tại quản trị. [Đăng nhập Google với Firebase](https://firebase.google.com/docs/auth/web/google-signin).
+
+Nếu tiếp tục dùng OAuth Google trực tiếp đã có từ bản trước, bỏ bộ Firebase và cấu hình:
+
 1. Mở [Google Cloud](https://console.cloud.google.com/auth/clients), tạo project.
 2. Trong **Google Auth Platform**, cấu hình Branding, Audience (External nếu dùng Gmail cá nhân) và thêm email của bạn vào Test users khi đang thử nghiệm.
 3. Mở **Clients → Create client → Web application**, đặt tên Badminton Hub.
@@ -261,7 +281,7 @@ Quản trị mở **Quản lý → Vận hành & nội dung → Kết nối dị
 
 Camera QR chỉ bật sau thao tác quét và cho phép, cần HTTPS hoặc localhost. Vẫn có ô nhập/dán QR. Một số ảnh/font nguồn cần mạng; hình sân ở trang chủ dựng SVG/CSS.
 
-**Ollama đã có kết quả suy luận thật cho hai tác vụ trên một số câu thử. OAuth, SMS, SMTP, SePay và MoMo chưa được xác minh với tài khoản/dịch vụ thật** do chưa có cấu hình của chủ dự án. Bộ kết nối có kiểm thử bằng phản hồi giả lập và các luồng demo; không đồng nghĩa giao dịch, SMS hoặc email thật đã chạy. Chưa xuất bản lên hosting công khai.
+**Firebase Google đã bật trên project thật, đã xác nhận provider/miền và kết nối HTTPS từ PHP; chưa thử thủ công một lượt Google sign-in tới phiên Laravel hoàn chỉnh.** Ollama đã có kết quả suy luận thật cho hai tác vụ trên một số câu thử. SMS, SMTP, SePay, merchant MoMo và OAuth Google trực tiếp chưa được xác minh với tài khoản/dịch vụ thật do chưa có bộ cấu hình riêng. Kiểm thử dùng phản hồi giả lập không chứng minh SMS, email hoặc giao dịch thật đã chạy. Chưa xuất bản hosting công khai.
 
 ## Phát triển và kiểm thử
 

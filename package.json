@@ -25,9 +25,13 @@
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",
+    "firebase": "^13.0.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.10.1"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

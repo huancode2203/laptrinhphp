@@ -35,10 +35,14 @@ class IntegrationStatus
             'SEPAY_WEBHOOK_KEY' => config('integrations.bank.key'), 'BANK_ACCOUNT_NUMBER' => config('integrations.bank.account'), 'BANK_ACCOUNT_NAME' => config('integrations.bank.name'), 'BANK_BIN' => config('integrations.bank.bank_bin'),
         ], 'VietQR và xác nhận giao dịch', 'https://my.sepay.vn/');
         $redirect = config('integrations.google.redirect_uri');
-        $items[] = $this->item('google', 'Đăng nhập Google', true, [
-            'GOOGLE_CLIENT_ID' => config('integrations.google.client_id'), 'GOOGLE_CLIENT_SECRET' => config('integrations.google.client_secret'),
-            'GOOGLE_REDIRECT_URI' => $this->publicHttps($redirect) || (filter_var($redirect, FILTER_VALIDATE_URL) && in_array(parse_url($redirect, PHP_URL_HOST), ['localhost', '127.0.0.1'], true)),
-        ], 'Google OAuth', 'https://console.cloud.google.com/auth/clients');
+        if (app(FirebaseAuthService::class)->webConfig()) {
+            $items[] = $this->item('google', 'Đăng nhập Google', true, [], 'Firebase Authentication', 'https://console.firebase.google.com/');
+        } else {
+            $items[] = $this->item('google', 'Đăng nhập Google', true, [
+                'GOOGLE_CLIENT_ID' => config('integrations.google.client_id'), 'GOOGLE_CLIENT_SECRET' => config('integrations.google.client_secret'),
+                'GOOGLE_REDIRECT_URI' => $this->publicHttps($redirect) || (filter_var($redirect, FILTER_VALIDATE_URL) && in_array(parse_url($redirect, PHP_URL_HOST), ['localhost', '127.0.0.1'], true)),
+            ], 'Google OAuth', 'https://console.cloud.google.com/auth/clients');
+        }
         $items[] = $this->item('sms', 'Xác thực điện thoại', (bool) config('integrations.sms.enabled'), [
             'TWILIO_ACCOUNT_SID' => config('integrations.sms.sid'), 'TWILIO_AUTH_TOKEN' => config('integrations.sms.token'), 'TWILIO_VERIFY_SERVICE_SID' => config('integrations.sms.service'),
         ], 'Twilio Verify SMS', 'https://console.twilio.com/');

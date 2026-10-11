@@ -3086,3 +3086,505 @@ input[type="radio"] {
         min-height: 130px;
     }
 }
+.profile-layout {
+    display: grid;
+    gap: 24px;
+}
+.profile-hero {
+    overflow: hidden;
+    border-radius: 24px;
+    background: white;
+    border: 1px solid #e1e9e3;
+    box-shadow: 0 8px 28px #12372506;
+}
+.profile-cover {
+    position: relative;
+    height: 148px;
+    overflow: hidden;
+    background: linear-gradient(120deg, #123c30, #0a2722);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 30px 40px;
+    color: #b7ff36;
+}
+.profile-cover > .court-lines {
+    inset: -100px 0 -120px 52%;
+    transform: rotate(-18deg);
+    opacity: 0.3;
+}
+.profile-cover > span {
+    position: relative;
+    letter-spacing: 0.22em;
+    font-size: 11px;
+    font-weight: 800;
+}
+.profile-cover > svg {
+    position: relative;
+    transform: rotate(-15deg);
+}
+.profile-identity {
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    margin-top: -35px;
+}
+.profile-avatar {
+    position: relative;
+    width: 112px;
+    height: 112px;
+    border: 6px solid white;
+    border-radius: 50%;
+    background: #e9f6c8;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    color: #24402d;
+    font-size: 32px;
+    font-weight: 800;
+    box-shadow: 0 3px 10px #12372516;
+}
+.profile-avatar > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.profile-avatar > i {
+    position: absolute;
+    right: -2px;
+    bottom: 0;
+    background: #123c30;
+    color: white;
+    border: 3px solid white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+}
+.player-profile-name {
+    padding-top: 42px;
+    min-width: 0;
+}
+.player-profile-name .eyebrow {
+    color: #718677;
+    font-size: 10px;
+}
+.player-profile-name h2 {
+    font-family: var(--font-display);
+    font-size: 27px;
+    line-height: 1.35;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+.player-profile-name > p:last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #708076;
+    flex-wrap: wrap;
+}
+.profile-edit {
+    margin-left: auto;
+    margin-top: 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+.profile-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 18px 32px 24px;
+}
+.profile-badges > span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border: 1px solid #e4ece6;
+    background: #f7faf5;
+    font-size: 11px;
+    font-weight: 700;
+    color: #47604e;
+    border-radius: 30px;
+}
+.profile-badges > span:first-child {
+    background: #f1f8d7;
+    border-color: #e4eec2;
+    color: #425d22;
+}
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid #edf1eb;
+    padding: 24px 10px;
+}
+.profile-stats > div {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: center;
+    gap: 6px 12px;
+    align-items: center;
+}
+.profile-stats > div + div {
+    border-left: 1px solid #e5ece7;
+}
+.profile-stats svg {
+    color: #6a936f;
+}
+.profile-stats strong {
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+.profile-stats span {
+    grid-column: 1/3;
+    font-size: 12px;
+    color: #78867d;
+    text-align: center;
+}
+.profile-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+.profile-panel {
+    border: 1px solid #e1e9e3;
+    border-radius: 20px;
+    background: white;
+    overflow: hidden;
+}
+.profile-panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    border-bottom: 1px solid #edf1eb;
+}
+.profile-panel-icon {
+    display: grid;
+    place-items: center;
+    background: #f0f6eb;
+    color: #437648;
+    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+}
+.profile-panel h3 {
+    font-size: 16px;
+    font-weight: 800;
+}
+.profile-panel-heading p {
+    font-size: 12px;
+    color: #87938a;
+    margin-top: 3px;
+}
+.profile-text-button {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 800;
+    color: #277444;
+    padding: 8px 0;
+}
+.profile-info {
+    padding: 4px 24px 20px;
+}
+.profile-info > div {
+    display: grid;
+    grid-template-columns: 124px 1fr;
+    gap: 10px;
+    padding: 16px 0;
+    border-bottom: 1px dashed #e7ede7;
+    font-size: 13px;
+}
+.profile-info > div:last-child {
+    border: 0;
+}
+.profile-info dt {
+    color: #839087;
+}
+.profile-info dd {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.profile-info small {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    color: #9b8558;
+    margin-top: 5px;
+}
+.profile-info small.verified {
+    color: #3c8a53;
+}
+.profile-privacy {
+    margin: 0 24px 24px;
+    border-radius: 12px;
+    background: #f6f8f3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+}
+.profile-privacy > svg {
+    flex-shrink: 0;
+    color: #6c9368;
+}
+.profile-privacy h4,
+.profile-security-row h4,
+.profile-google h4 {
+    font-size: 13px;
+    font-weight: 750;
+}
+.profile-privacy p,
+.profile-security-row p,
+.profile-google p {
+    font-size: 11px;
+    line-height: 1.7;
+    margin-top: 4px;
+    color: #88938b;
+}
+.profile-toggle {
+    border-radius: 30px;
+    background: #c7d0c9;
+    height: 24px;
+    width: 42px;
+    flex-shrink: 0;
+    padding: 3px;
+    margin-left: auto;
+    transition: background 0.2s;
+}
+.profile-toggle span {
+    display: block;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px #0002;
+    transition: transform 0.2s;
+}
+.profile-toggle.on {
+    background: #368050;
+}
+.profile-toggle.on span {
+    transform: translateX(18px);
+}
+.profile-security-row {
+    margin: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 0;
+    border-bottom: 1px solid #edf1eb;
+}
+.profile-security-row > span:first-child {
+    color: #87988b;
+    flex-shrink: 0;
+}
+.profile-security-row > div {
+    min-width: 0;
+}
+.profile-check {
+    color: #378550;
+    margin-left: auto;
+    font-weight: 700;
+}
+.profile-google {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 20px 24px 24px;
+    padding: 17px;
+    background: #f7f9f5;
+    border-radius: 12px;
+}
+.profile-google .badge {
+    align-self: flex-start;
+}
+.profile-pending {
+    font-size: 11px;
+    color: #929c92;
+}
+.google-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border: 1px solid #dae3db;
+    background: white;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    width: 100%;
+    transition: background 0.2s;
+}
+.google-button:hover {
+    background: #f3f7ed;
+}
+.google-button:disabled {
+    opacity: 0.6;
+}
+.profile-rally {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 25px;
+    border-radius: 18px;
+    border: 1px solid #e1eacf;
+    background: linear-gradient(110deg, #eef6db, #f9fbf1);
+}
+.profile-rally > span {
+    color: #547643;
+}
+.profile-rally h3 {
+    font-weight: 800;
+    font-size: 16px;
+}
+.profile-rally p {
+    font-size: 12px;
+    margin-top: 4px;
+    color: #7b8b71;
+}
+.profile-rally .btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+.profile-text-button:focus-visible,
+.profile-avatar:focus-visible,
+.profile-toggle:focus-visible {
+    outline: 3px solid #b7ff36;
+    outline-offset: 4px;
+}
+@media (max-width: 767px) {
+    .profile-columns {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+    .profile-cover {
+        height: 122px;
+        padding: 24px;
+    }
+    .profile-cover > span {
+        font-size: 9px;
+        max-width: 190px;
+        line-height: 1.8;
+    }
+    .profile-identity {
+        padding: 0 20px;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-top: -30px;
+    }
+    .profile-avatar {
+        width: 90px;
+        height: 90px;
+        font-size: 25px;
+        border-width: 5px;
+    }
+    .player-profile-name {
+        padding-top: 35px;
+        flex: 1;
+    }
+    .player-profile-name h2 {
+        font-size: 21px;
+    }
+    .player-profile-name > p:last-child {
+        font-size: 10px;
+        gap: 5px;
+    }
+    .profile-edit {
+        margin: 2px 0 0 0;
+        width: 100%;
+        justify-content: center;
+    }
+    .profile-badges {
+        padding: 16px 20px 20px;
+        gap: 6px;
+    }
+    .profile-badges > span {
+        font-size: 10px;
+        padding: 6px 9px;
+    }
+    .profile-stats {
+        padding: 20px 4px;
+    }
+    .profile-stats > div {
+        gap: 5px 6px;
+    }
+    .profile-stats strong {
+        font-size: 24px;
+    }
+    .profile-stats svg {
+        width: 17px;
+    }
+    .profile-stats span {
+        font-size: 10px;
+    }
+    .profile-panel-heading {
+        padding: 20px;
+    }
+    .profile-panel-heading p {
+        font-size: 11px;
+    }
+    .profile-info {
+        padding: 4px 20px 14px;
+    }
+    .profile-info > div {
+        grid-template-columns: 105px 1fr;
+        font-size: 12px;
+    }
+    .profile-privacy {
+        margin: 0 20px 20px;
+        padding: 13px;
+        gap: 10px;
+    }
+    .profile-security-row {
+        margin: 0 20px;
+        gap: 10px;
+    }
+    .profile-security-row p {
+        font-size: 10px;
+    }
+    .profile-text-button {
+        font-size: 11px;
+    }
+    .profile-google {
+        margin: 18px 20px 20px;
+    }
+    .profile-rally {
+        flex-wrap: wrap;
+        padding: 20px;
+        gap: 12px;
+    }
+    .profile-rally > div {
+        flex: 1;
+    }
+    .profile-rally h3 {
+        font-size: 14px;
+    }
+    .profile-rally .btn {
+        margin: 0;
+        width: 100%;
+        justify-content: center;
+    }
+    .profile-layout {
+        gap: 18px;
+    }
+}

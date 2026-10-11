@@ -171,11 +171,13 @@ export default function SearchAssistant({
                             }
                         >
                             <option value="">Toàn TP.HCM</option>
-                            {BRANCHES.map((b) => (
-                                <option key={b.id} value={b.name}>
-                                    {b.name}
-                                </option>
-                            ))}
+                            {[...new Set(BRANCHES.map((b) => b.district))].map(
+                                (district) => (
+                                    <option key={district} value={district}>
+                                        {district}
+                                    </option>
+                                ),
+                            )}
                         </select>
                     </label>
                     <label className="text-sm">

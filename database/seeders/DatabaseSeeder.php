@@ -59,7 +59,7 @@ class DatabaseSeeder extends Seeder
                 MembershipPlan::firstOrCreate(['name' => $name], ['price' => $price, 'discount_percent' => $discount, 'duration_days' => 30, 'active' => true]);
             }
             $managerBranch = Branch::where('district', 'Bình Thạnh')->firstOrFail();
-            foreach ([['admin', 'Quản trị viên'], ['manager', 'Quản lý Bình Thạnh'], ['staff', 'Nhân viên Bình Thạnh'], ['cashier', 'Thu ngân Bình Thạnh'], ['customer', 'Khách hàng mẫu']] as [$role, $name]) {
+            foreach ([['admin', 'Nguyễn Đức Hùng'], ['manager', 'Trần Hoàng Phúc'], ['staff', 'Lê Ngọc Mai'], ['cashier', 'Phạm Khánh Linh'], ['customer', 'Nguyễn Minh Anh']] as [$role, $name]) {
                 $user = User::firstOrCreate(['email' => $role.'@badminton.test'], ['name' => $name, 'password' => 'Demo@12345']);
                 $user->forceFill(['role' => $role, 'branch_id' => in_array($role, ['manager', 'staff', 'cashier'], true) ? $managerBranch->id : null])->save();
             }

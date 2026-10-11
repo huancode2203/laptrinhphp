@@ -1,3 +1,4 @@
+import Profile from "./Profile";
 import { AccountExtras } from "./FeaturePages";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
@@ -717,7 +718,7 @@ export default function Account({
                     ["wallet", "Ví HUB"],
                     ["membership", "Hội viên"],
                     ["notifications", "Thông báo"],
-                    ["profile", "Tài khoản"],
+                    ["profile", "Hồ sơ cá nhân"],
                     ["extras", "Quyền lợi & đã lưu"],
                     ["activity", "Bài viết & trận của tôi"],
                 ].map(([id, label]) => (
@@ -725,7 +726,10 @@ export default function Account({
                         key={id}
                         aria-pressed={tab === id}
                         className={tab === id ? "btn" : "btn-outline"}
-                        onClick={() => setTab(id)}
+                        onClick={() => {
+                            setTab(id);
+                            location.hash = "account/" + id;
+                        }}
                     >
                         {label}
                     </button>
@@ -1126,42 +1130,13 @@ export default function Account({
                 </>
             )}
             {tab === "profile" && (
-                <Card>
-                    <h2 className="text-xl font-bold">{user.name}</h2>
-                    <p className="my-3">
-                        {user.email} · {user.phone}
-                    </p>
-                    <p>
-                        {user.skill_level} ·{" "}
-                        {user.public_profile
-                            ? "Hồ sơ công khai trong cộng đồng"
-                            : "Hồ sơ riêng tư"}
-                    </p>
-                    <div className="mt-5 flex gap-3">
-                        <button
-                            className="btn"
-                            onClick={() => setForm("profile")}
-                        >
-                            Sửa hồ sơ
-                        </button>
-                        <button
-                            className="btn-outline"
-                            onClick={() => setForm("password")}
-                        >
-                            Đổi mật khẩu
-                        </button>
-                        {!user.email_verified_at && data!.email_enabled && (
-                            <button
-                                className="btn-outline"
-                                onClick={() => setForm("verifyEmail")}
-                            >
-                                {data?.demo?.email
-                                    ? "Thử OTP email · Demo"
-                                    : "Xác nhận email"}
-                            </button>
-                        )}
-                    </div>
-                </Card>
+                <Profile
+                    account={account}
+                    edit={() => setForm("profile")}
+                    password={() => setForm("password")}
+                    verifyEmail={() => setForm("verifyEmail")}
+                    changed={changed}
+                />
             )}
             {deletingNotification && (
                 <Confirm

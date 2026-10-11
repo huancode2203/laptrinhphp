@@ -12,9 +12,16 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'skill_level', 'public_profile', 'avatar_path'])]
-#[Hidden(['password', 'remember_token', 'google_sub'])]
+#[Hidden(['password', 'remember_token', 'google_sub', 'firebase_uid'])]
 class User extends Authenticatable
 {
+    protected $appends = ['google_connected'];
+
+    public function getGoogleConnectedAttribute(): bool
+    {
+        return (bool) $this->google_sub;
+    }
+
     protected $attributes = ['role' => 'customer', 'active' => true, 'wallet_balance' => 0, 'skill_level' => 'Sơ cấp', 'public_profile' => false];
 
     /** @use HasFactory<UserFactory> */

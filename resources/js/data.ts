@@ -97,7 +97,7 @@ export function hydrate(data: Row, posts: Row[] = []) {
     BRANCHES = data.branches.map((b: Row, i: number) => ({
         ...b,
         rawName: b.name,
-        name: b.district,
+        name: b.name.replace(/^Badminton Hub\s*[–-]\s*/, ""),
         courts: b.courts_count ?? b.courts.length,
         courtList: b.courts,
         price: Math.min(...b.courts.map((c: Row) => c.hourly_rate)),

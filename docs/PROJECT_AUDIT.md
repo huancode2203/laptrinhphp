@@ -13,7 +13,7 @@ Yêu cầu bản demo: dùng ngân hàng cá nhân và email thật khi chủ d�
 | MoMo | Merchant đủ cấu hình dùng adapter thật; chưa có merchant thì DEMO_MOMO cho nạp ví/thu đủ/thu cọc | Chưa kiểm thử giao dịch, IPN hay hoàn tiền với merchant thật |
 | Email | SMTP đã tích hợp để gửi OTP/khôi phục; khi thiếu SMTP có mã demo gắn với phiên hiện tại | Cần tài khoản SMTP/app password của chủ dự án và kiểm tra thư thực nhận. Demo không đánh dấu email đã xác thực |
 | SMS | Twilio Verify đã tích hợp; thiếu cấu hình dùng mã demo, có hạn/cooldown/giới hạn lần sai | Chưa gửi/nhận SMS thật. Demo không cập nhật số điện thoại đã xác thực |
-| Google | OAuth thật khi đủ client; thiếu cấu hình có nút vào tài khoản khách mẫu | Không liên kết Google thật trong demo; chưa thử callback bằng client thật |
+| Google | Firebase Authentication Google đã bật trên project Badminton Hub riêng, cho phép localhost/127.0.0.1; SDK và Laravel xác minh danh tính/liên kết theo chủ tài khoản. OAuth trực tiếp vẫn có khi cấu hình riêng | Chưa thử thủ công một lượt Google sign-in tới phiên Laravel hoàn chỉnh. Google demo chỉ hiện khi thiếu cấu hình thật |
 | AI tìm sân | Ollama `qwen3:1.7b` đã chạy suy luận; Laravel chuẩn hóa ngày/giờ rõ ràng và kiểm tra lịch/giá trong MySQL | Cần mở rộng đánh giá câu mơ hồ, tiếng lóng, nhiều ràng buộc và câu hỏi tiếp nối |
 | AI duyệt bài | Ollama `qwen3:1.7b` đã thử bài phù hợp và bài xúc phạm/đe dọa; trường hợp nghi ngờ chuyển người duyệt | Chưa có bộ đánh giá lớn. Không bảo đảm phát hiện mọi nội dung vi phạm |
 | OpenAI | Adapter có cấu hình riêng cho từng tác vụ, kiểm thử bằng phản hồi giả lập | Chưa có API key và chưa xác minh gọi dịch vụ thật |
@@ -25,6 +25,8 @@ Ngân hàng nhập trong trang quản trị được lưu tại `integration_set
 `DEMO_ENABLED=true` chỉ có hiệu lực trong `local/testing`. Giao dịch được ghi bằng phương thức `demo_bank/demo_momo` hoặc nội dung `[DEMO]`, chống ghi lặp và kiểm tra chủ tài khoản. Số dư demo vẫn là số dư trong database môn học; không phải tiền đã nhận tại ngân hàng. Khi chuyển sang sử dụng thật, cần dữ liệu sạch và tắt demo.
 
 ## 2. Các lỗi đã sửa trong đợt này
+
+Hồ sơ đã làm lại, tách thông tin cá nhân và bảo mật; avatar đúng tỷ lệ trên desktop/mobile, tên không còn bị ẩn bởi kiểu menu. Thống kê đọc booking và sân yêu thích thật. Bộ dữ liệu mở rộng có tối thiểu 30 dòng ở 46 bảng nghiệp vụ; bản cài mới có 95 người dùng tên Việt tự nhiên, 30 chi nhánh, 186 sân và 1.292 lịch. Không reset database đang dùng. Bộ lọc khu vực xử lý được nhiều chi nhánh cùng quận. Các giải vòng tròn trong fixture có đủ lịch 7 vòng/28 trận cho 8 người. Chi tiết dữ liệu, lệnh cài và phạm vi xác minh Firebase nằm trong README/VALIDATION.
 
 | Vấn đề trước sửa | Hành vi hiện tại |
 | --- | --- |

@@ -27,7 +27,7 @@ class DemoController extends Controller
 
                 return $user;
             }
-            $user = User::create(['email' => 'google-demo@badminton.test', 'name' => 'Người chơi mẫu', 'password' => Str::random(60)]);
+            $user = User::create(['email' => 'google-demo@badminton.test', 'name' => 'Võ Gia Hân', 'password' => Str::random(60)]);
             $user->forceFill(['google_sub' => 'demo:google-customer'])->save();
 
             return $user;
