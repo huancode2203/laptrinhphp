@@ -1,4 +1,4 @@
-# Rà soát toàn bộ Badminton Hub · 11/10/2026
+# Rà soát toàn bộ Badminton Hub · 12/10/2026
 
 Phạm vi: mã Laravel/React hiện tại, dữ liệu MySQL, 5 vai trò, nguồn giao diện `huancode2203/SNCUCAHuNRose` tại `ae1c406618c1f60590640dce41f7a3c17d709ed7` và hai chat đã xác nhận: “Kiểm tra hệ thống đặt sân”, “Kiểm tra tính năng layout”. Đây là bản đồ chức năng và các điểm phát hiện khi đọc mã, chạy kiểm thử và thử một số luồng trên trình duyệt; không phải cam kết đã thử thủ công mọi tổ hợp thao tác.
 
@@ -25,6 +25,8 @@ Ngân hàng nhập trong trang quản trị được lưu tại `integration_set
 `DEMO_ENABLED=true` chỉ có hiệu lực trong `local/testing`. Giao dịch được ghi bằng phương thức `demo_bank/demo_momo` hoặc nội dung `[DEMO]`, chống ghi lặp và kiểm tra chủ tài khoản. Số dư demo vẫn là số dư trong database môn học; không phải tiền đã nhận tại ngân hàng. Khi chuyển sang sử dụng thật, cần dữ liệu sạch và tắt demo.
 
 ## 2. Các lỗi đã sửa trong đợt này
+
+Đợt 12/10: tổng lịch cố định được tính cho tất cả các tuần ngay sau chọn sân, kiểm tra bảng giá/lịch trống từng ngày và tách giảm giá/cọc/tiền còn lại. Xung đột tuần sau có số buổi/ngày cụ thể; không tạo một phần chuỗi. Làm lại đăng nhập/đăng ký/khôi phục và form dùng chung cho các vai trò, lỗi cạnh ô nhập, thao tác lưu/hủy, focus bàn phím và bố cục điện thoại. Sửa đăng nhập từ mục quản lý mở trực tiếp quay về đúng mục; thông báo thời gian/kết nối được diễn đạt tiếng Việt. Bộ mới có 157 kiểm thử/4.699 assertions trên hai database; phạm vi thử thủ công và bằng chứng ở VALIDATION. Đợt này không thay đổi các giới hạn nghiệp vụ/dịch vụ thật nêu bên dưới.
 
 Đợt ổn định phiên/đặt sân: sửa cấu hình môi trường dùng chung luồng Apache gây thiếu APP_KEY/nhầm SQLite; đầu vào array ngày gây 500; phản hồi async cũ và lazy chunk bị xóa khi build. Client giữ route, có nút thử lại, không tự trả về trang chủ khi dịch vụ lỗi. Khôi phục giữ chỗ theo server, lưu bản nháp theo người dùng, khóa cơ sở và xác nhận trước đổi, thêm nút xác nhận giờ và mục “Sân đang chờ” riêng. Sửa nhập số ở form chung/dịch vụ/POS/tuần cố định, bổ sung kiểm tra kiểu và giới hạn server; kiểm tra điện thoại đúng định dạng nhưng chưa chuẩn hóa toàn bộ dữ liệu cũ. Quản lý nhớ mục/cơ sở/ngày, bỏ dữ liệu phản hồi cũ khi đổi phạm vi, có tìm mục và nhóm thao tác. Đăng nhập mặc định dẫn nhân sự vào khu quản lý, khách vào tài khoản. Bộ 150 kiểm thử đạt ở hai database và kiểm tra HTTP đồng thời 172 lượt trên 5 vai trò; phạm vi thử thủ công nằm trong VALIDATION.
 

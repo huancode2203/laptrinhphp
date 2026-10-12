@@ -57,7 +57,7 @@ export default function CustomerPicker({
         };
     }, [term, branch, value]);
     return (
-        <div className="rounded-xl border border-[#dce4dc] p-4">
+        <div className="customer-picker form-section rounded-xl border border-[#dce4dc] p-4">
             <label className="block text-sm font-bold">
                 Khách hàng
                 <input

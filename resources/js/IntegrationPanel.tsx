@@ -332,7 +332,7 @@ function FirebaseSetup({ after }: { after: () => Promise<void> }) {
             </div>
             {open && (
                 <form
-                    className="mt-5 space-y-4"
+                    className="hub-form mt-5 space-y-4"
                     onSubmit={(e) => {
                         e.preventDefault();
                         run(async () => {

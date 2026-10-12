@@ -379,13 +379,14 @@ export default function Profile({
             {phoneOpen && (
                 <Modal
                     title="Xác thực điện thoại"
+                    className="form-dialog form-dialog-compact"
                     close={() => {
                         setPhoneOpen(false);
                         setCode("");
                     }}
                 >
                     <form
-                        className="space-y-4"
+                        className="hub-form space-y-4"
                         onSubmit={(e) => {
                             e.preventDefault();
                             run(async () => {

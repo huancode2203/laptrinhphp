@@ -210,13 +210,16 @@ export default function App() {
         }
         go("booking");
     }
-    function signInDestination(role?: string) {
-        return (
-            afterAuth ||
-            (["manager", "admin", "staff", "cashier"].includes(role ?? "")
-                ? "manage"
-                : "account")
+    function signInDestination(role?: string, requested = afterAuth) {
+        const manages = ["manager", "admin", "staff", "cashier"].includes(
+            role ?? "",
         );
+        if (requested) {
+            return requested.split("/")[0] === "manage" && !manages
+                ? "account"
+                : requested;
+        }
+        return manages ? "manage" : "account";
     }
     useEffect(() => {
         if (user && routePage() === "auth") go(signInDestination(user.role));
@@ -317,7 +320,7 @@ export default function App() {
                 user ? (
                     <DemoCheckout />
                 ) : (
-                    <AuthScreen done={() => go("account")} />
+                    <AuthScreen done={() => go("demo-payment")} />
                 )
             ) : page === "branch" ? (
                 <BranchDetail id={branch} book={book} />
@@ -335,7 +338,16 @@ export default function App() {
                         <Management book={book} />
                     </Suspense>
                 ) : (
-                    <AuthScreen done={() => go("account")} />
+                    <AuthScreen
+                        done={(role) =>
+                            go(
+                                signInDestination(
+                                    role,
+                                    location.hash.slice(1) || "manage",
+                                ),
+                            )
+                        }
+                    />
                 )
             ) : user ? (
                 <Account
@@ -343,7 +355,9 @@ export default function App() {
                     initialTab={location.hash.split("/")[1] ?? "bookings"}
                 />
             ) : (
-                <AuthScreen done={() => go("account")} />
+                <AuthScreen
+                    done={() => go(location.hash.slice(1) || "account")}
+                />
             )}
         </div>
     );

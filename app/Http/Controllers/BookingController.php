@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Ramsey\Uuid\Uuid;
 
 class BookingController extends Controller
@@ -49,7 +50,7 @@ class BookingController extends Controller
     {
         $extra = $request->validate(['occurrences' => ['required', 'integer', 'between:2,12']]);
         $data = $request->validated();
-        abort_if(! empty($data['coupon_code']), 422, 'Lịch cố định đã giảm 15%, không áp dụng mã ưu đãi.');
+        abort_if(! empty($data['coupon_code']), 422, 'Lịch cố định có ưu đãi riêng, không dùng thêm mã giảm giá.');
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
         $existingCount = Booking::where('series_key', $data['request_key'])->count();
         abort_if($existingCount > 0 && $existingCount !== (int) $extra['occurrences'], 409, 'Không thay đổi số tuần của yêu cầu đã tạo.');
@@ -64,7 +65,11 @@ class BookingController extends Controller
                 if ($i > 0) {
                     unset($item['hold_id']);
                 }
-                $booking = $engine->create($request->user(), $item);
+                try {
+                    $booking = $engine->create($request->user(), $item);
+                } catch (ValidationException $exception) {
+                    throw ValidationException::withMessages(collect($exception->errors())->map(fn (array $messages) => array_map(fn (string $message) => 'Buổi thứ '.($i + 1).' ('.$start->addWeeks($i)->format('d/m/Y').'): '.$message, $messages))->all());
+                }
                 if ($request->boolean('pay_with_wallet')) {
                     app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($data['request_key'], 'wallet-payment-'.$i), $request->boolean('deposit_only'));
                 }

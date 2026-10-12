@@ -22,9 +22,13 @@ export default function PosCheckout({
         [booking, setBooking] = useState<Row | null>(null),
         [reference, setReference] = useState("");
     return (
-        <Modal title="Thanh toán giỏ hàng" close={close}>
+        <Modal
+            title="Thanh toán giỏ hàng"
+            close={close}
+            className="form-dialog form-dialog-compact"
+        >
             <form
-                className="space-y-4"
+                className="hub-form space-y-4"
                 onSubmit={(e) => {
                     e.preventDefault();
                     run(async () => {
@@ -151,22 +155,34 @@ export default function PosCheckout({
                         onChange={setCustomer}
                     />
                 )}
-                <button
-                    className="btn w-full"
-                    disabled={
-                        loading ||
-                        (method === "wallet" && !customer) ||
-                        (method === "booking" &&
-                            (!booking ||
-                                !["confirmed", "checked_in"].includes(
-                                    booking.status,
-                                )))
-                    }
-                >
-                    {method === "booking"
-                        ? "Thêm vào hóa đơn sân"
-                        : "Xác nhận đã thanh toán"}
-                </button>
+                <div className="form-actions">
+                    <div>
+                        <button
+                            type="button"
+                            className="btn-outline"
+                            disabled={loading}
+                            onClick={close}
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            className="btn"
+                            disabled={
+                                loading ||
+                                (method === "wallet" && !customer) ||
+                                (method === "booking" &&
+                                    (!booking ||
+                                        !["confirmed", "checked_in"].includes(
+                                            booking.status,
+                                        )))
+                            }
+                        >
+                            {method === "booking"
+                                ? "Thêm vào hóa đơn sân"
+                                : "Xác nhận đã thanh toán"}
+                        </button>
+                    </div>
+                </div>
             </form>
         </Modal>
     );

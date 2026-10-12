@@ -66,6 +66,7 @@ class BranchController extends Controller
             'services.*.quantity' => ['required', 'integer', 'min:1', 'max:10'],
             'coupon_code' => ['nullable', 'string', 'max:30'], 'fixed' => ['sometimes', 'boolean'],
             'user_id' => ['sometimes', 'integer', 'exists:users,id'],
+            'occurrences' => ['sometimes', 'integer', 'between:2,12'],
         ]);
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
 
@@ -78,7 +79,15 @@ class BranchController extends Controller
 
         $engine->assertOpen($court, $start, $end, $owner);
 
-        return response()->json(['data' => $engine->quote($court, $start, $end, $data['services'] ?? [], $owner, $data['coupon_code'] ?? null, $data['fixed'] ?? false), 'currency' => 'VND']);
+        if ($request->boolean('fixed') && isset($data['occurrences'])) {
+            abort_if(! empty($data['coupon_code']), 422, 'Lịch cố định có ưu đãi riêng, không dùng thêm mã giảm giá.');
+
+            return response()->json(['data' => $engine->seriesQuote($court, $start, $end, (int) $data['occurrences'], $data['services'] ?? [], $owner, $request->user()), 'currency' => 'VND']);
+        }
+        $quote = $engine->quote($court, $start, $end, $data['services'] ?? [], $owner, $data['coupon_code'] ?? null, $data['fixed'] ?? false);
+        $quote['deposit_amount'] = $request->user()?->role === 'customer' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0;
+
+        return response()->json(['data' => $quote, 'currency' => 'VND']);
     }
 
     public function schedule(Request $request, Branch $branch, BookingService $engine): JsonResponse

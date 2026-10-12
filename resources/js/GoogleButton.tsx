@@ -3,9 +3,11 @@ import { useHub } from "./hub";
 
 export default function GoogleButton({
     linked = false,
+    disabled = false,
     after,
 }: {
     linked?: boolean;
+    disabled?: boolean;
     after: (role?: string) => Promise<void> | void;
 }) {
     const { data, run, toast, loading } = useHub();
@@ -36,7 +38,14 @@ export default function GoogleButton({
     if (!data?.google_enabled) return null;
     if (!data.firebase)
         return (
-            <a className="google-button" href="/auth/google">
+            <a
+                className="google-button"
+                href="/auth/google"
+                aria-disabled={disabled || loading}
+                onClick={(event) => {
+                    if (disabled || loading) event.preventDefault();
+                }}
+            >
                 {mark}
                 {label}
             </a>
@@ -44,7 +53,7 @@ export default function GoogleButton({
     return (
         <button
             className="google-button"
-            disabled={loading}
+            disabled={disabled || loading}
             onClick={() =>
                 run(async () => {
                     const { googleLogin } = await import("./firebaseGoogle");

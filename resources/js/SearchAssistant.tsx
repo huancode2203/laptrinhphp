@@ -133,7 +133,7 @@ export default function SearchAssistant({
                         e.preventDefault();
                         search(true);
                     }}
-                    className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-5"
+                    className="hub-form search-filter-form mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-5"
                 >
                     {[
                         ["date", "Ngày chơi", "date"],

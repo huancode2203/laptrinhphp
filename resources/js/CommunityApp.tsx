@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
     BRANCHES,
+    day,
     money,
     stamp,
     localDateTime,
     statusText,
     type Row,
 } from "./data";
-import { Card, Editor, Empty, Modal } from "./ui";
+import { Card, Editor, Empty, Modal, type Field } from "./ui";
 export default function CommunityApp({
     auth,
     book,
@@ -216,18 +217,44 @@ export default function CommunityApp({
         await load();
         if (post) await loadPost(post.id);
     }
-    const fields = [
-        { name: "title", label: "Tiêu đề", required: true },
+    const fields: Field[] = [
+        {
+            name: "title",
+            label: "Tiêu đề bài viết",
+            required: true,
+            maxLength: 150,
+            placeholder: "Ví dụ: Tìm 2 bạn đánh đôi tối thứ Sáu",
+            section: "Nội dung bài viết",
+        },
+        {
+            name: "content",
+            label: "Nội dung",
+            type: "textarea",
+            required: true,
+            maxLength: 5000,
+            placeholder:
+                "Giới thiệu buổi chơi, chi phí dự kiến, cách tham gia và những điều đồng đội cần biết…",
+            section: "Nội dung bài viết",
+        },
+        {
+            name: "images",
+            label: "Ảnh đính kèm",
+            type: "images",
+            help: "Thêm tối đa 6 ảnh để bài viết dễ hình dung hơn.",
+            section: "Nội dung bài viết",
+        },
         {
             name: "branch_id",
             label: "Chi nhánh",
             required: true,
+            section: "Lịch chơi & đồng đội",
             options: BRANCHES.map((b) => ({ value: b.id, label: b.name })),
         },
         {
             name: "type",
             label: "Loại bài",
             required: true,
+            section: "Lịch chơi & đồng đội",
             options: [
                 "Tìm người đánh",
                 "Tìm đối thủ",
@@ -241,6 +268,7 @@ export default function CommunityApp({
             name: "skill_level",
             label: "Trình độ",
             required: true,
+            section: "Lịch chơi & đồng đội",
             options: ["Sơ cấp", "Trung cấp", "Cao cấp", "Mọi trình độ"].map(
                 (value) => ({ value, label: value }),
             ),
@@ -250,6 +278,9 @@ export default function CommunityApp({
             label: "Thời gian chơi",
             type: "datetime-local",
             required: true,
+            min: localDateTime(new Date().toISOString()).slice(0, 16),
+            help: "Chọn ngày và giờ buổi chơi sẽ bắt đầu.",
+            section: "Lịch chơi & đồng đội",
         },
         {
             name: "capacity",
@@ -258,20 +289,17 @@ export default function CommunityApp({
             min: 1,
             max: 100,
             required: true,
-        },
-        { name: "images", label: "Ảnh đính kèm", type: "images" },
-        {
-            name: "content",
-            label: "Nội dung",
-            type: "textarea",
-            required: true,
+            help: "Số chỗ dành cho người tham gia, chưa tính người tổ chức.",
+            section: "Lịch chơi & đồng đội",
         },
         {
             name: "status",
             label: "Trạng thái",
+            required: true,
+            section: "Lịch chơi & đồng đội",
             options: ["open", "closed"].map((value) => ({
                 value,
-                label: value,
+                label: value === "open" ? "Đang nhận người" : "Đã đóng đăng ký",
             })),
         },
     ];
@@ -797,7 +825,7 @@ export default function CommunityApp({
                                         />
                                     )}
                                     <form
-                                        className="chat-composer flex gap-2"
+                                        className="hub-form chat-composer flex gap-2"
                                         onSubmit={(e) => {
                                             e.preventDefault();
                                             run(async () => {
@@ -1067,7 +1095,7 @@ export default function CommunityApp({
                         </p>
                     )}
                     <form
-                        className="mt-4 flex gap-2"
+                        className="hub-form comment-form mt-4 flex gap-2"
                         onSubmit={(e) => {
                             e.preventDefault();
                             action(async () => {
@@ -1103,6 +1131,8 @@ export default function CommunityApp({
             {(form === "post" || form === "edit") && (
                 <Editor
                     title={form === "post" ? "Tạo bài đăng" : "Sửa bài đăng"}
+                    description="Chia sẻ lịch chơi và nhu cầu của bạn để những người phù hợp dễ dàng tham gia."
+                    label={form === "post" ? "Đăng bài" : "Lưu cập nhật"}
                     close={() => setForm("")}
                     fields={fields}
                     initial={
@@ -1117,18 +1147,25 @@ export default function CommunityApp({
                                   skill_level: "Trung cấp",
                                   capacity: 2,
                                   status: "open",
+                                  starts_at: day(1) + "T18:00",
                               }
                     }
                     save={async (d) => {
-                        await changed(() =>
-                            api(
+                        let message = "Bài viết đã được lưu.";
+                        await changed(async () => {
+                            const response = await api(
                                 "community/posts" +
                                     (form === "edit" ? "/" + post!.id : ""),
                                 form === "edit" ? "PUT" : "POST",
                                 { ...d, branch_id: Number(d.branch_id) },
-                            ),
-                        );
+                            );
+                            message =
+                                response.data?.moderation_status === "approved"
+                                    ? "Bài viết đã được đăng lên cộng đồng."
+                                    : "Bài viết đã được gửi và đang chờ duyệt. Bạn có thể theo dõi trong Bài viết & trận của tôi.";
+                        });
                         await refresh();
+                        toast(message);
                     }}
                 />
             )}

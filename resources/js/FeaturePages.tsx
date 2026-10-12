@@ -510,7 +510,7 @@ export function Coaching() {
                                 location.hash = "account";
                             });
                         }}
-                        className="grid gap-4 md:grid-cols-4"
+                        className="hub-form form-grid"
                     >
                         <label className="text-sm">
                             Ngày
@@ -565,7 +565,7 @@ export function Coaching() {
                                     ))}
                             </select>
                         </label>
-                        <div className="md:col-span-4">
+                        <div className="form-field-wide">
                             {error && (
                                 <p role="alert" className="mb-3 text-red-700">
                                     {error}

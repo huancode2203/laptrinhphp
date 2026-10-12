@@ -226,7 +226,7 @@ export default function BookingFlow({
         };
     }, [branch, date, restoring]);
     useEffect(() => {
-        if (!court || invalidServices) {
+        if (!court || invalidServices || invalidWeeks) {
             setQuote(null);
             return;
         }
@@ -240,6 +240,7 @@ export default function BookingFlow({
                     services: selected,
                     coupon_code: coupon || null,
                     fixed,
+                    ...(fixed ? { occurrences: Number(weeks) } : {}),
                     ...(customer ? { user_id: Number(customer) } : {}),
                 })
                     .then((r) => {
@@ -267,8 +268,10 @@ export default function BookingFlow({
         JSON.stringify(selected),
         coupon,
         fixed,
+        weeks,
         customer,
         invalidServices,
+        invalidWeeks,
     ]);
     useEffect(() => {
         if (!hold) return;
@@ -312,7 +315,7 @@ export default function BookingFlow({
         };
         const r = await api(fixed ? "bookings/series" : "bookings", "POST", {
             ...payload,
-            ...(fixed ? { occurrences: weeks } : {}),
+            ...(fixed ? { occurrences: Number(weeks) } : {}),
         });
         const booked = fixed ? r.data : r.data ? [r.data] : [];
         clearBookingDraft(data!.user.id);
@@ -364,6 +367,76 @@ export default function BookingFlow({
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [step]);
+    const bookingTypeFields = (
+        <div className="booking-type-panel">
+            <div className="form-section-title">
+                <Icon name="calendar" size={18} />
+                <span>Nhịp chơi của bạn</span>
+            </div>
+            <div className="booking-type-options">
+                <button
+                    type="button"
+                    aria-pressed={!fixed}
+                    onClick={() => {
+                        setFixed(false);
+                        setCoupon("");
+                    }}
+                >
+                    <b>Một buổi</b>
+                    <small>Chọn lịch linh hoạt</small>
+                </button>
+                <button
+                    type="button"
+                    aria-pressed={fixed}
+                    onClick={() => {
+                        setFixed(true);
+                        setCoupon("");
+                    }}
+                >
+                    <b>Cố định hàng tuần</b>
+                    <small>
+                        Giảm {b?.fixed_discount ?? 0}% phí sân mỗi buổi
+                    </small>
+                </button>
+            </div>
+            {fixed && (
+                <label className="form-field mt-4">
+                    <span>
+                        Số tuần <span className="required-mark">*</span>
+                    </span>
+                    <input
+                        aria-label="Số tuần"
+                        type="number"
+                        className="input"
+                        min={2}
+                        max={12}
+                        step={1}
+                        value={weeks}
+                        onChange={(e) => setWeeks(e.target.value)}
+                        aria-invalid={invalidWeeks}
+                    />
+                    <small>
+                        Mỗi tuần một buổi, cùng sân và khung giờ. Dịch vụ được
+                        tính cho mỗi buổi.
+                    </small>
+                </label>
+            )}
+            {invalidWeeks && (
+                <p role="alert" className="field-error">
+                    Chọn số tuần từ 2 đến 12, không nhập số lẻ.
+                </p>
+            )}
+        </div>
+    );
+    const depositAmount = quote?.deposit_amount ?? 0;
+    const walletAmount =
+        depositOnly && b?.deposit_percent > 0
+            ? depositAmount
+            : (quote?.total_amount ?? 0);
+    const walletShortage =
+        method === "wallet" && data!.user.role === "customer"
+            ? Math.max(0, walletAmount - data!.user.wallet_balance)
+            : 0;
     if (restoring)
         return (
             <div className="product-page p-10">
@@ -544,41 +617,7 @@ export default function BookingFlow({
                                     </select>
                                 </label>
                             </div>
-                            <label className="block">
-                                <input
-                                    type="checkbox"
-                                    checked={fixed}
-                                    onChange={(e) => {
-                                        setFixed(e.target.checked);
-                                        setCoupon("");
-                                    }}
-                                />{" "}
-                                Đặt cố định hàng tuần · giảm{" "}
-                                {b?.fixed_discount ?? 0}% phí sân
-                            </label>
-                            {fixed && (
-                                <label>
-                                    Số tuần
-                                    <input
-                                        type="number"
-                                        className="input ml-3"
-                                        min={2}
-                                        max={12}
-                                        value={weeks}
-                                        onChange={(e) =>
-                                            setWeeks(e.target.value)
-                                        }
-                                    />
-                                </label>
-                            )}
-                            {invalidWeeks && (
-                                <p
-                                    role="alert"
-                                    className="text-sm text-red-700"
-                                >
-                                    Số tuần phải là số nguyên từ 2 đến 12.
-                                </p>
-                            )}
+                            {bookingTypeFields}
                             {data!.user.role !== "customer" && (
                                 <CustomerPicker
                                     branch={Number(branch)}
@@ -645,6 +684,7 @@ export default function BookingFlow({
                                     })
                                 }
                             />
+                            {bookingTypeFields}
                             <h2 className="mb-4 mt-6 text-xl font-bold">
                                 Dịch vụ thêm
                             </h2>
@@ -816,38 +856,57 @@ export default function BookingFlow({
                                     <>
                                         <b>
                                             Đặt cọc {b.deposit_percent}% (
-                                            {money(
-                                                Math.ceil(
-                                                    ((quote?.total_amount ??
-                                                        0) *
-                                                        b.deposit_percent) /
-                                                        100,
-                                                ),
-                                            )}
+                                            {quote
+                                                ? money(depositAmount)
+                                                : "Đang tính…"}
                                             ) trong {b.payment_minutes} phút.
                                         </b>
                                         <p className="mt-2">
                                             Lịch chưa đủ cọc sẽ tự giải phóng
                                             khi hết hạn.
+                                            {fixed && (
+                                                <>
+                                                    {" "}
+                                                    Đây là tổng tiền cọc cho cả{" "}
+                                                    {weeks} buổi. Thanh toán
+                                                    bằng ví sẽ thu cọc từng buổi
+                                                    trong cùng một lần xác nhận.
+                                                </>
+                                            )}
                                         </p>
-                                        <label className="mt-3 flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={depositOnly}
-                                                onChange={(e) =>
-                                                    setDepositOnly(
-                                                        e.target.checked,
-                                                    )
-                                                }
-                                            />
-                                            Chỉ trả phần đặt cọc khi thanh toán
-                                            bằng ví hoặc MoMo
-                                        </label>
+                                        {(method === "wallet" ||
+                                            method === "momo") && (
+                                            <label className="mt-3 flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={depositOnly}
+                                                    onChange={(e) =>
+                                                        setDepositOnly(
+                                                            e.target.checked,
+                                                        )
+                                                    }
+                                                />
+                                                {fixed
+                                                    ? "Thanh toán tiền cọc cho toàn bộ lịch bằng ví"
+                                                    : "Chỉ thanh toán tiền cọc"}
+                                            </label>
+                                        )}
                                     </>
                                 ) : (
                                     "Thanh toán đủ trước khi nhận sân."
                                 )}
                             </div>
+                            {walletShortage > 0 && (
+                                <p role="alert" className="field-error">
+                                    Ví còn thiếu {money(walletShortage)} để{" "}
+                                    {depositOnly ? "đặt cọc" : "thanh toán"}{" "}
+                                    {fixed
+                                        ? "toàn bộ lịch cố định"
+                                        : "buổi chơi này"}
+                                    . Vui lòng nạp thêm hoặc chọn phương thức
+                                    khác.
+                                </p>
+                            )}
                             <p className="text-sm text-[#6d8474]">
                                 Lịch chưa thanh toán có thể hủy trước giờ chơi.
                                 Lịch trả bằng ví được hoàn ví khi hủy trước ít
@@ -881,11 +940,14 @@ export default function BookingFlow({
                                         !quote ||
                                         !!error ||
                                         invalidServices ||
-                                        invalidWeeks
+                                        invalidWeeks ||
+                                        walletShortage > 0
                                     }
                                     onClick={() => run(confirm)}
                                 >
-                                    Xác nhận đặt sân
+                                    {fixed
+                                        ? "Xác nhận " + weeks + " buổi"
+                                        : "Xác nhận đặt sân"}
                                 </button>
                             </div>
                         </>
@@ -907,32 +969,120 @@ export default function BookingFlow({
                         {date} · {time} · {duration} giờ
                     </p>
                     <p className="mt-2">
-                        {court?.name ?? "Chưa chọn sân"}{" "}
+                        {court?.name ?? hold?.court?.name ?? "Chưa chọn sân"}{" "}
                         {fixed ? "· " + weeks + " tuần" : ""}
                     </p>
+                    {!quote && court && (
+                        <p
+                            role="status"
+                            className="mt-5 text-sm text-[#718375]"
+                        >
+                            Đang kiểm tra lịch và tính tổng tiền…
+                        </p>
+                    )}
                     {quote && (
                         <div className="mt-6 space-y-3 border-t border-[#dce4dc] pt-4">
                             <div className="flex justify-between">
-                                <span>Phí sân</span>
+                                <span>
+                                    Phí sân{" "}
+                                    {fixed ? "· " + weeks + " buổi" : ""}
+                                </span>
                                 <b>{money(quote.court_amount)}</b>
                             </div>
                             <div className="flex justify-between">
-                                <span>Dịch vụ</span>
+                                <span>
+                                    Dịch vụ{" "}
+                                    {fixed ? "· " + weeks + " buổi" : ""}
+                                </span>
                                 <b>{money(quote.service_amount)}</b>
                             </div>
-                            <div className="flex justify-between text-[#16a34a]">
-                                <span>Ưu đãi</span>
-                                <b>−{money(quote.discount_amount)}</b>
-                            </div>
+                            {fixed && (
+                                <div className="flex justify-between text-[#168449]">
+                                    <span>
+                                        Giảm lịch cố định{" "}
+                                        {quote.fixed_discount_percent}%
+                                    </span>
+                                    <b>−{money(quote.fixed_discount_amount)}</b>
+                                </div>
+                            )}
+                            {(quote.other_discount_amount > 0 || !fixed) && (
+                                <div className="flex justify-between text-[#168449]">
+                                    <span>
+                                        {fixed ? "Ưu đãi hội viên" : "Ưu đãi"}
+                                    </span>
+                                    <b>−{money(quote.other_discount_amount)}</b>
+                                </div>
+                            )}
                             <div className="flex justify-between text-xl">
-                                <span>Tổng {fixed ? "mỗi tuần" : ""}</span>
+                                <span>
+                                    {fixed
+                                        ? "Tổng " + weeks + " buổi"
+                                        : "Tổng tiền"}
+                                </span>
                                 <b>{money(quote.total_amount)}</b>
                             </div>
-                            {fixed && (
-                                <small>
-                                    Giá từng tuần được tính theo lịch và hội
-                                    viên tại thời điểm xác nhận.
-                                </small>
+                            {data!.user.role === "customer" &&
+                                b.deposit_percent > 0 && (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span>
+                                                Đặt cọc {b.deposit_percent}%
+                                            </span>
+                                            <b>{money(depositAmount)}</b>
+                                        </div>
+                                        <div className="flex justify-between text-sm text-[#6d8474]">
+                                            <span>Còn lại sau cọc</span>
+                                            <span>
+                                                {money(
+                                                    quote.total_amount -
+                                                        depositAmount,
+                                                )}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+                            {fixed && quote.sessions && (
+                                <details className="series-cost-details">
+                                    <summary>
+                                        Xem {weeks} buổi và giá từng tuần
+                                    </summary>
+                                    <p className="my-3 text-xs text-[#6d8474]">
+                                        Giá đã kiểm tra theo ngày chơi. Ưu đãi
+                                        chỉ áp dụng phí sân, không giảm giá dịch
+                                        vụ.
+                                    </p>
+                                    {quote.sessions.map(
+                                        (session: Row, i: number) => (
+                                            <div key={session.starts_at}>
+                                                <span>
+                                                    <b>Buổi {i + 1}</b>
+                                                    <small>
+                                                        {localDateTime(
+                                                            session.starts_at,
+                                                        )
+                                                            .slice(0, 10)
+                                                            .split("-")
+                                                            .reverse()
+                                                            .join("/")}
+                                                    </small>
+                                                </span>
+                                                <span>
+                                                    <b>
+                                                        {money(
+                                                            session.total_amount,
+                                                        )}
+                                                    </b>
+                                                    <small>
+                                                        Cọc{" "}
+                                                        {money(
+                                                            session.deposit_amount,
+                                                        )}
+                                                    </small>
+                                                </span>
+                                            </div>
+                                        ),
+                                    )}
+                                </details>
                             )}
                         </div>
                     )}

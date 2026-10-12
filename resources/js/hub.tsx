@@ -20,7 +20,13 @@ async function responseBody(r: Response) {
     let j: any = {};
     try {
         j = await r.json();
-    } catch {}
+    } catch {
+        if (r.ok && r.status !== 204)
+            throw new ApiError(
+                "Dữ liệu chưa tải đầy đủ. Vui lòng thử lại thao tác.",
+                r.status,
+            );
+    }
     if (r.status === 401) {
         window.dispatchEvent(new CustomEvent("hub:auth-expired"));
         throw new ApiError(
@@ -37,12 +43,38 @@ async function responseBody(r: Response) {
                   : Object.values(j.errors ?? {})
                         .flat()
                         .join(" ") ||
-                    j.message ||
+                    (r.status === 429
+                        ? "Bạn đã thử nhiều lần liên tiếp. Vui lòng chờ " +
+                          (Number(r.headers.get("Retry-After")) || 60) +
+                          " giây rồi thử lại."
+                        : !j.message ||
+                            /^(Forbidden|Not Found|Unauthorized|Unauthenticated\.?|Too Many Requests|Unprocessable Content|Unprocessable Entity|Bad Request|Conflict|Method Not Allowed|The given data was invalid\.?|This action is unauthorized\.?)$/i.test(
+                                j.message,
+                            )
+                          ? (
+                                {
+                                    403: "Bạn chưa có quyền thực hiện thao tác này. Vui lòng kiểm tra tài khoản hoặc liên hệ quản lý.",
+                                    404: "Nội dung này không còn tồn tại hoặc bạn không được phép xem.",
+                                    422: "Thông tin chưa phù hợp. Kiểm tra các ô nhập và thử lại.",
+                                    409: "Dữ liệu vừa thay đổi. Vui lòng tải lại trước khi tiếp tục.",
+                                } as Record<number, string>
+                            )[r.status]
+                          : j.message) ||
                     "Chưa thực hiện được yêu cầu. Vui lòng thử lại.",
             r.status,
             j.errors ?? {},
         );
     return j;
+}
+async function request(url: string, options: RequestInit) {
+    try {
+        return await fetch(url, options);
+    } catch {
+        throw new ApiError(
+            "Không kết nối được hệ thống. Kiểm tra kết nối mạng và thử lại.",
+            0,
+        );
+    }
 }
 export async function api(
     path: string,
@@ -51,13 +83,13 @@ export async function api(
 ): Promise<any> {
     let csrf = "";
     if (method !== "GET") {
-        const c = await fetch("/api/v1/csrf", {
+        const c = await request("/api/v1/csrf", {
             credentials: "same-origin",
             headers: { Accept: "application/json" },
         });
         csrf = (await responseBody(c)).csrf_token;
     }
-    const r = await fetch("/api/v1/" + path, {
+    const r = await request("/api/v1/" + path, {
         method,
         credentials: "same-origin",
         headers: {
@@ -70,14 +102,14 @@ export async function api(
     return responseBody(r);
 }
 export async function upload(file: File) {
-    const c = await fetch("/api/v1/csrf", {
+    const c = await request("/api/v1/csrf", {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
     });
     const token = (await responseBody(c)).csrf_token;
     const body = new FormData();
     body.append("file", file);
-    const r = await fetch("/api/v1/media", {
+    const r = await request("/api/v1/media", {
         method: "POST",
         credentials: "same-origin",
         headers: { Accept: "application/json", "X-CSRF-TOKEN": token },

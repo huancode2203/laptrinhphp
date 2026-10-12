@@ -4,6 +4,8 @@ Website quản lý sân cầu lông: Laravel/PHP xử lý nghiệp vụ, MySQL l
 
 Nguồn giao diện do chủ dự án cung cấp: [SNCUCAHuNRose](https://github.com/huancode2203/SNCUCAHuNRose), commit `ae1c406618c1f60590640dce41f7a3c17d709ed7`, từ [Figma Make](https://www.figma.com/make/8hdgt0w0TDycN12gVlnouv/). Theo yêu cầu mới, giao diện được làm lại theo phong cách thể thao, nền sáng, xanh rừng/lime, ảnh cầu lông và biểu tượng SVG đồng bộ. Menu điện thoại thu gọn; đặt sân, chat, tài khoản, sự kiện, huấn luyện viên và quản lý dùng cùng hệ thống bố cục. Lịch trống, giá, hóa đơn, điểm, chat và trạng thái thanh toán đọc/tính từ máy chủ.
 
+Cập nhật 12/10/2026: làm lại đăng nhập/đăng ký/khôi phục và bộ form dùng chung ở khách hàng, quản lý, nhân viên, thu ngân, admin. Form chia nhóm, dùng hai cột trên máy tính/một cột trên điện thoại, có nhãn trường bắt buộc, lỗi tại ô nhập và nút lưu/hủy dễ tiếp cận. Lịch cố định xem trước tổng toàn bộ tuần, tách ưu đãi hội viên/ưu đãi cố định, tổng cọc và tiền còn lại; xem được giá từng buổi. Thông báo ngày/giờ và kết nối dùng tiếng Việt. Bằng chứng và giới hạn kiểm tra nằm trong [VALIDATION](docs/VALIDATION.md).
+
 ## Chạy trên Laragon
 
 Yêu cầu PHP **8.3+**, MySQL **8.0+**, Composer 2, Node **22.12+** hoặc Node 24. Bật PHP `pdo_mysql`, `pdo_sqlite`, `mbstring`, `openssl`, `curl`, `fileinfo`, `dom`, `gd`, **`zip`**. Đã kiểm tra với PHP 8.3.33, MySQL 8.4.3, Laravel 13.35.0 và Node 24.
@@ -102,6 +104,7 @@ HUB AI ghim đầu danh sách chat, lưu lịch sử riêng và nhớ tiêu chí
 - Tìm sân bằng tiếng Việt hoặc ngày/giờ/khu vực/ngân sách; kết quả có sân trống, giá, cọc và chuyển thẳng sang đặt đúng sân.
 - Giờ mở, thời hạn đặt trước, cao điểm, giá theo ngày/thứ/sân, giảm lịch cố định cấu hình theo chi nhánh. PHP tính lại phí, hội viên, coupon và dịch vụ.
 - Giữ chỗ 5 phút, chống trùng lịch/giữ chỗ/bảo trì/sự kiện. Đặt 30 phút–6 giờ trong một ngày; chuỗi cố định 2–12 tuần được tạo trong transaction.
+- Có thể chọn lịch cố định sau khi chọn sân. PHP kiểm tra và tính giá từng tuần theo ngày chơi, cộng phí sân/dịch vụ của tất cả các buổi rồi trừ ưu đãi. Tổng cọc bằng tổng cọc làm tròn của từng booking; tại quầy vẫn theo chính sách không bắt buộc cọc. Nếu tuần sau bị trùng hoặc vượt thời hạn đặt trước, báo rõ buổi/ngày và không tạo một phần chuỗi. Dịch vụ được tính cho mỗi buổi, ưu đãi chỉ giảm phí sân.
 - Cọc/thu đủ, hạn thanh toán, hủy quá hạn; ví/MoMo/ngân hàng khi đã cấu hình. Đổi lịch chưa trả sang sân cùng chi nhánh, tính lại giá/hạn cọc.
 - Lịch cá nhân, hóa đơn PDF, QR nhận sân, hủy/hoàn, đánh giá ảnh và phản hồi chi nhánh, danh sách chờ, chat theo lịch đặt.
 - Ví có sổ giao dịch; nạp tại quầy/MoMo, trả sân/POS/hội viên/vé. UUID chống thu, hoàn và cộng điểm lặp.

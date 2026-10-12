@@ -27,8 +27,17 @@ class BookingService
         $start = CarbonImmutable::parse($startsAt, $zone)->setTimezone($zone);
         $end = CarbonImmutable::parse($endsAt, $zone)->setTimezone($zone);
         $minutes = (int) $start->diffInMinutes($end, false);
-        if ($start->lt(now()->startOfMinute()) || ! $start->isSameDay($end) || $minutes < 30 || $minutes > 360 || $start->minute % 30 !== 0 || $end->minute % 30 !== 0 || $start->second !== 0 || $end->second !== 0 || $start->microsecond !== 0 || $end->microsecond !== 0) {
-            throw ValidationException::withMessages(['starts_at' => 'Chọn lịch tương lai, theo bước 30 phút và tối đa 6 giờ trong một ngày.']);
+        if ($start->lt(now()->startOfMinute())) {
+            throw ValidationException::withMessages(['starts_at' => 'Khung giờ này đã qua. Vui lòng chọn giờ bắt đầu từ thời điểm hiện tại trở đi.']);
+        }
+        if (! $start->isSameDay($end)) {
+            throw ValidationException::withMessages(['ends_at' => 'Giờ bắt đầu và giờ kết thúc phải nằm trong cùng một ngày.']);
+        }
+        if ($minutes < 30 || $minutes > 360) {
+            throw ValidationException::withMessages(['ends_at' => 'Mỗi buổi chơi kéo dài từ 30 phút đến 6 giờ. Vui lòng điều chỉnh giờ kết thúc.']);
+        }
+        if ($start->minute % 30 !== 0 || $end->minute % 30 !== 0 || $start->second !== 0 || $end->second !== 0 || $start->microsecond !== 0 || $end->microsecond !== 0) {
+            throw ValidationException::withMessages(['starts_at' => 'Chọn giờ tròn hoặc giờ rưỡi, ví dụ 13:00 hoặc 13:30.']);
         }
 
         return [$start, $end];
@@ -63,11 +72,38 @@ class BookingService
         }
         $serviceAmount = array_sum(array_column($items, 'amount'));
         $discounts = app(CommerceService::class)->discounts($actor, $courtAmount, $court->branch_id, $couponCode);
-        $discount = $discounts['discount_amount'] + ($fixed ? (int) floor($courtAmount * $court->branch->fixed_discount / 100) : 0);
-        $discount = min($courtAmount, $discount);
+        $otherDiscount = min($courtAmount, $discounts['discount_amount']);
+        $fixedDiscount = $fixed ? min($courtAmount - $otherDiscount, (int) floor($courtAmount * $court->branch->fixed_discount / 100)) : 0;
+        $discount = $otherDiscount + $fixedDiscount;
         abort_if($courtAmount + $serviceAmount - $discount > 2147483647, 422, 'Tổng giá vượt giới hạn.');
 
-        return ['court_amount' => $courtAmount, 'service_amount' => $serviceAmount, 'total_amount' => $courtAmount + $serviceAmount - $discount, 'discount_amount' => $discount, 'coupon_id' => $discounts['coupon_id'], 'membership' => $discounts['membership'], 'items' => $items];
+        return ['court_amount' => $courtAmount, 'service_amount' => $serviceAmount, 'total_amount' => $courtAmount + $serviceAmount - $discount, 'discount_amount' => $discount, 'fixed_discount_amount' => $fixedDiscount, 'other_discount_amount' => $otherDiscount, 'coupon_id' => $discounts['coupon_id'], 'membership' => $discounts['membership'], 'items' => $items];
+    }
+
+    /** @return array<string, mixed> */
+    public function seriesQuote(Court $court, CarbonImmutable $start, CarbonImmutable $end, int $occurrences, array $services, ?User $owner, ?User $actor): array
+    {
+        app(FeatureService::class)->expireBookings();
+        $sessions = [];
+        for ($week = 0; $week < $occurrences; $week++) {
+            $begin = $start->addWeeks($week);
+            $finish = $end->addWeeks($week);
+            try {
+                $this->assertOpen($court, $begin, $finish, $owner);
+                $this->assertAvailable($court, $begin, $finish, null, $actor?->id);
+                $quote = $this->quote($court, $begin, $finish, $services, $owner, null, true);
+            } catch (ValidationException $exception) {
+                throw ValidationException::withMessages(collect($exception->errors())->map(fn (array $messages) => array_map(fn (string $message) => 'Buổi thứ '.($week + 1).' ('.$begin->format('d/m/Y').'): '.$message, $messages))->all());
+            }
+            unset($quote['items']);
+            $sessions[] = $quote + ['starts_at' => $begin->toIso8601String(), 'ends_at' => $finish->toIso8601String(), 'deposit_amount' => $actor?->role === 'customer' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0];
+        }
+        $totals = [];
+        foreach (['court_amount', 'service_amount', 'discount_amount', 'fixed_discount_amount', 'other_discount_amount', 'total_amount', 'deposit_amount'] as $field) {
+            $totals[$field] = array_sum(array_column($sessions, $field));
+        }
+
+        return $totals + ['occurrences' => $occurrences, 'fixed_discount_percent' => $court->branch->fixed_discount, 'deposit_percent' => $court->branch->deposit_percent, 'sessions' => $sessions];
     }
 
     public function assertManage(User $user, int $branchId, ?string $permission = null): void
@@ -81,8 +117,14 @@ class BookingService
         $startMinute = $start->hour * 60 + $start->minute;
         $endMinute = $end->hour * 60 + $end->minute;
         $early = $owner ? Membership::where('user_id', $owner->id)->where('expires_at', '>', now())->with('plan')->get()->max(fn ($m) => $m->plan->early_days) : 0;
-        if ($startMinute < $branch->opens_minute || $endMinute > $branch->closes_minute || $start->gt(now()->addDays($branch->booking_days + ($early ?? 0))->endOfDay())) {
-            throw ValidationException::withMessages(['starts_at' => 'Khung giờ nằm ngoài giờ mở cửa hoặc thời hạn đặt trước của chi nhánh.']);
+        if ($startMinute < $branch->opens_minute || $endMinute > $branch->closes_minute) {
+            $opens = sprintf('%02d:%02d', intdiv($branch->opens_minute, 60), $branch->opens_minute % 60);
+            $closes = sprintf('%02d:%02d', intdiv($branch->closes_minute, 60), $branch->closes_minute % 60);
+            throw ValidationException::withMessages(['starts_at' => 'Cơ sở mở cửa từ '.$opens.' đến '.$closes.'. Vui lòng chọn khung giờ trong khoảng này.']);
+        }
+        $lastDay = now()->addDays($branch->booking_days + ($early ?? 0))->endOfDay();
+        if ($start->gt($lastDay)) {
+            throw ValidationException::withMessages(['starts_at' => 'Cơ sở đang nhận lịch đến ngày '.$lastDay->format('d/m/Y').'. Chọn ngày sớm hơn hoặc giảm số tuần.']);
         }
     }
 

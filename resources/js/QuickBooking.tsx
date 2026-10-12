@@ -53,9 +53,9 @@ export default function QuickBooking({
         };
     }, [customer, start, end, range.court_id]);
     return (
-        <Modal title="Đặt sân nhanh" close={close}>
+        <Modal title="Đặt sân nhanh" close={close} className="form-dialog">
             <form
-                className="space-y-4"
+                className="hub-form space-y-4"
                 onSubmit={(e) => {
                     e.preventDefault();
                     run(async () => {
@@ -119,12 +119,24 @@ export default function QuickBooking({
                         {error}
                     </p>
                 )}
-                <button
-                    className="btn w-full"
-                    disabled={!customer || !quote || !!error || loading}
-                >
-                    Xác nhận đặt {range.duration} giờ
-                </button>
+                <div className="form-actions">
+                    <div>
+                        <button
+                            type="button"
+                            className="btn-outline"
+                            disabled={loading}
+                            onClick={close}
+                        >
+                            Hủy
+                        </button>
+                        <button
+                            className="btn"
+                            disabled={!customer || !quote || !!error || loading}
+                        >
+                            Xác nhận đặt {range.duration} giờ
+                        </button>
+                    </div>
+                </div>
             </form>
         </Modal>
     );

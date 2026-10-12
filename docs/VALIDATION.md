@@ -1,4 +1,14 @@
-# Kiểm tra bản Laravel / MySQL · cập nhật 11/10/2026
+# Kiểm tra bản Laravel / MySQL · cập nhật 12/10/2026
+
+## Tổng lịch cố định, thông báo và toàn bộ form · 12/10/2026
+
+- **157/157 kiểm thử, 4.699 assertions** đạt trên SQLite in-memory và MySQL riêng `badminton_hub_codex_test_20261008`. Thêm 7 bài trong `FixedSeriesQuoteTest`: tổng 4 tuần và dịch vụ khớp booking thật; bảng giá riêng theo ngày; làm tròn cọc từng buổi và số tiền ví thực trừ; tách hội viên/cố định; cọc quầy bằng 0; xung đột ở tuần sau/rollback; giới hạn ngày/số tuần; lỗi ngày và xác nhận mật khẩu tiếng Việt. Không dùng database vận hành cho RefreshDatabase.
+- Xem trước lịch cố định kiểm tra mọi tuần và trả danh sách giá từng buổi. Tổng không nhân giá tuần đầu vì có thể có bảng giá riêng theo ngày. Chặn coupon khi đặt chuỗi bằng thông báo theo chính sách, bỏ tỷ lệ 15% cố định trong câu lỗi. Tiếp tục tạo chuỗi và thu ví nguyên tử, không tạo/thu một phần khi tuần sau lỗi.
+- Trình duyệt customer chọn sân Quận 1, 13h–15h ngày 13/10/2026, rồi chuyển sang **4 tuần** và thêm 1 chai nước mỗi buổi: phí sân **960.000đ**, dịch vụ **40.000đ**, giảm cố định **144.000đ**, giảm hội viên **96.000đ**, tổng **760.000đ**, cọc **380.000đ**. Cả bước dịch vụ và xác nhận hiển thị tổng chuỗi; từng buổi 190.000đ/cọc 95.000đ. Reload khôi phục 4 tuần/dịch vụ/số tiền và thời hạn hold còn lại, không cấp lại 5 phút. Chỉ tạo rồi giải phóng hold thử; không tạo booking hoặc thu tiền trên dữ liệu đang dùng.
+- Đăng nhập/đăng ký/khôi phục có bố cục mới, Google, hiện/ẩn mật khẩu, nhãn tự điền, trạng thái đang xử lý và lỗi tại ô nhập. Form Editor dùng chung cho sản phẩm, dịch vụ, tài khoản, sân, giá, bảo trì, hội viên, sự kiện, cộng đồng và các mục quản lý mở rộng; POS/đặt nhanh/OTP/cấu hình/bộ lọc dùng cùng kiểu ô nhập và thanh thao tác. Modal giữ focus khi gõ, hỗ trợ Tab/Escape và trả focus về nút mở. Không thử thủ công mọi form và mọi tổ hợp quyền.
+- Đăng ký thử email sai/mật khẩu thiếu báo ngay bằng tiếng Việt; không tạo tài khoản. Bài cộng đồng nhập số người `1.5` bị chặn tại ô. Manager sửa giá `-1` bị chặn trước lưu; nhập tồn `1` giữ đúng `1`. Hủy sửa sản phẩm rồi mở Thêm mới không giữ tên/SKU/giá vừa sửa. Không lưu thay đổi thử vào kho. Đã kiểm tra desktop 1366×900 và mobile 390×844; mobile page 386/386px, modal 351/351px (client/scroll), không tràn ngang.
+- Sửa đường quay lại sau đăng nhập từ trang quản lý mở trực tiếp, giữ đúng mục; tài khoản khách không được đưa vào quản lý. Thông báo lỗi giờ đã qua/ngoài giờ mở cửa/vượt ngày đặt trước nói rõ cách chọn lại. Khoảng ngày báo kết thúc phải sau bắt đầu; lỗi kết nối/quyền/giới hạn tần suất không hiện tiêu đề HTTP tiếng Anh.
+- Sau khi bật lại Apache/MySQL, `tests/runtime-session-smoke.mjs` đạt **172 yêu cầu** đồng thời, đúng phiên/danh tính ở cả 5 vai trò. Sau lần chỉnh cuối, chạy lại 7 bài mới: **74 assertions đạt**. TypeScript, Vite (898 modules), Pint và diff check đạt. Giữ nguyên schema, database đang dùng và SQL fixture sạch; không đổi khóa/merchant/Firebase/SMTP trong đợt này.
 
 ## Lỗi 500, phiên làm việc, đặt sân và nhập liệu · 11/10/2026
 
