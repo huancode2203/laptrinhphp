@@ -117,6 +117,7 @@ HUB AI ghim đầu danh sách chat, lưu lịch sử riêng và nhớ tiêu chí
 - Sự kiện/lớp/giao lưu/giải: vé, sức chứa, khóa sân, hủy/hoàn, bốc thăm/tỷ số. Loại trực tiếp, vòng tròn và Swiss có xếp hạng, tránh lặp cặp Swiss.
 - Ma trận sân 30 phút, lịch tuần/tháng, kéo lịch chưa trả sang ngày/sân và xác nhận lại; nhận sân bằng QR nhập/dán hoặc camera khi người dùng cho phép.
 - Nhiều chi nhánh, sân, dịch vụ, bảo trì, SKU, nhập/xuất kho, POS, khách nhanh tại quầy, thu/hoàn, quyền theo vai trò.
+- Khách đang chơi mua thêm nước: **Bán hàng / POS → thêm sản phẩm → Thanh toán / Gộp vào sân → Gộp vào hóa đơn sân · thu sau → chọn sân/khách → Thêm vào hóa đơn sân**. Danh sách ưu tiên khách đã nhận sân, gồm lịch xác nhận hôm nay và không phụ thuộc ngày xem ở trang quản lý; có thể tìm bằng mã lịch. Sân đã trả đủ vẫn mua thêm được. Hệ thống trừ kho và cộng tiền hàng vào hóa đơn, giữ nguyên tiền đã trả, sau đó thu khoản còn thiếu trong chi tiết lịch. Bước gộp chưa thu tiền; nếu khách trả riêng ngay tại quầy thì chọn tiền mặt/chuyển khoản/ví.
 - Phiếu hỗ trợ/trả lời, FAQ/giới thiệu; blog/tuyển dụng/nhượng quyền do quản trị xuất bản. Chưa có nội dung thì hiển thị trạng thái trống.
 - Báo cáo thu/hoàn/doanh thu ròng/công nợ, theo sân/chi nhánh/dịch vụ/sản phẩm, công suất, nguồn đặt, giờ phổ biến; biểu đồ/PDF/XLSX/CSV. Nạp ví không tính là doanh thu bán hàng.
 - Nhật ký quản trị, đối soát chuyển khoản sai nội dung, xem và kiểm tra lại yêu cầu hoàn MoMo.

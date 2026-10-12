@@ -137,6 +137,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::post('users/{user}/topup', [CommerceController::class, 'topup']);
             Route::post('users/{user}/membership', [CommerceController::class, 'activateMembership']);
             Route::post('sales', [CommerceController::class, 'sale']);
+            Route::get('sales/open-bookings', [ManagementController::class, 'posBookings']);
             Route::get('sales/{sale}/receipt', [CommerceController::class, 'saleReceipt']);
             Route::post('registrations/{registration}/confirm', [EventController::class, 'confirm']);
             Route::post('registrations/{registration}/refund', [EventController::class, 'refund']);

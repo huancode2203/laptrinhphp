@@ -1,5 +1,13 @@
 # Kiểm tra bản Laravel / MySQL · cập nhật 12/10/2026
 
+## Mua nước khi đang chơi và gộp hóa đơn sân · 12/10/2026
+
+- Thêm danh sách POS riêng, đọc theo cơ sở hiện tại: ưu tiên `checked_in` dù ngày chơi khác ngày đang xem, tiếp theo là lịch `confirmed` hôm nay. Không trả lịch đã hoàn tất/hủy hoặc cơ sở khác. Yêu cầu phân công cơ sở, quyền POS đọc/ghi và lịch đọc/ghi; admin vẫn chọn đúng cơ sở cần bán.
+- Giao diện quầy có **Thanh toán / Gộp vào sân**, chọn sân/khách, mã lịch, trạng thái/giờ, tổng hiện tại, tiền đã trả, tiền hàng thêm và khoản còn thu. Có làm mới sân/tìm bằng mã; chọn lịch đóng báo rõ không thêm được. Gửi cùng request key khi thử lại tránh tạo lần mua mới; không đánh dấu tiền hàng đã thu khi chỉ gộp vào sân. Sau khi ghi có thể mở hóa đơn sân từ phiếu bán hàng.
+- **39/39 kiểm thử, 502 assertions** đạt trên SQLite và MySQL `badminton_hub_codex_test_20261008` (POS mới + WorkflowAlignment + RoleAudit + BusinessModules). Ba bài mới kiểm tra danh sách độc lập ngày quản lý/phạm vi quyền; khách đã trả đủ tiền sân đang chơi mua nước nhiều lần, thu phần thêm bằng ví rồi tiền mặt; gửi lại không trừ kho/thu tiền lần nữa; hóa đơn đóng bị chặn. Các giao dịch này chỉ chạy ở database test.
+- Trình duyệt manager đang xem ngày 11/10 vẫn chọn được lịch hôm nay 12/10. Hóa đơn Sân 08 đã trả đủ **130.000đ**, giỏ 2 chai Aquafina **20.000đ**, xem trước đúng còn thu **20.000đ**. Không bấm ghi đơn/thu tiền trên dữ liệu đang dùng. Desktop 1366×900 và mobile 390×844; mobile page 386/386px, modal 351/351px, không tràn ngang. Máy đang dùng chưa có lịch `checked_in` ở cơ sở này trong lần thử; luồng khách đang chơi được xác minh bằng feature test, không tự đổi trạng thái lịch để tạo minh họa.
+- TypeScript, Vite (898 modules), Pint và diff check đạt. Không đổi schema/SQL fixture, dữ liệu vận hành hoặc cấu hình dịch vụ.
+
 ## Tổng lịch cố định, thông báo và toàn bộ form · 12/10/2026
 
 - **157/157 kiểm thử, 4.699 assertions** đạt trên SQLite in-memory và MySQL riêng `badminton_hub_codex_test_20261008`. Thêm 7 bài trong `FixedSeriesQuoteTest`: tổng 4 tuần và dịch vụ khớp booking thật; bảng giá riêng theo ngày; làm tròn cọc từng buổi và số tiền ví thực trừ; tách hội viên/cố định; cọc quầy bằng 0; xung đột ở tuần sau/rollback; giới hạn ngày/số tuần; lỗi ngày và xác nhận mật khẩu tiếng Việt. Không dùng database vận hành cho RefreshDatabase.

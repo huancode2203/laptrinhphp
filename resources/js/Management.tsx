@@ -31,7 +31,7 @@ import { Logo } from "./Brand";
 import { EventDetail, eventTypes } from "./EventsPage";
 import { BookingDetail } from "./Account";
 export default function Management({ book }: { book: (initial: Row) => void }) {
-    const { data, run, toast, refresh } = useHub();
+    const { data, run, toast, refresh, loading } = useHub();
     const user = data!.user,
         admin = user.role === "admin";
     const allows = (p: string) => admin || !!data!.permissions?.[p];
@@ -619,7 +619,13 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         }
         await load();
         await refresh();
-        toast("Đã lưu thay đổi.");
+        toast(
+            kind === "sale"
+                ? d.method === "booking"
+                    ? "Đã thêm hàng vào hóa đơn sân. Bạn có thể thu tiền trong chi tiết lịch."
+                    : "Đã ghi nhận thanh toán giỏ hàng."
+                : "Đã lưu thay đổi.",
+        );
     }
     const rows =
         tab === "courts"
@@ -1784,7 +1790,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             }
                                             onClick={() => edit("sale")}
                                         >
-                                            Thu tiền & xuất hóa đơn
+                                            Thanh toán / Gộp vào sân
                                         </button>
                                         {invalidCart && (
                                             <p
@@ -2023,7 +2029,6 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                     (editing.kind === "sale" ? (
                         <PosCheckout
                             branch={branch}
-                            bookings={hub?.bookings ?? []}
                             total={Object.entries(cart).reduce(
                                 (n, [id, q]) =>
                                     n +
@@ -2171,12 +2176,45 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 </p>
                             ))}
                             <h2 className="my-4 text-xl font-bold">
-                                Tổng {money(sale.total_amount)} · {sale.method}
+                                Tổng {money(sale.total_amount)}
                             </h2>
+                            <p>
+                                {(
+                                    {
+                                        cash: "Đã thu tiền mặt",
+                                        bank: "Đã xác nhận chuyển khoản",
+                                        wallet: "Đã thanh toán bằng ví",
+                                        booking:
+                                            "Đã thêm vào hóa đơn sân · chưa thu tiền hàng tại đây",
+                                    } as Row
+                                )[sale.method] ?? sale.method}
+                            </p>
                         </div>
-                        <button className="btn" onClick={() => window.print()}>
-                            In hóa đơn
-                        </button>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                            <button
+                                className="btn-outline"
+                                onClick={() => window.print()}
+                            >
+                                In hóa đơn
+                            </button>
+                            {sale.booking_id && allows("bookings.read") && (
+                                <button
+                                    className="btn"
+                                    disabled={loading}
+                                    onClick={() =>
+                                        run(async () => {
+                                            const response = await api(
+                                                "bookings/" + sale.booking_id,
+                                            );
+                                            setSale(null);
+                                            setSelected(response.data);
+                                        })
+                                    }
+                                >
+                                    Xem hóa đơn sân
+                                </button>
+                            )}
+                        </div>
                     </Modal>
                 )}
             </main>

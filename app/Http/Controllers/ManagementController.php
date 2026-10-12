@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\AccessService;
 use App\BookingService;
+use App\FeatureService;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BranchResource;
 use App\Models\Booking;
@@ -90,6 +91,18 @@ class ManagementController extends Controller
         $booking = Booking::query()->where('reference', $data['reference'])->whereHas('court', fn ($query) => $this->scope($query, $request))->firstOrFail();
 
         return new BookingResource($booking->load(['user', 'court.branch', 'services', 'payments']));
+    }
+
+    public function posBookings(Request $request): AnonymousResourceCollection
+    {
+        $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id']]);
+        $this->engine->assertManage($request->user(), (int) $data['branch_id'], 'bookings.read');
+        abort_unless(app(AccessService::class)->allows($request->user(), 'bookings.write') && app(AccessService::class)->allows($request->user(), 'pos.write'), 403);
+        app(FeatureService::class)->expireBookings();
+        $query = Booking::query()->whereHas('court', fn ($court) => $this->scope($court, $request))
+            ->where(fn ($bookings) => $bookings->where('status', 'checked_in')->orWhere(fn ($bookings) => $bookings->where('status', 'confirmed')->whereDate('starts_at', now()->toDateString())));
+
+        return BookingResource::collection($query->with(['user', 'court.branch'])->orderByRaw("CASE WHEN status = 'checked_in' THEN 0 ELSE 1 END")->orderBy('starts_at')->orderBy('id')->get());
     }
 
     public function courts(Request $request): JsonResponse
