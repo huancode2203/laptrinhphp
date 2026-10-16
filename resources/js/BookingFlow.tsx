@@ -54,17 +54,26 @@ export default function BookingFlow({
         [weeks, setWeeks] = useState<number | string>(draft.weeks ?? 4),
         [hold, setHold] = useState<Row | null>(null),
         [seconds, setSeconds] = useState(0),
-        [step, setStep] = useState(0),
+        [step, setStep] = useState(draft.step > 0 ? 1 : 0),
         [requestKey] = useState(draft.request_key ?? key()),
-        [method, setMethod] = useState("cash"),
-        [depositOnly, setDepositOnly] = useState(true),
+        [method, setMethod] = useState<string>(draft.method ?? "cash"),
+        [depositOnly, setDepositOnly] = useState(draft.deposit_only ?? true),
         [customer, setCustomer] = useState(draft.user_id ?? ""),
         [error, setError] = useState("");
     const b = data!.branches.find((b: Row) => b.id === Number(branch));
     useEffect(() => {
         if (fixed || data!.user.role !== "customer")
-            setMethod((value) => (value === "momo" ? "cash" : value));
+            setMethod((value) =>
+                ["momo", "payos"].includes(value) ? "cash" : value,
+            );
     }, [fixed, data!.user.role]);
+    useEffect(() => {
+        if (
+            (method === "payos" && !data!.payos_enabled) ||
+            (method === "momo" && !data!.momo_enabled)
+        )
+            setMethod("cash");
+    }, [data!.payos_enabled, data!.momo_enabled, method]);
     useEffect(() => {
         let live = true;
         api("holds/active")
@@ -116,9 +125,15 @@ export default function BookingFlow({
                 weeks,
                 user_id: customer,
                 request_key: requestKey,
+                step,
+                method,
+                deposit_only: depositOnly,
             });
     }, [
         restoring,
+        step,
+        method,
+        depositOnly,
         branch,
         date,
         time,
@@ -137,7 +152,7 @@ export default function BookingFlow({
         .filter(
             (m) =>
                 m >= (b?.opens_minute ?? 180) &&
-                m + duration * 60 <= Math.min(b?.closes_minute ?? 1380, 1410),
+                m + 30 <= Math.min(b?.closes_minute ?? 1380, 1410),
         )
         .map(
             (m) =>
@@ -148,7 +163,15 @@ export default function BookingFlow({
     useEffect(() => {
         if (timeOptions.length && !timeOptions.includes(time))
             setTime(timeOptions[0]);
-    }, [branch, duration, b?.opens_minute, b?.closes_minute]);
+    }, [branch, b?.opens_minute, b?.closes_minute]);
+    const maxDuration = Math.min(
+        6,
+        (Math.min(b?.closes_minute ?? 1380, 1410) - minuteOf(time)) / 60,
+    );
+    useEffect(() => {
+        if (duration > maxDuration && maxDuration >= 0.5)
+            setDuration(maxDuration);
+    }, [maxDuration, duration]);
     const start = date + "T" + time + ":00+07:00";
     const [hour, minute] = time.split(":").map(Number);
     const endHour = hour + Math.floor((minute + duration * 60) / 60),
@@ -192,6 +215,13 @@ export default function BookingFlow({
                 if (active) {
                     setAvailable(r.data);
                     const chosen = hold?.court_id ?? draft.court_id;
+                    if (
+                        chosen &&
+                        !r.data.some((c: Row) => c.id === chosen && c.available)
+                    )
+                        setError(
+                            "Sân đã chọn không còn trống ở khung giờ này. Lựa chọn dịch vụ của bạn vẫn được lưu; vui lòng chọn sân hoặc giờ khác.",
+                        );
                     if (chosen)
                         setCourt(
                             r.data.find(
@@ -320,7 +350,7 @@ export default function BookingFlow({
         const booked = fixed ? r.data : r.data ? [r.data] : [];
         clearBookingDraft(data!.user.id);
 
-        if (method === "momo") {
+        if (["momo", "payos"].includes(method)) {
             if (fixed) {
                 await refresh().catch(() => {});
                 toast(
@@ -330,7 +360,7 @@ export default function BookingFlow({
                 return;
             }
             try {
-                const p = await api("payments/momo", "POST", {
+                const p = await api("payments/" + method, "POST", {
                     request_key: key(),
                     purpose: "booking",
                     booking_id: booked[0].id,
@@ -476,14 +506,14 @@ export default function BookingFlow({
                     className="btn-outline"
                     onClick={() =>
                         run(async () => {
-                            if (hold) await api("holds/" + hold.id, "DELETE");
-                            clearBookingDraft(data!.user.id);
-                            await refresh().catch(() => {});
+                            toast(
+                                "Đã lưu lựa chọn. Bạn có thể tiếp tục đặt sân; thời gian giữ chỗ vẫn theo bộ đếm hiện tại.",
+                            );
                             close();
                         })
                     }
                 >
-                    Đóng
+                    Lưu và thoát
                 </button>
             </div>
             <div className="booking-steps">
@@ -606,8 +636,7 @@ export default function BookingFlow({
                                                             1380,
                                                         1410,
                                                     ) -
-                                                        (b?.opens_minute ??
-                                                            180),
+                                                        minuteOf(time),
                                             )
                                             .map((v) => (
                                                 <option value={v} key={v}>
@@ -820,7 +849,7 @@ export default function BookingFlow({
                                     label:
                                         data!.user.role === "customer" &&
                                         b.deposit_percent > 0
-                                            ? "Tạo lịch và thanh toán đặt cọc sau"
+                                            ? "Tạo lịch và thanh toán sau"
                                             : "Thanh toán tại quầy",
                                 },
                                 {
@@ -835,6 +864,16 @@ export default function BookingFlow({
                                 !fixed &&
                                 data!.user.role === "customer"
                                     ? [{ id: "momo", label: "Ví MoMo" }]
+                                    : []),
+                                ...(data!.payos_enabled &&
+                                !fixed &&
+                                data!.user.role === "customer"
+                                    ? [
+                                          {
+                                              id: "payos",
+                                              label: "Chuyển khoản / QR qua PayOS",
+                                          },
+                                      ]
                                     : []),
                             ].map((m) => (
                                 <label
@@ -855,7 +894,7 @@ export default function BookingFlow({
                                 b.deposit_percent > 0 ? (
                                     <>
                                         <b>
-                                            Đặt cọc {b.deposit_percent}% (
+                                            Cọc tối thiểu {b.deposit_percent}% (
                                             {quote
                                                 ? money(depositAmount)
                                                 : "Đang tính…"}
@@ -869,27 +908,81 @@ export default function BookingFlow({
                                                     {" "}
                                                     Đây là tổng tiền cọc cho cả{" "}
                                                     {weeks} buổi. Thanh toán
-                                                    bằng ví sẽ thu cọc từng buổi
-                                                    trong cùng một lần xác nhận.
+                                                    bằng ví được ghi nhận từng
+                                                    buổi trong cùng một lần xác
+                                                    nhận.
                                                 </>
                                             )}
                                         </p>
                                         {(method === "wallet" ||
-                                            method === "momo") && (
-                                            <label className="mt-3 flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={depositOnly}
-                                                    onChange={(e) =>
-                                                        setDepositOnly(
-                                                            e.target.checked,
-                                                        )
-                                                    }
-                                                />
-                                                {fixed
-                                                    ? "Thanh toán tiền cọc cho toàn bộ lịch bằng ví"
-                                                    : "Chỉ thanh toán tiền cọc"}
-                                            </label>
+                                            ["momo", "payos"].includes(
+                                                method,
+                                            )) && (
+                                            <fieldset
+                                                className="mt-4 space-y-2"
+                                                aria-label="Mức thanh toán"
+                                            >
+                                                <legend className="mb-2 font-bold">
+                                                    Bạn muốn thanh toán bao
+                                                    nhiêu?
+                                                </legend>
+                                                {[
+                                                    {
+                                                        only: true,
+                                                        label:
+                                                            "Đặt cọc " +
+                                                            b.deposit_percent +
+                                                            "%",
+                                                        amount: depositAmount,
+                                                    },
+                                                    {
+                                                        only: false,
+                                                        label: "Thanh toán toàn bộ 100%",
+                                                        amount:
+                                                            quote?.total_amount ??
+                                                            0,
+                                                    },
+                                                ].map((choice) => (
+                                                    <label
+                                                        key={String(
+                                                            choice.only,
+                                                        )}
+                                                        className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white p-3"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <input
+                                                                type="radio"
+                                                                name="payment-amount"
+                                                                checked={
+                                                                    depositOnly ===
+                                                                    choice.only
+                                                                }
+                                                                onChange={() =>
+                                                                    setDepositOnly(
+                                                                        choice.only,
+                                                                    )
+                                                                }
+                                                            />
+                                                            {choice.label}
+                                                        </span>
+                                                        <b>
+                                                            {quote
+                                                                ? money(
+                                                                      choice.amount,
+                                                                  )
+                                                                : "Đang tính…"}
+                                                        </b>
+                                                    </label>
+                                                ))}
+                                            </fieldset>
+                                        )}
+                                        {method === "cash" && (
+                                            <p className="mt-3 text-sm">
+                                                Bạn có thể thanh toán sau trong
+                                                Lịch của tôi. Muốn trả ngay toàn
+                                                bộ 100%, chọn Ví HUB, PayOS hoặc
+                                                MoMo ở trên.
+                                            </p>
                                         )}
                                     </>
                                 ) : (

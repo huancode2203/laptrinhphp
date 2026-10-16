@@ -1,6 +1,196 @@
 @import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
 @import "tailwindcss";
 
+.workspace-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 28px;
+    background: white;
+    border-bottom: 1px solid #dce4dc;
+    min-height: 82px;
+    flex-wrap: wrap;
+}
+.branch-workspace {
+    background: #f4f7f3;
+    min-height: 100vh;
+}
+.branch-workspace > .workspace-topbar {
+    border-top: 5px solid #19543e;
+}
+.admin-workspace {
+    display: flex;
+    min-height: 100vh;
+    background: #f4f7f3;
+    color: #0d1f2d;
+}
+.admin-workspace .data-table-wrap {
+    max-height: 520px;
+    overflow: auto;
+}
+.admin-sidebar {
+    width: 254px;
+    flex-shrink: 0;
+    padding: 28px 20px;
+    background: #153c2e;
+    color: white;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: auto;
+}
+.admin-sidebar nav {
+    display: grid;
+    gap: 6px;
+}
+.admin-sidebar nav button {
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 12px;
+    color: #d6e7dc;
+    font-size: 14px;
+}
+.admin-sidebar nav button:hover {
+    background: #24543e;
+    color: white;
+}
+.admin-stat-link {
+    text-align: left;
+    border-radius: 20px;
+    transition:
+        transform 0.15s,
+        box-shadow 0.15s;
+}
+.admin-stat-link:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px #173e2912;
+}
+.admin-stat-link:focus-visible {
+    outline: 3px solid #168449;
+    outline-offset: 3px;
+}
+.report-pill {
+    display: inline-flex;
+    border-radius: 99px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #e6f2e9;
+    color: #19543e;
+}
+.post-detail-modal > div {
+    max-width: 800px;
+}
+.post-detail-hero {
+    padding: 22px;
+    border-radius: 18px;
+    background: linear-gradient(120deg, #f1f8eb, #edf5f2);
+}
+.post-detail-author {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 18px 0;
+}
+.post-author-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #19543e;
+    color: white;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+}
+.post-session-summary {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    border-top: 1px solid #d4e4d7;
+    padding-top: 16px;
+}
+.post-session-summary small,
+.post-session-summary b {
+    display: block;
+}
+.post-session-summary small {
+    font-size: 10px;
+    color: #657b6d;
+    margin-bottom: 6px;
+    letter-spacing: 0.08em;
+}
+.post-detail-content {
+    padding: 24px 4px 12px;
+    line-height: 1.85;
+}
+.hub-loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    display: grid;
+    place-items: center;
+    background: #f5f8f2b8;
+    backdrop-filter: blur(5px);
+    padding: 24px;
+}
+.hub-loading-card {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    background: white;
+    padding: 32px 40px;
+    border: 1px solid #dce4dc;
+    border-radius: 24px;
+    box-shadow: 0 20px 70px #173e2920;
+    text-align: center;
+}
+.hub-loading-card p {
+    color: #657b6d;
+    font-size: 14px;
+}
+.hub-loading-ring {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #e6f2e9;
+    border-top-color: #168449;
+    border-radius: 50%;
+    animation: hub-spin 0.8s linear infinite;
+}
+@keyframes hub-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .hub-loading-ring {
+        animation-duration: 2s;
+    }
+    .admin-stat-link {
+        transition: none;
+    }
+}
+.admin-sidebar nav button[aria-current="page"] {
+    background: #c5ef65;
+    color: #17273d;
+    font-weight: 800;
+}
+@media (max-width: 767px) {
+    .admin-sidebar {
+        display: none;
+    }
+    .workspace-topbar {
+        padding: 14px 16px;
+    }
+    .workspace-topbar > div {
+        flex-wrap: wrap;
+    }
+    .workspace-topbar .btn-outline {
+        padding: 9px 11px;
+        font-size: 12px;
+    }
+}
+
 /* ── Tokens ───────────────────────────────────────────── */
 @theme {
     --font-sans: "Be Vietnam Pro", Arial, sans-serif;

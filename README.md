@@ -1,5 +1,28 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
+## Cập nhật Admin, đặt sân và PayOS · 16–17/10/2026
+
+- Ba không gian độc lập: khách hàng, điều hành chi nhánh (manager/staff/cashier theo quyền), quản trị toàn hệ thống. Admin vào `#admin/dashboard`, quản lý vào `#manage/dashboard`; tài khoản làm việc không dùng trang khách hàng để đặt sân cá nhân.
+- Admin có tổng quan/doanh thu dùng chung thành phần báo cáo với quản lý, thẻ thống kê mở danh sách, tìm kiếm/lọc/phân trang chi nhánh và sân, trang kiểm duyệt đủ trạng thái, cùng mục **Thanh toán & kết nối**.
+- Đặt sân: thời lượng giới hạn theo giờ bắt đầu/đóng cửa; có xác nhận khung giờ; phân trang lịch sân; lưu lựa chọn và bước đang làm trong phiên trình duyệt trong 24 giờ. **Lưu và thoát** giữ lượt giữ chỗ theo thời hạn gốc, không gia hạn; khi trở lại máy chủ kiểm tra sân trống. Có chọn trả cọc hoặc toàn bộ 100% bằng ví, MoMo hoặc PayOS đã cấu hình. PayOS/MoMo cho lịch cố định thực hiện từng buổi trong chi tiết lịch; ví hỗ trợ trả cả chuỗi.
+- Dịch vụ phát sinh: mở chi tiết lịch tại quầy → **Thêm dịch vụ vào hóa đơn sân**. Nước/hàng tồn kho vẫn bán ở POS → **Gộp vào sân**. Tiền dịch vụ/hàng thêm cộng nguyên giá, không tăng giảm giá tiền sân; hóa đơn chưa chốt tiếp tục ghi nợ cho tới lúc thu đủ và hoàn tất. Không thêm vào lịch đã hoàn tất/hủy. Giá đơn vị dịch vụ đã có trong hóa đơn được giữ theo giá đã ghi nhận.
+- Đổi lịch: chọn giờ và sân còn trống trong cùng chi nhánh, loại trừ chính lịch đang đổi khi xem trống. Quản lý có thể đổi lịch có tiền cọc trước giờ bắt đầu; nếu giá mới thấp hơn tiền đã thu, có giao dịch chờ hoặc lịch dùng mã ưu đãi/huấn luyện viên, cần xử lý riêng theo thông báo. Không tự tạo khoản hoàn tiền.
+- Cộng đồng: chi tiết bài có thông tin người đăng/lịch/địa điểm; trả lời bình luận có chọn người nhận và đưa tới ô nhập. Bài đã duyệt khóa sửa nội dung. Admin quản lý bài chờ/đã duyệt/từ chối/đã gỡ, lọc bài có lịch đã qua 30/90/180 ngày để gỡ, gửi lý do tới người đăng. Gỡ là ẩn nội dung có lưu dấu vết, không xóa vật lý ảnh và lịch sử.
+- Đánh giá: chủ lịch đã hoàn tất viết đánh giá trong chi tiết lịch, chấm sao/ảnh; trang chi nhánh hiển thị sân được đánh giá và phân trang. Học cầu lông mở biểu mẫu ngay trong cửa sổ, lọc/phân trang huấn luyện viên, kiểm tra sân trống và hiển thị phí sân + học.
+- Địa chỉ dùng phường/xã; dữ liệu địa chỉ mẫu được chuyển cho 30 cơ sở theo danh mục mới, không tự suy đoán địa chỉ tùy chỉnh. AI đối chiếu đúng tên phường/xã, không ghép Tân Phú với Tân Phú Trung. Google Maps dùng Maps URLs chỉ đường, hỗ trợ tọa độ/Place ID do Admin nhập; không cần khóa API bản đồ. Cơ sở trong dữ liệu môn học chưa được xác minh vị trí thực địa.
+- Xóa hội thoại chỉ xóa lịch sử hiển thị của người thao tác; không xóa tin nhắn của thành viên khác. Tin mới làm hội thoại xuất hiện lại, phần cũ vẫn ẩn.
+
+### Kết nối PayOS
+
+Mở **Admin → Thanh toán & kết nối → Kết nối PayOS**, nhập Client ID, API Key, Checksum Key từ kênh thanh toán tại [PayOS](https://my.payos.vn/). Khóa lưu mã hóa trong `integration_settings`, không được trả về trình duyệt khi đọc trạng thái. Có thể cấu hình `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` trong `.env`; cấu hình môi trường có ưu tiên.
+
+Luồng tạo link, xác thực chữ ký phản hồi/webhook, kiểm tra trạng thái trực tiếp và chống ghi tiền trùng đã tích hợp theo [tài liệu PayOS](https://payos.vn/docs/api/) và [quy tắc chữ ký](https://payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/). URL nhận webhook: `/api/v1/payments/payos/webhook`; URL trở về: `/payments/payos/return`. Trang trở về không xác nhận tiền dựa trên tham số URL. Kết quả chỉ được ghi khi máy chủ PayOS xác nhận; tiền đến sau lịch hủy ghi vào ví khách để đối soát. Chưa tích hợp hoàn tiền PayOS tự động.
+
+Máy hiện chưa đăng nhập tài khoản PayOS và chưa có bộ khóa kênh thanh toán. Chức năng thanh toán thật chỉ xuất hiện khi có cấu hình đầy đủ; không giả lập PayOS thành công. Webhook tự động cần địa chỉ HTTPS công khai; khi chạy localhost có nút kiểm tra giao dịch trực tiếp từ máy chủ.
+
+Nâng cấp bản đang chạy bằng `php artisan migrate` (sao lưu MySQL trước); không dùng `migrate:fresh`. SQL đi kèm được xuất từ cơ sở dữ liệu demo riêng: 95 tài khoản, 30 chi nhánh, không có phiên đăng nhập hoặc cấu hình dịch vụ của máy người dùng. Migration giá chỉ sửa các giá mẫu cũ còn khớp, không tính lại hóa đơn lịch sử. Yonex AS-30 12 quả cập nhật 1.239.000đ theo [giá tham khảo VNB](https://shopvnb.com/ong-cau-long-yonex-as30.html); Pocari 20.000đ/chai và RSL 150.000đ/6 quả là giá bán mẫu cho sân, có thể sửa trong quản lý.
+
+
 Website quản lý sân cầu lông: Laravel/PHP xử lý nghiệp vụ, MySQL lưu dữ liệu, React/HTML/CSS dựng giao diện. Bản nâng cấp có tìm sân bằng ngôn ngữ tự nhiên, duyệt bài bán tự động và các chức năng vận hành.
 
 Nguồn giao diện do chủ dự án cung cấp: [SNCUCAHuNRose](https://github.com/huancode2203/SNCUCAHuNRose), commit `ae1c406618c1f60590640dce41f7a3c17d709ed7`, từ [Figma Make](https://www.figma.com/make/8hdgt0w0TDycN12gVlnouv/). Theo yêu cầu mới, giao diện được làm lại theo phong cách thể thao, nền sáng, xanh rừng/lime, ảnh cầu lông và biểu tượng SVG đồng bộ. Menu điện thoại thu gọn; đặt sân, chat, tài khoản, sự kiện, huấn luyện viên và quản lý dùng cùng hệ thống bố cục. Lịch trống, giá, hóa đơn, điểm, chat và trạng thái thanh toán đọc/tính từ máy chủ.

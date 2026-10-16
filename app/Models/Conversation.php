@@ -21,7 +21,7 @@ class Conversation extends Model
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'conversation_members')->withPivot(['read_at', 'typing_until']);
+        return $this->belongsToMany(User::class, 'conversation_members')->withPivot(['read_at', 'typing_until', 'hidden_at', 'cleared_through_id']);
     }
 
     public function messages(): HasMany

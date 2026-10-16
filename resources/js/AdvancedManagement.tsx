@@ -28,9 +28,11 @@ const td = (value: React.ReactNode) => <td className={cell}>{value}</td>;
 export default function AdvancedManagement({
     branch,
     courts,
+    initialSection,
 }: {
     branch: number;
     courts: Row[];
+    initialSection?: string;
 }) {
     const { data, run, toast, refresh } = useHub();
     const admin = data!.user.role === "admin",
@@ -40,6 +42,7 @@ export default function AdvancedManagement({
         [users, setUsers] = useState<Row[]>([]),
         [reviews, setReviews] = useState<Row[]>([]),
         [tab, setTab] = useState(() => {
+            if (initialSection) return initialSection;
             try {
                 return (
                     sessionStorage.getItem("hub:operations:" + data!.user.id) ??

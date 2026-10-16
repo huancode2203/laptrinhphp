@@ -1,4 +1,5 @@
 import PosCheckout from "./PosCheckout";
+import ManagedCourts from "./ManagedCourts";
 import CourtMatrix from "./CourtMatrix";
 import QuickBooking from "./QuickBooking";
 import AdvancedManagement from "./AdvancedManagement";
@@ -315,7 +316,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         ],
         branches: [
             text("name", "Tên chi nhánh"),
-            text("district", "Quận / khu vực"),
+            text("district", "Phường / xã"),
             text("address", "Địa chỉ"),
             { name: "phone", label: "Điện thoại" },
             {
@@ -1313,7 +1314,13 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 </Table>
                             </>
                         )}
-                        {fieldsFor && rows && (
+                        {tab === "courts" && (
+                            <ManagedCourts
+                                branch={branch}
+                                writable={allows("courts.write")}
+                            />
+                        )}
+                        {fieldsFor && rows && tab !== "courts" && (
                             <>
                                 {(admin ||
                                     allows(writePermissions[tab] ?? "")) && (

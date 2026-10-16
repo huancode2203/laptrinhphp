@@ -56,7 +56,7 @@ class MomoPaymentTest extends TestCase
         $this->actingAs($this->customer)->getJson($url)->assertOk()
             ->assertJsonCount(1, 'data.pending_payment_attempts')
             ->assertJsonPath('data.pending_payment_attempts.0.id', $pending->id)
-            ->assertJsonMissingPath('data.pending_payment_attempts.0.pay_url')
+            ->assertJsonPath('data.pending_payment_attempts.0.pay_url', $pending->pay_url)
             ->assertJsonCount(1, 'data.payment_attempts')
             ->assertJsonPath('data.payment_attempts.0.id', $paid->id);
         $this->actingAs(User::factory()->create())->getJson($url)->assertForbidden();

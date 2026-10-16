@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { type Row } from "./data";
+import { Editor } from "./ui";
 
 export default function CustomerPicker({
     branch,
@@ -14,7 +15,7 @@ export default function CustomerPicker({
     const { run, toast } = useHub();
     const [term, setTerm] = useState(""),
         [items, setItems] = useState<Row[]>([]),
-        [name, setName] = useState(""),
+        [adding, setAdding] = useState(false),
         [chosen, setChosen] = useState<Row | null>(null);
     useEffect(() => {
         setChosen(null);
@@ -63,7 +64,7 @@ export default function CustomerPicker({
                 <input
                     className="input mt-2 w-full"
                     aria-label="Số điện thoại hoặc tên khách"
-                    placeholder="Tìm theo số điện thoại hoặc tên"
+                    placeholder="Tìm theo số điện thoại, email hoặc tên"
                     value={term}
                     onChange={(e) => setTerm(e.target.value)}
                 />
@@ -90,43 +91,69 @@ export default function CustomerPicker({
                         </button>
                     ))}
             </div>
-            {items.length === 0 && /^0\d{9}$/.test(term.trim()) && (
-                <div className="space-y-2">
-                    <p className="text-sm text-slate-500">
-                        Chưa có khách với số này. Thêm khách để đặt tại quầy.
-                    </p>
-                    <input
-                        aria-label="Tên khách mới"
-                        className="input w-full"
-                        placeholder="Họ tên khách"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                    />
-                    <button
-                        type="button"
-                        className="btn-outline"
-                        disabled={!name.trim()}
-                        onClick={() =>
-                            run(async () => {
-                                const r = await api(
-                                    "manage/customers",
-                                    "POST",
-                                    {
-                                        branch_id: branch,
-                                        name: name.trim(),
-                                        phone: term.trim(),
-                                    },
-                                );
-                                onChange(r.data.id);
-                                setChosen(r.data);
-                                setItems([r.data]);
-                                toast("Đã thêm khách hàng.");
-                            })
-                        }
-                    >
-                        Thêm khách
-                    </button>
-                </div>
+            <button
+                type="button"
+                className="btn-outline mt-3"
+                onClick={() => setAdding(true)}
+            >
+                + Thêm khách hàng mới
+            </button>
+            {adding && (
+                <Editor
+                    title="Thêm khách đặt tại quầy"
+                    description="Kiểm tra số điện thoại và email để tránh tạo trùng tài khoản khách."
+                    initial={{
+                        name: "",
+                        phone: /^0\d{9}$/.test(term.trim()) ? term.trim() : "",
+                        email: "",
+                        skill_level: "Sơ cấp",
+                    }}
+                    fields={[
+                        {
+                            name: "name",
+                            label: "Họ và tên",
+                            required: true,
+                            maxLength: 100,
+                        },
+                        {
+                            name: "phone",
+                            label: "Số điện thoại",
+                            type: "tel",
+                            required: true,
+                            maxLength: 15,
+                        },
+                        {
+                            name: "email",
+                            label: "Email (nếu có)",
+                            type: "email",
+                            maxLength: 255,
+                        },
+                        {
+                            name: "skill_level",
+                            label: "Trình độ",
+                            required: true,
+                            options: [
+                                "Mới chơi",
+                                "Sơ cấp",
+                                "Trung cấp",
+                                "Nâng cao",
+                            ].map((value) => ({ value, label: value })),
+                        },
+                    ]}
+                    close={() => setAdding(false)}
+                    save={async (values) => {
+                        const r = await api("manage/customers", "POST", {
+                            ...values,
+                            email: values.email || null,
+                            branch_id: branch,
+                        });
+                        onChange(r.data.id);
+                        setChosen(r.data);
+                        setItems([r.data]);
+                        setAdding(false);
+                        toast("Đã thêm khách hàng.");
+                    }}
+                />
             )}
         </div>
     );

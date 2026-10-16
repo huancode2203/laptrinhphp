@@ -2,7 +2,7 @@ import Icon from "./Icon";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, day, money, stamp, type Row } from "./data";
-import { Card, Confirm, Editor, Empty, Table, cell } from "./ui";
+import { Card, Confirm, Editor, Empty, Modal, Table, cell } from "./ui";
 import MediaPicker from "./MediaPicker";
 const td = (value: React.ReactNode) => <td className={cell}>{value}</td>;
 
@@ -404,7 +404,15 @@ export function Coaching() {
         [duration, setDuration] = useState(1),
         [quote, setQuote] = useState<Row | null>(null),
         [error, setError] = useState(""),
-        [requestKey, setKey] = useState(key);
+        [requestKey, setKey] = useState(key),
+        [coachBranch, setCoachBranch] = useState(""),
+        [coachPage, setCoachPage] = useState(1),
+        [availableCourts, setAvailableCourts] = useState<Row[]>([]),
+        [coachesLoaded, setCoachesLoaded] = useState(false);
+    const filteredCoaches = coaches.filter(
+        (c) => !coachBranch || c.branch_id === Number(coachBranch),
+    );
+    const coachPages = Math.max(1, Math.ceil(filteredCoaches.length / 9));
     const start = date + "T" + time + ":00+07:00",
         end =
             date +
@@ -415,22 +423,67 @@ export function Coaching() {
     useEffect(() => {
         api("coaches")
             .then((r) => setCoaches(r.data))
-            .catch((e) => toast(e.message));
+            .catch((e) => toast(e.message))
+            .finally(() => setCoachesLoaded(true));
     }, []);
     useEffect(() => {
         setQuote(null);
+        let live = true;
         if (court)
             api("courts/" + court + "/quote", "POST", {
                 starts_at: start,
                 ends_at: end,
             })
                 .then((r) => {
-                    setQuote(r.data);
-                    setError("");
+                    if (live) {
+                        setQuote(r.data);
+                        setError("");
+                    }
                 })
-                .catch((e) => setError(e.message));
+                .catch((e) => {
+                    if (live) setError(e.message);
+                });
+        return () => {
+            live = false;
+        };
     }, [court, start, end]);
+    useEffect(() => {
+        let live = true;
+        setAvailableCourts([]);
+        if (coach)
+            api(
+                "branches/" +
+                    coach.branch_id +
+                    "/availability?" +
+                    new URLSearchParams({ starts_at: start, ends_at: end }),
+            )
+                .then((r) => {
+                    if (live) {
+                        setAvailableCourts(r.data);
+                        setError("");
+                    }
+                })
+                .catch((e) => {
+                    if (live) setError(e.message);
+                });
+        return () => {
+            live = false;
+        };
+    }, [coach?.id, start, end]);
     const branch = data!.branches.find((b: Row) => b.id === coach?.branch_id);
+    useEffect(() => {
+        if (branch) {
+            const max = Math.min(
+                3,
+                Math.floor(
+                    (branch.closes_minute -
+                        (+time.slice(0, 2) * 60 + +time.slice(3))) /
+                        60,
+                ),
+            );
+            if (max >= 1 && duration > max) setDuration(max);
+        }
+    }, [time, branch?.id, duration]);
     return (
         <main className="product-page mx-auto max-w-6xl p-5 md:p-10">
             <div className="page-heading">
@@ -446,51 +499,101 @@ export function Coaching() {
                 </div>
                 <Icon name="racket" size={43} />
             </div>
+            <label className="mb-6 block max-w-md text-sm">
+                Chi nhánh huấn luyện
+                <select
+                    className="input mt-2 w-full"
+                    value={coachBranch}
+                    onChange={(e) => {
+                        setCoachBranch(e.target.value);
+                        setCoachPage(1);
+                    }}
+                >
+                    <option value="">Tất cả chi nhánh</option>
+                    {data!.branches.map((b: Row) => (
+                        <option key={b.id} value={b.id}>
+                            {b.name}
+                        </option>
+                    ))}
+                </select>
+            </label>
             <div className="grid gap-5 md:grid-cols-3">
-                {coaches.map((c) => (
-                    <Card key={c.id}>
-                        <div className="coach-avatar mb-4">
-                            {c.name.split(" ").at(-1)?.slice(0, 1)}
-                        </div>
-                        <h2 className="text-xl font-bold">{c.name}</h2>
-                        <p className="my-2 text-sm text-[#168449]">
-                            {
-                                data!.branches.find(
-                                    (b: Row) => b.id === c.branch_id,
-                                )?.name
-                            }
-                        </p>
-                        <p className="my-3 whitespace-pre-wrap text-sm leading-6 text-slate-500">
-                            {c.bio}
-                        </p>
-                        <p className="mb-4 font-bold">
-                            {money(c.hourly_rate)} / giờ học
-                        </p>
-                        <button
-                            className="btn"
-                            onClick={() => {
-                                if (!data?.user) {
-                                    location.hash = "auth";
-                                    return;
+                {filteredCoaches
+                    .slice((coachPage - 1) * 9, coachPage * 9)
+                    .map((c) => (
+                        <Card key={c.id}>
+                            <div className="coach-avatar mb-4">
+                                {c.name.split(" ").at(-1)?.slice(0, 1)}
+                            </div>
+                            <h2 className="text-xl font-bold">{c.name}</h2>
+                            <p className="my-2 text-sm text-[#168449]">
+                                {
+                                    data!.branches.find(
+                                        (b: Row) => b.id === c.branch_id,
+                                    )?.name
                                 }
-                                setCoach(c);
-                                setCourt("");
-                                setKey(key());
-                            }}
-                        >
-                            Chọn buổi học
-                        </button>
-                    </Card>
-                ))}
+                            </p>
+                            <p className="my-3 whitespace-pre-wrap text-sm leading-6 text-slate-500">
+                                {c.bio}
+                            </p>
+                            <p className="mb-4 font-bold">
+                                {money(c.hourly_rate)} / giờ học
+                            </p>
+                            <button
+                                className="btn"
+                                onClick={() => {
+                                    if (!data?.user) {
+                                        location.hash = "auth";
+                                        return;
+                                    }
+                                    setCoach(c);
+                                    setCourt("");
+                                    setKey(key());
+                                }}
+                            >
+                                Chọn buổi học
+                            </button>
+                        </Card>
+                    ))}
                 {!coaches.length && (
-                    <Empty text="Chưa có lịch huấn luyện viên được công bố. Gửi yêu cầu hỗ trợ để được tư vấn." />
+                    <Empty
+                        text={
+                            coachesLoaded
+                                ? "Chưa có lịch huấn luyện viên được công bố. Gửi yêu cầu hỗ trợ để được tư vấn."
+                                : "Đang tải huấn luyện viên…"
+                        }
+                    />
                 )}
             </div>
+            {coachPages > 1 && (
+                <div className="mt-5 flex items-center justify-between gap-3">
+                    <span className="text-sm">
+                        {filteredCoaches.length} huấn luyện viên · Trang{" "}
+                        {coachPage}/{coachPages}
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            className="btn-outline"
+                            disabled={coachPage <= 1}
+                            onClick={() => setCoachPage((p) => p - 1)}
+                        >
+                            Trang trước
+                        </button>
+                        <button
+                            className="btn-outline"
+                            disabled={coachPage >= coachPages}
+                            onClick={() => setCoachPage((p) => p + 1)}
+                        >
+                            Trang sau
+                        </button>
+                    </div>
+                </div>
+            )}
             {coach && (
-                <div className="mt-8 rounded-2xl border border-[#16a34a] bg-white p-6">
-                    <h2 className="mb-4 text-2xl font-bold">
-                        Đặt buổi học cùng {coach.name}
-                    </h2>
+                <Modal
+                    title={"Đặt buổi học cùng " + coach.name}
+                    close={() => setCoach(null)}
+                >
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
@@ -501,7 +604,7 @@ export function Coaching() {
                                     court_id: Number(court),
                                     starts_at: start,
                                     ends_at: end,
-                                    wallet: false,
+                                    pay_with_wallet: false,
                                 });
                                 await refresh();
                                 toast(
@@ -540,11 +643,19 @@ export function Coaching() {
                                 value={duration}
                                 onChange={(e) => setDuration(+e.target.value)}
                             >
-                                {[1, 2, 3].map((n) => (
-                                    <option key={n} value={n}>
-                                        {n} giờ
-                                    </option>
-                                ))}
+                                {[1, 2, 3]
+                                    .filter(
+                                        (n) =>
+                                            n * 60 <=
+                                            (branch?.closes_minute ?? 1380) -
+                                                (+time.slice(0, 2) * 60 +
+                                                    +time.slice(3)),
+                                    )
+                                    .map((n) => (
+                                        <option key={n} value={n}>
+                                            {n} giờ
+                                        </option>
+                                    ))}
                             </select>
                         </label>
                         <label className="text-sm">
@@ -556,13 +667,18 @@ export function Coaching() {
                                 onChange={(e) => setCourt(e.target.value)}
                             >
                                 <option value="">Chọn sân</option>
-                                {branch?.courts
-                                    ?.filter((c: Row) => c.status === "active")
-                                    .map((c: Row) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
+                                {availableCourts.map((c: Row) => (
+                                    <option
+                                        key={c.id}
+                                        value={c.id}
+                                        disabled={!c.available}
+                                    >
+                                        {c.name} ·{" "}
+                                        {c.available
+                                            ? "Còn trống"
+                                            : "Đã có lịch"}
+                                    </option>
+                                ))}
                             </select>
                         </label>
                         <div className="form-field-wide">
@@ -581,7 +697,17 @@ export function Coaching() {
                                     )}
                                 </p>
                             )}
-                            <button className="btn" disabled={!quote}>
+                            <button
+                                className="btn"
+                                disabled={
+                                    !quote ||
+                                    !availableCourts.some(
+                                        (c) =>
+                                            c.available &&
+                                            c.id === Number(court),
+                                    )
+                                }
+                            >
                                 Xác nhận đặt buổi học
                             </button>
                             <button
@@ -593,7 +719,7 @@ export function Coaching() {
                             </button>
                         </div>
                     </form>
-                </div>
+                </Modal>
             )}
         </main>
     );

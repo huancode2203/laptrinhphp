@@ -1,6 +1,13 @@
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+    Children,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type ReactNode,
+} from "react";
 import { ApiError, key, useHub } from "./hub";
 import type { Row } from "./data";
 export function Modal({
@@ -293,6 +300,7 @@ export function Editor({
         const shared = {
             id,
             name: f.name,
+            autoComplete: f.type === "password" ? "new-password" : "off",
             "aria-label": f.label,
             "aria-invalid": !!messages.length,
             "aria-describedby": messages.length
@@ -586,24 +594,64 @@ export function Card({
 export function Table({
     headers,
     children,
+    pageSize = 10,
 }: {
     headers: string[];
     children: ReactNode;
+    pageSize?: number | null;
 }) {
+    const rows = Children.toArray(children);
+    const [page, setPage] = useState(1);
+    const size = pageSize ?? Math.max(1, rows.length);
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    const current = Math.min(page, pages);
+    useEffect(() => setPage(1), [rows.length]);
     return (
-        <div className="data-table-wrap overflow-x-auto border bg-white">
-            <table className="w-full text-left text-sm">
-                <thead className="bg-[#edf3ed] text-[#6d8474]">
-                    <tr>
-                        {headers.map((h) => (
-                            <th className="whitespace-nowrap px-4 py-3" key={h}>
-                                {h}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-[#edf3ed]">{children}</tbody>
-            </table>
+        <div>
+            <div className="data-table-wrap overflow-x-auto border bg-white">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-[#edf3ed] text-[#6d8474]">
+                        <tr>
+                            {headers.map((h) => (
+                                <th
+                                    className="whitespace-nowrap px-4 py-3"
+                                    key={h}
+                                >
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#edf3ed]">
+                        {rows.slice((current - 1) * size, current * size)}
+                    </tbody>
+                </table>
+            </div>
+            {pages > 1 && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                    <span>
+                        {rows.length} dòng · Trang {current}/{pages}
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            className="btn-outline"
+                            disabled={current <= 1}
+                            onClick={() => setPage(current - 1)}
+                        >
+                            Trang trước
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-outline"
+                            disabled={current >= pages}
+                            onClick={() => setPage(current + 1)}
+                        >
+                            Trang sau
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

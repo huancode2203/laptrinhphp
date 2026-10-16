@@ -138,10 +138,10 @@ export default function ReportsView({ branch }: { branch: number | null }) {
                     </Card>
                     <div className="my-6 grid gap-5 lg:grid-cols-2">
                         {[
+                            ["by_branch", "Theo chi nhánh"],
                             ["by_court", "Theo sân"],
                             ["by_product", "Theo sản phẩm"],
                             ["by_service", "Theo dịch vụ"],
-                            ["by_branch", "Theo chi nhánh"],
                         ].map(([id, label]) => (
                             <Card key={id}>
                                 <h2 className="mb-4 text-xl font-bold">

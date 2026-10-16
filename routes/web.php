@@ -15,6 +15,7 @@ use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\MomoController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PayosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecoveryController;
 use App\Http\Controllers\ReportController;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/auth/google', [IntegrationController::class, 'google']);
 Route::get('/auth/google/callback', [IntegrationController::class, 'googleCallback']);
 Route::get('/', fn () => view('hub'))->name('home');
+Route::get('/payments/payos/return', [PayosController::class, 'returned']);
 Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('csrf', [AuthController::class, 'csrf']);
     Route::get('hub', [HubController::class, 'bootstrap']);
@@ -51,6 +53,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('media/{media}', [FeatureController::class, 'media'])->whereNumber('media');
     Route::post('payments/bank/webhook', [IntegrationController::class, 'bank']);
     Route::post('payments/momo/ipn', [MomoController::class, 'ipn']);
+    Route::post('payments/payos/webhook', [PayosController::class, 'webhook']);
     Route::middleware('auth')->group(function (): void {
         Route::post('demo/payments/{attempt}', [DemoController::class, 'payment'])->middleware('throttle:book');
         Route::post('demo/bookings/{booking}/bank', [DemoController::class, 'bank'])->middleware('throttle:book');
@@ -96,6 +99,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::post('waitlist', [CommerceController::class, 'waitlist']);
         Route::delete('waitlist/{entry}', [CommerceController::class, 'cancelWaitlist']);
         Route::post('payments/momo', [MomoController::class, 'create'])->middleware('throttle:book');
+        Route::post('payments/payos', [PayosController::class, 'create'])->middleware('throttle:book');
+        Route::post('payments/payos/{attempt}/sync', [PayosController::class, 'sync'])->middleware('throttle:sensitive');
         Route::get('payments/momo/{attempt}', [MomoController::class, 'status']);
         Route::post('payments/momo/{attempt}/sync', [MomoController::class, 'sync'])->middleware('throttle:sensitive');
         Route::post('community/posts', [CommunityController::class, 'save'])->middleware('throttle:book');
@@ -108,6 +113,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::delete('community/comments/{comment}', [CommunityController::class, 'deleteComment']);
         Route::post('community/posts/{post}/report', [CommunityController::class, 'report'])->middleware('throttle:book');
         Route::get('conversations', [CommunityController::class, 'conversations']);
+        Route::delete('conversations/{conversation}', [CommunityController::class, 'deleteConversation']);
+        Route::delete('ai/chat', [AiController::class, 'clearHistory']);
         Route::get('ai/chat', [AiController::class, 'history']);
         Route::post('ai/chat', [AiController::class, 'chat'])->middleware('throttle:ai');
         Route::post('conversations/direct', [CommunityController::class, 'direct'])->middleware('throttle:book');
@@ -134,6 +141,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::get('maintenances', [ManagementController::class, 'maintenances']);
             Route::post('checkin', [CommerceController::class, 'checkin']);
             Route::post('bookings/{booking}/payments', [BookingController::class, 'payment']);
+            Route::post('bookings/{booking}/services', [BookingController::class, 'services'])->middleware('throttle:book');
             Route::post('users/{user}/topup', [CommerceController::class, 'topup']);
             Route::post('users/{user}/membership', [CommerceController::class, 'activateMembership']);
             Route::post('sales', [CommerceController::class, 'sale']);
@@ -167,6 +175,8 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
 
             Route::get('integrations', [IntegrationController::class, 'integrations']);
+            Route::get('integrations/payos', [PayosController::class, 'settings']);
+            Route::put('integrations/payos', [PayosController::class, 'settings'])->middleware('throttle:sensitive');
             Route::put('integrations/firebase', [FirebaseAuthController::class, 'settings'])->middleware('throttle:sensitive');
             Route::put('integrations/bank', [IntegrationController::class, 'saveBank']);
             Route::delete('integrations/bank', [IntegrationController::class, 'deleteBank']);
@@ -181,6 +191,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::put('permissions', [FeatureController::class, 'permission']);
             Route::put('users/{user}/branches', [FeatureController::class, 'assignments']);
             Route::patch('posts/{post}/moderation', [FeatureController::class, 'moderate']);
+            Route::get('posts', [FeatureController::class, 'posts']);
             Route::get('users', [ManagementController::class, 'users']);
             Route::post('users', [HubController::class, 'createUser']);
             Route::patch('users/{user}/role', [ManagementController::class, 'userRole']);

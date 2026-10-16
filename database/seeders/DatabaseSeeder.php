@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\DemoCatalog;
+use App\LocationService;
 use App\Models\Branch;
 use App\Models\Court;
 use App\Models\MembershipPlan;
@@ -64,5 +66,7 @@ class DatabaseSeeder extends Seeder
                 $user->forceFill(['role' => $role, 'branch_id' => in_array($role, ['manager', 'staff', 'cashier'], true) ? $managerBranch->id : null])->save();
             }
         });
+        app(LocationService::class)->updateDemoAddresses();
+        app(DemoCatalog::class)->refreshPrices();
     }
 }

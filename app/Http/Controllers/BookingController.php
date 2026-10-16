@@ -114,7 +114,7 @@ class BookingController extends Controller
 
         return response()->json(['data' => [
             'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->whereNotIn('partner_code', ['DEMO_MOMO', 'DEMO_BANK'])->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
-            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at', 'partner_code']),
+            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at', 'partner_code', 'pay_url']),
             'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',
             'customer' => ['name' => $booking->user->name, 'phone' => $booking->user->phone],
             'branch' => ['name' => $booking->court->branch->name, 'address' => $booking->court->branch->address],
@@ -136,5 +136,12 @@ class BookingController extends Controller
         $payment = $engine->recordPayment($request->user(), $booking, $data);
 
         return response()->json(['data' => ['id' => $payment->id, 'booking_id' => $payment->booking_id, 'kind' => $payment->kind, 'amount' => $payment->amount, 'method' => $payment->method], 'message' => 'Đã ghi nhận giao dịch tại quầy.']);
+    }
+
+    public function services(Request $request, Booking $booking, BookingService $engine): BookingResource
+    {
+        $data = $request->validate(['request_key' => 'required|uuid', 'services' => 'required|array|list|min:1|max:20', 'services.*.id' => 'required|integer|distinct|exists:services,id', 'services.*.quantity' => 'required|integer|between:1,100']);
+
+        return new BookingResource($engine->addServices($request->user(), $booking, $data));
     }
 }

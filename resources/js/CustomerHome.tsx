@@ -55,6 +55,7 @@ export function CourtIllustration() {
 export default function CustomerHome(p: Props) {
     const { data } = useHub();
     const [area, setArea] = useState(""),
+        [venuePage, setVenuePage] = useState(1),
         [date, setDate] = useState(day(1)),
         [time, setTime] = useState("18:00");
     const filtered = BRANCHES.filter((b) => !area || b.district === area);
@@ -168,14 +169,17 @@ export default function CustomerHome(p: Props) {
                     <div className="venue-filters">
                         <div
                             className="district-filters"
-                            aria-label="Lọc khu vực"
+                            aria-label="Lọc phường / xã"
                         >
                             <button
                                 className={!area ? "selected" : ""}
-                                onClick={() => setArea("")}
+                                onClick={() => {
+                                    setArea("");
+                                    setVenuePage(1);
+                                }}
                                 aria-pressed={!area}
                             >
-                                Tất cả khu vực
+                                Tất cả phường / xã
                             </button>
                             {[...new Set(BRANCHES.map((b) => b.district))].map(
                                 (district) => (
@@ -185,7 +189,10 @@ export default function CustomerHome(p: Props) {
                                             area === district ? "selected" : ""
                                         }
                                         aria-pressed={area === district}
-                                        onClick={() => setArea(district)}
+                                        onClick={() => {
+                                            setArea(district);
+                                            setVenuePage(1);
+                                        }}
                                     >
                                         {district}
                                     </button>
@@ -221,117 +228,171 @@ export default function CustomerHome(p: Props) {
                         </div>
                     </div>
                     <div className="venue-grid">
-                        {filtered.map((b) => {
-                            const raw = data?.branches.find(
-                                (v: any) => v.id === b.id,
-                            );
-                            const rates =
-                                raw?.courts
-                                    ?.filter((v: any) => v.status === "active")
-                                    .map((v: any) => v.hourly_rate) ?? [];
-                            const formatHour = (minute: number) =>
-                                String(Math.floor(minute / 60)).padStart(
-                                    2,
-                                    "0",
-                                ) +
-                                ":" +
-                                String(minute % 60).padStart(2, "0");
-                            return (
-                                <article className="venue-card" key={b.id}>
-                                    <button
-                                        className={
-                                            "venue-visual venue-color-" +
-                                            (BRANCHES.indexOf(b) % 4)
-                                        }
-                                        onClick={() =>
-                                            p.onBranch(BRANCHES.indexOf(b))
-                                        }
-                                        aria-label={"Xem " + b.rawName}
-                                    >
-                                        <CourtIllustration />
-                                        <span className="venue-tag">
-                                            <Icon name="court" size={14} />
-                                            {b.courts} sân
-                                        </span>
-                                        <span className="venue-district">
-                                            {b.name}
-                                        </span>
-                                        <span className="venue-visual-arrow">
-                                            <Icon name="northeast" size={20} />
-                                        </span>
-                                    </button>
-                                    <div className="venue-content">
-                                        <div className="venue-card-meta">
-                                            <span>
-                                                <Icon name="clock" size={14} />
-                                                {raw
-                                                    ? formatHour(
-                                                          raw.opens_minute,
-                                                      ) +
-                                                      " – " +
-                                                      formatHour(
-                                                          raw.closes_minute,
-                                                      )
-                                                    : "Xem giờ mở cửa"}
+                        {filtered
+                            .slice((venuePage - 1) * 6, venuePage * 6)
+                            .map((b) => {
+                                const raw = data?.branches.find(
+                                    (v: any) => v.id === b.id,
+                                );
+                                const rates =
+                                    raw?.courts
+                                        ?.filter(
+                                            (v: any) => v.status === "active",
+                                        )
+                                        .map((v: any) => v.hourly_rate) ?? [];
+                                const formatHour = (minute: number) =>
+                                    String(Math.floor(minute / 60)).padStart(
+                                        2,
+                                        "0",
+                                    ) +
+                                    ":" +
+                                    String(minute % 60).padStart(2, "0");
+                                return (
+                                    <article className="venue-card" key={b.id}>
+                                        <button
+                                            className={
+                                                "venue-visual venue-color-" +
+                                                (BRANCHES.indexOf(b) % 4)
+                                            }
+                                            onClick={() =>
+                                                p.onBranch(BRANCHES.indexOf(b))
+                                            }
+                                            aria-label={"Xem " + b.rawName}
+                                        >
+                                            <CourtIllustration />
+                                            <span className="venue-tag">
+                                                <Icon name="court" size={14} />
+                                                {b.courts} sân
                                             </span>
-                                            {b.rating !== "—" && (
-                                                <span className="venue-rating">
+                                            <span className="venue-district">
+                                                {b.name}
+                                            </span>
+                                            <span className="venue-visual-arrow">
+                                                <Icon
+                                                    name="northeast"
+                                                    size={20}
+                                                />
+                                            </span>
+                                        </button>
+                                        <div className="venue-content">
+                                            <div className="venue-card-meta">
+                                                <span>
                                                     <Icon
-                                                        name="star"
+                                                        name="clock"
                                                         size={14}
                                                     />
-                                                    {b.rating}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <h3>
-                                            <button
-                                                onClick={() =>
-                                                    p.onBranch(
-                                                        BRANCHES.indexOf(b),
-                                                    )
-                                                }
-                                            >
-                                                {b.rawName}
-                                            </button>
-                                        </h3>
-                                        <p className="venue-address">
-                                            <Icon name="pin" size={15} />
-                                            {b.address}
-                                        </p>
-                                        <div className="venue-card-bottom">
-                                            <div>
-                                                <span>Giá sân / giờ</span>
-                                                <strong>
-                                                    {rates.length
-                                                        ? money(
-                                                              Math.min(
-                                                                  ...rates,
-                                                              ),
+                                                    {raw
+                                                        ? formatHour(
+                                                              raw.opens_minute,
+                                                          ) +
+                                                          " – " +
+                                                          formatHour(
+                                                              raw.closes_minute,
                                                           )
-                                                        : "Xem giá"}
-                                                </strong>
+                                                        : "Xem giờ mở cửa"}
+                                                </span>
+                                                {b.rating !== "—" && (
+                                                    <span className="venue-rating">
+                                                        <Icon
+                                                            name="star"
+                                                            size={14}
+                                                        />
+                                                        {b.rating}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <button
-                                                className="btn"
-                                                onClick={() =>
-                                                    p.onBook(
-                                                        BRANCHES.indexOf(b),
-                                                        date,
-                                                        time,
-                                                        2,
-                                                    )
+                                            <h3>
+                                                <button
+                                                    onClick={() =>
+                                                        p.onBranch(
+                                                            BRANCHES.indexOf(b),
+                                                        )
+                                                    }
+                                                >
+                                                    {b.rawName}
+                                                </button>
+                                            </h3>
+                                            <p className="venue-address">
+                                                <Icon name="pin" size={15} />
+                                                {b.address}
+                                            </p>
+                                            <a
+                                                className="mb-3 inline-block text-sm font-bold text-[#19543e]"
+                                                href={
+                                                    b.directions_url ||
+                                                    "https://www.google.com/maps/dir/?api=1&destination=" +
+                                                        encodeURIComponent(
+                                                            b.address,
+                                                        )
                                                 }
+                                                target="_blank"
+                                                rel="noreferrer"
                                             >
-                                                Đặt sân
-                                                <Icon name="arrow" size={16} />
-                                            </button>
+                                                Chỉ đường Google Maps ↗
+                                            </a>
+                                            <div className="venue-card-bottom">
+                                                <div>
+                                                    <span>Giá sân / giờ</span>
+                                                    <strong>
+                                                        {rates.length
+                                                            ? money(
+                                                                  Math.min(
+                                                                      ...rates,
+                                                                  ),
+                                                              )
+                                                            : "Xem giá"}
+                                                    </strong>
+                                                </div>
+                                                <button
+                                                    className="btn"
+                                                    onClick={() =>
+                                                        p.onBook(
+                                                            BRANCHES.indexOf(b),
+                                                            date,
+                                                            time,
+                                                            2,
+                                                        )
+                                                    }
+                                                >
+                                                    Đặt sân
+                                                    <Icon
+                                                        name="arrow"
+                                                        size={16}
+                                                    />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </article>
-                            );
-                        })}
+                                    </article>
+                                );
+                            })}
                     </div>
+                    {filtered.length > 6 && (
+                        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                            <span className="text-sm text-slate-500">
+                                Trang {venuePage}/
+                                {Math.ceil(filtered.length / 6)}
+                            </span>
+                            <div className="flex gap-2">
+                                <button
+                                    className="btn-outline"
+                                    disabled={venuePage <= 1}
+                                    onClick={() => setVenuePage((p) => p - 1)}
+                                >
+                                    Chi nhánh trước
+                                </button>
+                                <button
+                                    className="btn-outline"
+                                    disabled={
+                                        venuePage >=
+                                        Math.ceil(filtered.length / 6)
+                                    }
+                                    onClick={() => setVenuePage((p) => p + 1)}
+                                >
+                                    Chi nhánh tiếp
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </section>
                 <section className="home-community">
                     <div className="community-promo-copy">

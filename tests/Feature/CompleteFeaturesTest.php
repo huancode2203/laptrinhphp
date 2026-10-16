@@ -104,10 +104,12 @@ class CompleteFeaturesTest extends TestCase
         $this->actingAs($other)->getJson('/api/v1/community/posts/'.$p)->assertNotFound();
     }
 
-    public function test_human_moderation_is_reset_when_author_edits_and_comments_are_screened(): void
+    public function test_approved_content_is_locked_rejected_content_can_be_resubmitted_and_comments_are_screened(): void
     {
         $p = $this->actingAs($this->customer)->postJson('/api/v1/community/posts', $this->postData(['content' => 'đồ ngu']))->assertCreated()->assertJsonPath('data.moderation_status', 'pending')->json('data.id');
         $this->actingAs($this->admin)->patchJson('/api/v1/admin/posts/'.$p.'/moderation', ['decision' => 'approved', 'reason' => 'Đã kiểm tra.'])->assertOk();
+        $this->actingAs($this->customer)->putJson('/api/v1/community/posts/'.$p, $this->postData())->assertUnprocessable();
+        $this->actingAs($this->admin)->patchJson('/api/v1/admin/posts/'.$p.'/moderation', ['decision' => 'rejected', 'reason' => 'Cần điều chỉnh.'])->assertOk();
         $this->actingAs($this->customer)->putJson('/api/v1/community/posts/'.$p, $this->postData(['content' => 'đồ ngu lần nữa']))->assertOk()->assertJsonPath('data.moderation_status', 'pending');
         $this->assertNull(CommunityPost::find($p)->moderated_by);
         $this->postJson('/api/v1/community/posts/'.$p.'/comments', ['content' => 'hello'])->assertNotFound();

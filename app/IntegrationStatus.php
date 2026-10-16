@@ -14,6 +14,7 @@ class IntegrationStatus
     public function all(): array
     {
         $items = [];
+        $items[] = $this->item('payos', 'Thanh toán PayOS', true, collect(app(PayosSettings::class)->credentials())->mapWithKeys(fn ($value, $key) => ['PAYOS_'.strtoupper($key) => $value])->all(), 'Chuyển khoản ngân hàng qua PayOS', 'https://my.payos.vn/');
         foreach (['search' => 'AI tìm sân', 'moderation' => 'AI duyệt bài'] as $task => $label) {
             $provider = config('ai.'.$task.'.provider');
             $fields = ['AI_'.strtoupper($task).'_MODEL' => config('ai.'.$task.'.model')];

@@ -44,7 +44,7 @@ for (const role of ["customer", "manager", "staff", "cashier", "admin"]) {
         "hub",
         "me",
         "csrf",
-        "account",
+        ...(role === "customer" ? ["account"] : []),
         "bookings",
         "notifications",
         "holds/active",

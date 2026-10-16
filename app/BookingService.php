@@ -8,6 +8,7 @@ use App\Models\Court;
 use App\Models\CourtHold;
 use App\Models\Membership;
 use App\Models\Payment;
+use App\Models\PaymentAttempt;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\WaitlistEntry;
@@ -139,6 +140,9 @@ class BookingService
                 abort_unless($actor->active, 403);
                 if ($actor->role !== 'customer') {
                     $this->assertManage($actor, $court->branch_id, 'bookings.write');
+                    if (empty($data['user_id']) || (int) $data['user_id'] === $actor->id) {
+                        throw ValidationException::withMessages(['user_id' => 'Chọn tài khoản khách hàng để đặt tại quầy. Tài khoản làm việc không dùng để đặt sân cá nhân.']);
+                    }
                 }
                 $userId = $actor->id;
                 if (isset($data['user_id']) && (int) $data['user_id'] !== $actor->id) {
@@ -239,8 +243,8 @@ class BookingService
             } else {
                 $this->assertManage($actor, $court->branch_id, 'bookings.write');
             }
-            if ($booking->status !== 'confirmed' || $booking->paid_amount > 0 || $booking->starts_at->lte(now())) {
-                throw ValidationException::withMessages(['starts_at' => 'Chỉ đổi lịch chưa thanh toán, chưa bắt đầu và đang xác nhận.']);
+            if ($booking->status !== 'confirmed' || ($actor->role === 'customer' && $booking->paid_amount > 0) || $booking->starts_at->lte(now())) {
+                throw ValidationException::withMessages(['starts_at' => 'Chỉ đổi lịch chưa bắt đầu và đang xác nhận. Lịch đã thanh toán cần quản lý chi nhánh hỗ trợ đổi.']);
             }
             if ($court->status !== 'active' || ! $court->branch->active) {
                 throw ValidationException::withMessages(['court_id' => 'Sân hiện không nhận đổi lịch.']);
@@ -256,6 +260,8 @@ class BookingService
             if ($booking->coupon_id) {
                 throw ValidationException::withMessages(['starts_at' => 'Lịch đã dùng ưu đãi cần hủy và đặt lại để tính đúng điều kiện mã.']);
             }
+            abort_if(PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->where('expires_at', '>', now())->exists(), 409, 'Lịch đang có giao dịch chờ xác nhận. Hãy đối soát thanh toán trước khi đổi sân hoặc giờ.');
+            abort_if($booking->paid_amount > $quote['total_amount'] + $booking->product_amount, 422, 'Giá lịch mới thấp hơn số tiền đã thu. Cần xử lý hoàn tiền tại quầy trước khi đổi.');
             $previousCourt = $locked[$booking->court_id];
             $previous = ['court_id' => $booking->court_id, 'starts_at' => $booking->starts_at->toIso8601String(), 'ends_at' => $booking->ends_at->toIso8601String(), 'total_amount' => $booking->total_amount];
             $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $quote['total_amount'] + $booking->product_amount, 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at])->save();
@@ -361,6 +367,41 @@ class BookingService
             $this->notifyBooking($booking, $kind, $kind === 'refund' ? 'Đã hoàn tiền' : 'Đã ghi nhận thanh toán', 'Lịch '.$booking->reference.': '.number_format($amount, 0, ',', '.').' đồng.');
 
             return $payment;
+        }, 5);
+    }
+
+    public function addServices(User $actor, Booking $booking, array $data): Booking
+    {
+        return DB::transaction(function () use ($actor, $booking, $data): Booking {
+            $booking = Booking::lockForUpdate()->findOrFail($booking->id);
+            $this->assertManage($actor, $booking->court->branch_id, 'bookings.write');
+            $items = collect($data['services'])->mapWithKeys(fn ($row) => [(int) $row['id'] => (int) $row['quantity']])->sortKeys()->all();
+            $existing = DB::table('audit_logs')->where('action', 'booking.services_added')->where('details->request_key', $data['request_key'])->first();
+            if ($existing) {
+                $saved = json_decode($existing->details, true);
+                abort_unless((int) $existing->subject_id === $booking->id && (int) $existing->user_id === $actor->id && $saved['items'] == $items, 409, 'Yêu cầu đã dùng để thêm dịch vụ khác.');
+
+                return $booking->load('court.branch', 'services', 'payments');
+            }
+            abort_unless(in_array($booking->status, ['confirmed', 'checked_in'], true), 422, 'Hóa đơn đã chốt hoặc lịch đã hủy. Không thể thêm dịch vụ.');
+            $sum = 0;
+            foreach ($items as $id => $quantity) {
+                $service = Service::where('branch_id', $booking->court->branch_id)->where('active', true)->findOrFail($id);
+                abort_if($service->name === 'Huấn luyện viên' || str_starts_with($service->name, 'Buổi học cùng '), 422, 'Buổi học cần được đặt trong mục Học cầu lông.');
+                $previous = $booking->services()->where('services.id', $id)->first()?->pivot;
+                $unitPrice = $previous ? (int) $previous->unit_price : (int) $service->price;
+                $count = ($previous ? (int) $previous->quantity : 0) + $quantity;
+                abort_if($count > 100, 422, 'Mỗi dịch vụ tối đa 100 đơn vị trong một hóa đơn.');
+                $sum += $unitPrice * $quantity;
+                $booking->services()->syncWithoutDetaching([$id => ['name' => $previous?->name ?? $service->name, 'quantity' => $count, 'unit_price' => $unitPrice, 'amount' => $unitPrice * $count]]);
+            }
+            abort_if($booking->total_amount + $sum > 2147483647, 422, 'Tổng hóa đơn vượt giới hạn.');
+            $booking->service_amount += $sum;
+            $booking->total_amount += $sum;
+            $booking->save();
+            $this->audit($actor, 'booking.services_added', $booking->id, ['request_key' => $data['request_key'], 'items' => $items, 'amount' => $sum]);
+
+            return $booking->load('court.branch', 'services', 'payments');
         }, 5);
     }
 

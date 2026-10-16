@@ -283,10 +283,12 @@ class FeatureController extends Controller
 
     public function customer(Request $r): JsonResponse
     {
-        $d = $r->validate(['branch_id' => 'required|integer|exists:branches,id', 'name' => 'required|string|max:100', 'phone' => ['required', 'string', 'max:30', new VietnamesePhone], 'email' => 'nullable|email|unique:users,email']);
+        $d = $r->validate(['branch_id' => 'required|integer|exists:branches,id', 'name' => 'required|string|max:100', 'phone' => ['required', 'string', 'max:30', new VietnamesePhone], 'email' => 'nullable|email|max:255', 'skill_level' => 'sometimes|in:Mới chơi,Sơ cấp,Trung cấp,Nâng cao']);
         app(BookingService::class)->assertManage($r->user(), $d['branch_id']);
-        abort_if(User::where('phone', $d['phone'])->exists(), 422, 'Số điện thoại đã có tài khoản. Hãy tìm khách hiện có.');
-        $user = User::create(['name' => $d['name'], 'phone' => $d['phone'], 'email' => $d['email'] ?? 'walkin-'.Str::uuid().'@walkin.invalid', 'password' => Str::random(50)]);
+        $phone = str_starts_with($d['phone'], '+84') ? '0'.substr($d['phone'], 3) : $d['phone'];
+        abort_if(User::whereIn('phone', [$phone, '+84'.substr($phone, 1)])->exists(), 422, 'Số điện thoại này đã có hồ sơ. Hãy tìm và chọn khách hiện có.');
+        abort_if(! empty($d['email']) && User::whereRaw('LOWER(email) = ?', [strtolower($d['email'])])->exists(), 422, 'Email này đã có tài khoản. Hãy tìm và chọn khách hiện có.');
+        $user = User::create(['name' => $d['name'], 'phone' => $phone, 'email' => ! empty($d['email']) ? strtolower($d['email']) : 'walkin-'.Str::uuid().'@walkin.invalid', 'password' => Str::random(50), 'skill_level' => $d['skill_level'] ?? 'Sơ cấp']);
         app(BookingService::class)->audit($r->user(), 'customer.created', $user->id, [], 'user');
 
         return response()->json(['data' => $user], 201);
@@ -354,13 +356,25 @@ class FeatureController extends Controller
         return response()->json(['message' => 'Đã giao chi nhánh.']);
     }
 
+    public function posts(Request $r): JsonResponse
+    {
+        $data = $r->validate(['state' => 'sometimes|in:all,pending,approved,rejected,hidden', 'older_than' => 'sometimes|integer|in:0,30,90,180', 'branch_id' => 'nullable|integer|exists:branches,id', 'search' => 'nullable|string|max:150', 'per_page' => 'sometimes|integer|between:1,50']);
+        $state = $data['state'] ?? 'pending';
+        $posts = CommunityPost::with(['user:id,name', 'branch:id,name'])->when(! empty($data['older_than']), fn ($q) => $q->where('starts_at', '<', now()->subDays((int) $data['older_than'])))->when($state === 'hidden', fn ($q) => $q->where('status', 'hidden'))->when(! in_array($state, ['all', 'hidden'], true), fn ($q) => $q->where('moderation_status', $state)->where('status', '!=', 'hidden'))->when(! empty($data['branch_id']), fn ($q) => $q->where('branch_id', $data['branch_id']))->when(! empty($data['search']), fn ($q) => $q->where('title', 'like', '%'.str_replace(['%', '_'], '', $data['search']).'%'))->latest('id')->paginate($data['per_page'] ?? 10);
+
+        return response()->json(['data' => $posts]);
+    }
+
     public function moderate(Request $r, CommunityPost $post): JsonResponse
     {
         $d = $r->validate(['decision' => 'required|in:approved,rejected', 'reason' => 'required|string|max:500']);
-        $post->forceFill(['moderation_status' => $d['decision'], 'moderated_by' => $r->user()->id, 'moderated_at' => now(), 'moderation_result' => array_merge($post->moderation_result ?? [], ['human_reason' => $d['reason']])])->save();
-        $post->user->notify(new HubNotification(['type' => 'community.moderated', 'title' => $d['decision'] === 'approved' ? 'Bài viết đã được duyệt' : 'Bài viết cần điều chỉnh', 'body' => $d['reason']]));
+        DB::transaction(function () use ($r, $post, $d): void {
+            $post = CommunityPost::lockForUpdate()->findOrFail($post->id);
+            $post->forceFill(['moderation_status' => $d['decision'], 'moderated_by' => $r->user()->id, 'moderated_at' => now(), 'moderation_result' => array_merge($post->moderation_result ?? [], ['human_reason' => $d['reason']])])->save();
+            $post->user->notify(new HubNotification(['type' => 'community.moderated', 'title' => $d['decision'] === 'approved' ? 'Bài viết đã được duyệt' : 'Bài viết chưa được duyệt', 'body' => $post->title.': '.$d['reason'], 'post_id' => $post->id]));
+        }, 5);
         app(BookingService::class)->audit($r->user(), 'ai.moderation_decided', $post->id, $d, 'post');
 
-        return response()->json(['data' => $post]);
+        return response()->json(['data' => $post->fresh()]);
     }
 }

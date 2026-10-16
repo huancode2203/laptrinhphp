@@ -28,6 +28,23 @@ export default function CourtMatrix({
     onReserved?: (slot: Row) => void;
 }) {
     const [range, setRange] = useState<Row | null>(null);
+    useEffect(() => {
+        if (selectedCourt && schedule) {
+            const index = schedule.courts.findIndex(
+                (c: Row) => c.id === selectedCourt,
+            );
+            if (index >= 0) {
+                setCourtPage(Math.floor(index / 10) + 1);
+                setCourtSearch("");
+            }
+        }
+    }, [selectedCourt, schedule?.branch_id]);
+    const [courtPage, setCourtPage] = useState(1),
+        [courtSearch, setCourtSearch] = useState("");
+    useEffect(() => {
+        setCourtPage(1);
+        setCourtSearch("");
+    }, [schedule?.branch_id, schedule?.date]);
     const viewport = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (!fixedWindow || !schedule || !viewport.current) return;
@@ -114,8 +131,31 @@ export default function CourtMatrix({
           )
         : -1;
     const windowEnd = windowStart + (fixedWindow?.duration ?? 0) * 2 - 1;
+    const filteredCourts = schedule.courts.filter((c: Row) =>
+        c.name
+            .toLocaleLowerCase("vi")
+            .includes(courtSearch.toLocaleLowerCase("vi")),
+    );
+    const courtPages = Math.max(1, Math.ceil(filteredCourts.length / 10)),
+        currentPage = Math.min(courtPage, courtPages);
     return (
         <div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <input
+                    className="input w-full sm:max-w-xs"
+                    aria-label="Tìm sân trên lịch"
+                    placeholder="Tìm tên sân…"
+                    value={courtSearch}
+                    onChange={(e) => {
+                        setCourtSearch(e.target.value);
+                        setCourtPage(1);
+                    }}
+                />
+                <span className="text-xs text-slate-500">
+                    {filteredCourts.length} sân · Trang {currentPage}/
+                    {courtPages}
+                </span>
+            </div>
             <div className="mb-4 flex flex-wrap gap-2 text-xs">
                 {Object.entries(labels)
                     .filter(([s]) => s !== "past")
@@ -158,186 +198,219 @@ export default function CourtMatrix({
                         </tr>
                     </thead>
                     <tbody>
-                        {schedule.courts.map((c: Row) => (
-                            <tr
-                                className="border-t border-[#edf1ed]"
-                                key={c.id}
-                            >
-                                <th className="sticky left-0 z-10 bg-white p-3 text-left">
-                                    {c.name}
-                                </th>
-                                {c.slots.map((s: Row, i: number) => {
-                                    const inWindow =
-                                        !!fixedWindow &&
-                                        i >= windowStart &&
-                                        i <= windowEnd;
-                                    const selectable = fixedWindow
-                                        ? i === windowStart &&
-                                          windowStart >= 0 &&
-                                          valid(c, windowStart, windowEnd)
-                                        : s.available;
-                                    const marked =
-                                        (range &&
-                                            range.court_id === c.id &&
-                                            i >= range.first &&
-                                            i <= range.last) ||
-                                        (inWindow && selectedCourt === c.id);
-                                    return (
-                                        <td key={s.starts_at} className="p-0.5">
-                                            <button
-                                                type="button"
-                                                aria-label={
-                                                    c.name +
-                                                    " " +
-                                                    s.starts_at.slice(11, 16) +
-                                                    " · " +
-                                                    labels[s.state]
-                                                }
-                                                aria-pressed={marked}
-                                                className={
-                                                    "slot w-full min-h-10 " +
-                                                    (s.state === "fixed"
-                                                        ? "fixed-booking"
-                                                        : s.state) +
-                                                    (marked
-                                                        ? " ring-2 ring-inset ring-[#16a34a] bg-[#b7ff36] text-[#0d1f2d]"
-                                                        : "") +
-                                                    (fixedWindow && !inWindow
-                                                        ? " opacity-40"
-                                                        : "")
-                                                }
-                                                title={
-                                                    labels[s.state] +
-                                                    (selectable
-                                                        ? " · " +
-                                                          money(s.court_amount)
-                                                        : "")
-                                                }
-                                                disabled={
-                                                    !selectable &&
-                                                    !(onBusy && inWindow) &&
-                                                    !(
-                                                        onReserved &&
-                                                        s.booking_id
-                                                    )
-                                                }
-                                                onPointerDown={(e) => {
-                                                    if (
-                                                        fixedWindow ||
-                                                        !selectable ||
-                                                        e.pointerType !==
-                                                            "mouse" ||
-                                                        e.shiftKey
-                                                    )
-                                                        return;
-                                                    e.preventDefault();
-                                                    anchor.current = {
-                                                        court: c,
-                                                        start: i,
-                                                    };
-                                                    drag.current = {
-                                                        court: c,
-                                                        start: i,
-                                                        end: i,
-                                                    };
-                                                    setRange({
-                                                        court_id: c.id,
-                                                        first: i,
-                                                        last: i,
-                                                    });
-                                                }}
-                                                onPointerEnter={() => {
-                                                    const d = drag.current;
-                                                    if (
-                                                        d &&
-                                                        d.court.id === c.id &&
-                                                        valid(c, d.start, i)
-                                                    ) {
-                                                        d.end = i;
-                                                        setRange({
-                                                            court_id: c.id,
-                                                            first: Math.min(
-                                                                d.start,
-                                                                i,
-                                                            ),
-                                                            last: Math.max(
-                                                                d.start,
-                                                                i,
-                                                            ),
-                                                        });
+                        {filteredCourts
+                            .slice((currentPage - 1) * 10, currentPage * 10)
+                            .map((c: Row) => (
+                                <tr
+                                    className="border-t border-[#edf1ed]"
+                                    key={c.id}
+                                >
+                                    <th className="sticky left-0 z-10 bg-white p-3 text-left">
+                                        {c.name}
+                                    </th>
+                                    {c.slots.map((s: Row, i: number) => {
+                                        const inWindow =
+                                            !!fixedWindow &&
+                                            i >= windowStart &&
+                                            i <= windowEnd;
+                                        const selectable = fixedWindow
+                                            ? i === windowStart &&
+                                              windowStart >= 0 &&
+                                              valid(c, windowStart, windowEnd)
+                                            : s.available;
+                                        const marked =
+                                            (range &&
+                                                range.court_id === c.id &&
+                                                i >= range.first &&
+                                                i <= range.last) ||
+                                            (inWindow &&
+                                                selectedCourt === c.id);
+                                        return (
+                                            <td
+                                                key={s.starts_at}
+                                                className="p-0.5"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    aria-label={
+                                                        c.name +
+                                                        " " +
+                                                        s.starts_at.slice(
+                                                            11,
+                                                            16,
+                                                        ) +
+                                                        " · " +
+                                                        labels[s.state]
                                                     }
-                                                }}
-                                                onClick={(e) => {
-                                                    if (
-                                                        onReserved &&
-                                                        s.booking_id
-                                                    ) {
-                                                        onReserved(s);
-                                                        return;
+                                                    aria-pressed={marked}
+                                                    className={
+                                                        "slot w-full min-h-10 " +
+                                                        (s.state === "fixed"
+                                                            ? "fixed-booking"
+                                                            : s.state) +
+                                                        (marked
+                                                            ? " ring-2 ring-inset ring-[#16a34a] bg-[#b7ff36] text-[#0d1f2d]"
+                                                            : "") +
+                                                        (fixedWindow &&
+                                                        !inWindow
+                                                            ? " opacity-40"
+                                                            : "")
                                                     }
-                                                    if (fixedWindow) {
-                                                        if (selectable) {
-                                                            onPick(
-                                                                selection(
-                                                                    c,
-                                                                    windowStart,
-                                                                    windowEnd,
-                                                                ),
-                                                            );
-                                                        } else onBusy?.(c);
-                                                        return;
+                                                    title={
+                                                        labels[s.state] +
+                                                        (selectable
+                                                            ? " · " +
+                                                              money(
+                                                                  s.court_amount,
+                                                              )
+                                                            : "")
                                                     }
-                                                    if (
-                                                        e.detail > 0 &&
-                                                        e.nativeEvent instanceof
-                                                            PointerEvent &&
-                                                        e.nativeEvent
-                                                            .pointerType ===
-                                                            "mouse" &&
-                                                        !e.shiftKey
-                                                    )
-                                                        return;
-                                                    const a =
-                                                        e.shiftKey &&
-                                                        anchor.current &&
-                                                        anchor.current.court
-                                                            .id === c.id
-                                                            ? anchor.current
-                                                                  .start
-                                                            : i;
-                                                    if (valid(c, a, i)) {
-                                                        setRange({
-                                                            court_id: c.id,
-                                                            first: Math.min(
-                                                                a,
-                                                                i,
-                                                            ),
-                                                            last: Math.max(
-                                                                a,
-                                                                i,
-                                                            ),
-                                                        });
+                                                    disabled={
+                                                        !selectable &&
+                                                        !(onBusy && inWindow) &&
+                                                        !(
+                                                            onReserved &&
+                                                            s.booking_id
+                                                        )
+                                                    }
+                                                    onPointerDown={(e) => {
+                                                        if (
+                                                            fixedWindow ||
+                                                            !selectable ||
+                                                            e.pointerType !==
+                                                                "mouse" ||
+                                                            e.shiftKey
+                                                        )
+                                                            return;
+                                                        e.preventDefault();
                                                         anchor.current = {
                                                             court: c,
                                                             start: i,
                                                         };
-                                                    }
-                                                }}
-                                            >
-                                                {s.available
-                                                    ? marked
-                                                        ? "✓"
-                                                        : "＋"
-                                                    : "●"}
-                                            </button>
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
+                                                        drag.current = {
+                                                            court: c,
+                                                            start: i,
+                                                            end: i,
+                                                        };
+                                                        setRange({
+                                                            court_id: c.id,
+                                                            first: i,
+                                                            last: i,
+                                                        });
+                                                    }}
+                                                    onPointerEnter={() => {
+                                                        const d = drag.current;
+                                                        if (
+                                                            d &&
+                                                            d.court.id ===
+                                                                c.id &&
+                                                            valid(c, d.start, i)
+                                                        ) {
+                                                            d.end = i;
+                                                            setRange({
+                                                                court_id: c.id,
+                                                                first: Math.min(
+                                                                    d.start,
+                                                                    i,
+                                                                ),
+                                                                last: Math.max(
+                                                                    d.start,
+                                                                    i,
+                                                                ),
+                                                            });
+                                                        }
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if (
+                                                            onReserved &&
+                                                            s.booking_id
+                                                        ) {
+                                                            onReserved(s);
+                                                            return;
+                                                        }
+                                                        if (fixedWindow) {
+                                                            if (selectable) {
+                                                                onPick(
+                                                                    selection(
+                                                                        c,
+                                                                        windowStart,
+                                                                        windowEnd,
+                                                                    ),
+                                                                );
+                                                            } else onBusy?.(c);
+                                                            return;
+                                                        }
+                                                        if (
+                                                            e.detail > 0 &&
+                                                            e.nativeEvent instanceof
+                                                                PointerEvent &&
+                                                            e.nativeEvent
+                                                                .pointerType ===
+                                                                "mouse" &&
+                                                            !e.shiftKey
+                                                        )
+                                                            return;
+                                                        const a =
+                                                            e.shiftKey &&
+                                                            anchor.current &&
+                                                            anchor.current.court
+                                                                .id === c.id
+                                                                ? anchor.current
+                                                                      .start
+                                                                : i;
+                                                        if (valid(c, a, i)) {
+                                                            setRange({
+                                                                court_id: c.id,
+                                                                first: Math.min(
+                                                                    a,
+                                                                    i,
+                                                                ),
+                                                                last: Math.max(
+                                                                    a,
+                                                                    i,
+                                                                ),
+                                                            });
+                                                            anchor.current = {
+                                                                court: c,
+                                                                start: i,
+                                                            };
+                                                        }
+                                                    }}
+                                                >
+                                                    {s.available
+                                                        ? marked
+                                                            ? "✓"
+                                                            : "＋"
+                                                        : "●"}
+                                                </button>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
                     </tbody>
                 </table>
             </div>
+            {courtPages > 1 && (
+                <div className="mt-3 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        className="btn-outline"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCourtPage(currentPage - 1)}
+                    >
+                        Sân trang trước
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-outline"
+                        disabled={currentPage >= courtPages}
+                        onClick={() => setCourtPage(currentPage + 1)}
+                    >
+                        Sân trang sau
+                    </button>
+                </div>
+            )}
             {!fixedWindow && range && (
                 <button
                     type="button"

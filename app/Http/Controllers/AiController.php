@@ -25,6 +25,13 @@ class AiController extends Controller
         return response()->json(['data' => $messages]);
     }
 
+    public function clearHistory(Request $r): JsonResponse
+    {
+        Cache::lock('hub-ai-chat-'.$r->user()->id, 60)->block(3, fn () => DB::table('ai_search_turns')->where('user_id', $r->user()->id)->delete());
+
+        return response()->json(['message' => 'Đã xóa lịch sử trò chuyện với HUB AI.']);
+    }
+
     public function chat(Request $r, CourtSearchService $service): JsonResponse
     {
         $data = $r->validate(['request_key' => 'required|uuid', 'message' => 'required|string|max:1000']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\AccessService;
 use App\BookingService;
 use App\Http\Resources\BranchResource;
+use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\Court;
 use App\Models\User;
@@ -17,10 +18,11 @@ class BranchController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $data = $request->validate(['district' => ['sometimes', 'string', 'max:100']]);
+        $data = $request->validate(['district' => ['sometimes', 'string', 'max:100'], 'ward' => ['sometimes', 'string', 'max:100']]);
         $query = Branch::query()->where('active', true)->withCount(['courts' => fn ($query) => $query->where('status', 'active')]);
-        if (isset($data['district'])) {
-            $query->where('district', $data['district']);
+        if (isset($data['ward']) || isset($data['district'])) {
+            $area = $data['ward'] ?? $data['district'];
+            $query->where(fn ($q) => $q->where('ward', $area)->orWhere(fn ($q) => $q->whereNull('ward')->where('district', $area)));
         }
 
         return BranchResource::collection($query->orderBy('id')->get());
@@ -36,7 +38,15 @@ class BranchController extends Controller
     public function availability(Request $request, Branch $branch, BookingService $engine): JsonResponse
     {
         abort_unless($branch->active, 404);
-        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at']]);
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'exclude_booking_id' => 'sometimes|integer|exists:bookings,id']);
+        $exclude = $data['exclude_booking_id'] ?? null;
+        if ($exclude) {
+            $booking = Booking::findOrFail($exclude);
+            abort_unless($request->user() && $booking->court->branch_id === $branch->id, 403);
+            if ($booking->user_id !== $request->user()->id) {
+                $engine->assertManage($request->user(), $branch->id, 'bookings.write');
+            }
+        }
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
         $first = $branch->courts()->where('status', 'active')->first();
         if ($first) {
@@ -44,7 +54,7 @@ class BranchController extends Controller
         }
         $courts = $branch->courts()->where('status', 'active')
             ->withCount([
-                'bookings as conflicts' => fn ($query) => $query->where('status', '!=', 'cancelled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
+                'bookings as conflicts' => fn ($query) => $query->when($exclude, fn ($q) => $q->where('id', '!=', $exclude))->where('status', '!=', 'cancelled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
                 'maintenances as maintenance_conflicts' => fn ($query) => $query->where('status', 'scheduled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
                 'holds as hold_conflicts' => fn ($query) => $query->where('released', false)->where('expires_at', '>', now())->where('user_id', '!=', $request->user()?->id ?? 0)->where('starts_at', '<', $end)->where('ends_at', '>', $start),
                 'blocks as event_conflicts' => fn ($query) => $query->where('active', true)->where('starts_at', '<', $end)->where('ends_at', '>', $start),

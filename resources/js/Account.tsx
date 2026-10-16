@@ -1,3 +1,4 @@
+import RescheduleBooking from "./RescheduleBooking";
 import Profile from "./Profile";
 import { AccountExtras } from "./FeaturePages";
 import { useEffect, useRef, useState } from "react";
@@ -19,6 +20,10 @@ export function BookingDetail({
         [form, setForm] = useState(""),
         [receipt, setReceipt] = useState<Row | null>(null);
     const booking = receipt?.booking ?? initialBooking;
+    const momoAttempts =
+        receipt?.payment_attempts?.filter(
+            (attempt: Row) => attempt.partner_code !== "PAYOS",
+        ) ?? [];
     useEffect(() => {
         let live = true;
         api("bookings/" + booking.id + "/receipt")
@@ -213,7 +218,6 @@ export function BookingDetail({
                     </Card>
                 )}
             {data!.user.id === booking.user_id &&
-                data!.momo_enabled &&
                 receipt?.pending_payment_attempts?.map((attempt: Row) =>
                     attempt.partner_code?.startsWith("DEMO_") ? (
                         <a
@@ -225,22 +229,50 @@ export function BookingDetail({
                             Tiếp tục thanh toán demo · {money(attempt.amount)}
                         </a>
                     ) : (
-                        <button
+                        <div
                             key={attempt.id}
-                            className="btn-outline mt-4"
-                            disabled={loading}
-                            onClick={() =>
-                                run(async () => {
-                                    await api(
-                                        "payments/momo/" + attempt.id + "/sync",
-                                        "POST",
-                                    );
-                                    await refreshPayment();
-                                })
-                            }
+                            className="mt-4 flex flex-wrap gap-3"
                         >
-                            Kiểm tra thanh toán MoMo · {money(attempt.amount)}
-                        </button>
+                            {attempt.pay_url &&
+                                Date.parse(attempt.expires_at) > Date.now() && (
+                                    <a
+                                        className="btn-outline"
+                                        href={attempt.pay_url}
+                                    >
+                                        Tiếp tục thanh toán{" "}
+                                        {attempt.partner_code === "PAYOS"
+                                            ? "PayOS"
+                                            : "MoMo"}{" "}
+                                        · {money(attempt.amount)}
+                                    </a>
+                                )}
+                            <button
+                                className="btn-outline"
+                                disabled={loading}
+                                onClick={() =>
+                                    run(async () => {
+                                        await api(
+                                            "payments/" +
+                                                (attempt.partner_code ===
+                                                "PAYOS"
+                                                    ? "payos"
+                                                    : "momo") +
+                                                "/" +
+                                                attempt.id +
+                                                "/sync",
+                                            "POST",
+                                        );
+                                        await refreshPayment();
+                                    })
+                                }
+                            >
+                                Kiểm tra{" "}
+                                {attempt.partner_code === "PAYOS"
+                                    ? "PayOS"
+                                    : "MoMo"}{" "}
+                                · {money(attempt.amount)}
+                            </button>
+                        </div>
                     ),
                 )}
             {data!.user.role !== "customer" &&
@@ -248,7 +280,9 @@ export function BookingDetail({
                 booking.status === "cancelled" &&
                 booking.paid_amount > 0 &&
                 data!.momo_enabled &&
-                receipt?.payment_attempts?.length > 0 && (
+                receipt?.payment_attempts?.some(
+                    (a: Row) => a.partner_code !== "PAYOS",
+                ) && (
                     <div className="my-4">
                         <button
                             className="btn-outline"
@@ -302,6 +336,54 @@ export function BookingDetail({
                 </div>
             )}
             <div className="my-4 flex flex-wrap gap-2">
+                {data!.user.role !== "customer" &&
+                    data!.permissions?.["bookings.write"] &&
+                    ["confirmed", "checked_in"].includes(booking.status) && (
+                        <button
+                            className="btn-outline"
+                            onClick={() => setForm("add-services")}
+                        >
+                            + Thêm dịch vụ vào hóa đơn sân
+                        </button>
+                    )}
+                {data!.payos_enabled &&
+                    data!.user.id === booking.user_id &&
+                    ["confirmed", "checked_in"].includes(booking.status) &&
+                    booking.remaining_amount > 0 && (
+                        <>
+                            {(booking.deposit_remaining > 0
+                                ? [true, false]
+                                : [false]
+                            ).map((deposit) => (
+                                <button
+                                    key={String(deposit)}
+                                    className={deposit ? "btn-outline" : "btn"}
+                                    disabled={loading}
+                                    onClick={() =>
+                                        run(async () => {
+                                            const r = await api(
+                                                "payments/payos",
+                                                "POST",
+                                                {
+                                                    request_key: key(),
+                                                    purpose: "booking",
+                                                    booking_id: booking.id,
+                                                    deposit_only: deposit,
+                                                },
+                                            );
+                                            location.assign(r.data.pay_url);
+                                        })
+                                    }
+                                >
+                                    {deposit
+                                        ? "Đặt cọc PayOS · " +
+                                          money(booking.deposit_remaining)
+                                        : "Thanh toán toàn bộ PayOS · " +
+                                          money(booking.remaining_amount)}
+                                </button>
+                            ))}
+                        </>
+                    )}
                 <a
                     className="btn-outline"
                     href={"/api/v1/bookings/" + booking.id + "/receipt.pdf"}
@@ -396,7 +478,8 @@ export function BookingDetail({
                             </>
                         )}
                         {booking.status === "confirmed" &&
-                            !booking.paid_amount && (
+                            (!booking.paid_amount ||
+                                data!.user.role !== "customer") && (
                                 <button
                                     className="btn-outline"
                                     onClick={() => setForm("reschedule")}
@@ -414,14 +497,16 @@ export function BookingDetail({
                         )}
                     </>
                 )}
-                {booking.status === "completed" && (
-                    <button
-                        className="btn-outline"
-                        onClick={() => setForm("review")}
-                    >
-                        Viết đánh giá
-                    </button>
-                )}
+                {booking.status === "completed" &&
+                    data!.user.id === booking.user_id &&
+                    data!.user.role === "customer" && (
+                        <button
+                            className="btn-outline"
+                            onClick={() => setForm("review")}
+                        >
+                            Viết đánh giá
+                        </button>
+                    )}
                 <button className="btn-outline" onClick={() => window.print()}>
                     In hóa đơn
                 </button>
@@ -505,10 +590,10 @@ export function BookingDetail({
                 <Editor
                     title="Hoàn tiền qua MoMo"
                     initial={{
-                        attempt_id: receipt?.payment_attempts?.[0]?.id,
+                        attempt_id: momoAttempts[0]?.id,
                         amount: Math.min(
                             booking.paid_amount,
-                            receipt?.payment_attempts?.[0]?.amount ?? 0,
+                            momoAttempts[0]?.amount ?? 0,
                         ),
                     }}
                     close={() => setForm("")}
@@ -517,12 +602,10 @@ export function BookingDetail({
                             name: "attempt_id",
                             label: "Giao dịch gốc",
                             required: true,
-                            options: receipt?.payment_attempts.map(
-                                (v: Row) => ({
-                                    value: v.id,
-                                    label: v.order_id + " · " + money(v.amount),
-                                }),
-                            ),
+                            options: momoAttempts.map((v: Row) => ({
+                                value: v.id,
+                                label: v.order_id + " · " + money(v.amount),
+                            })),
                         },
                         {
                             name: "amount",
@@ -573,33 +656,73 @@ export function BookingDetail({
                     quầy.
                 </Confirm>
             )}
-            {form === "reschedule" && (
+            {form === "add-services" && (
                 <Editor
-                    title="Đổi lịch"
+                    title="Thêm dịch vụ phát sinh"
+                    description="Dịch vụ được cộng nguyên giá vào hóa đơn cuối buổi. Ưu đãi chỉ áp dụng cho tiền sân."
                     close={() => setForm("")}
+                    initial={{ service_id: "", quantity: 1 }}
                     fields={[
                         {
-                            name: "starts_at",
-                            label: "Bắt đầu",
-                            type: "datetime-local",
+                            name: "service_id",
+                            label: "Dịch vụ tại chi nhánh",
                             required: true,
+                            options: (
+                                data!.branches.find(
+                                    (b: Row) =>
+                                        b.id === booking.court?.branch_id,
+                                )?.services ?? []
+                            )
+                                .filter(
+                                    (s: Row) => s.name !== "Huấn luyện viên",
+                                )
+                                .map((s: Row) => ({
+                                    value: s.id,
+                                    label:
+                                        s.name +
+                                        " · " +
+                                        money(s.price) +
+                                        "/" +
+                                        s.unit,
+                                })),
                         },
                         {
-                            name: "ends_at",
-                            label: "Kết thúc",
-                            type: "datetime-local",
+                            name: "quantity",
+                            label: "Số lượng thêm",
+                            type: "number",
                             required: true,
+                            min: 1,
+                            max: 100,
+                            step: 1,
                         },
                     ]}
-                    save={(d) =>
-                        update(() =>
-                            api(
-                                "bookings/" + booking.id + "/reschedule",
-                                "PATCH",
-                                d,
-                            ),
-                        )
-                    }
+                    save={async (values) => {
+                        await api(
+                            "manage/bookings/" + booking.id + "/services",
+                            "POST",
+                            {
+                                request_key: values.request_key,
+                                services: [
+                                    {
+                                        id: Number(values.service_id),
+                                        quantity: Number(values.quantity),
+                                    },
+                                ],
+                            },
+                        );
+                        setForm("");
+                        await refreshPayment();
+                        toast(
+                            "Đã cộng dịch vụ vào hóa đơn, không áp dụng giảm giá dịch vụ.",
+                        );
+                    }}
+                />
+            )}
+            {form === "reschedule" && (
+                <RescheduleBooking
+                    booking={booking}
+                    close={() => setForm("")}
+                    after={refreshPayment}
                 />
             )}
             {form === "review" && (
@@ -840,8 +963,9 @@ export default function Account({
                                         </span>
                                     </div>
                                     <p className="my-3">
-                                        {b.court?.branch?.district} ·{" "}
-                                        {b.court?.name}
+                                        {b.court?.branch?.ward ||
+                                            b.court?.branch?.district}{" "}
+                                        · {b.court?.name}
                                     </p>
                                     <p className="text-sm text-[#6d8474]">
                                         {stamp(b.starts_at)}
@@ -956,8 +1080,9 @@ export default function Account({
                                     <Card key={p.id}>
                                         <b>{p.title}</b>
                                         <p className="mt-2 text-sm text-slate-500">
-                                            {p.branch?.district} ·{" "}
-                                            {stamp(p.starts_at)}
+                                            {p.branch?.ward ||
+                                                p.branch?.district}{" "}
+                                            · {stamp(p.starts_at)}
                                         </p>
                                         <span className="badge badge-green mt-3">
                                             {p.moderation_status === "pending"
@@ -1071,7 +1196,11 @@ export default function Account({
                                     onClick={() =>
                                         run(async () => {
                                             await api(
-                                                "payments/momo/" +
+                                                "payments/" +
+                                                    (p.partner_code === "PAYOS"
+                                                        ? "payos"
+                                                        : "momo") +
+                                                    "/" +
                                                     p.id +
                                                     "/sync",
                                                 "POST",

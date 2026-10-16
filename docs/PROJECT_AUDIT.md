@@ -1,4 +1,13 @@
-# Rà soát toàn bộ Badminton Hub · 12/10/2026
+# Rà soát toàn bộ Badminton Hub · 17/10/2026
+
+## Phạm vi hoàn thiện mới · 16/10/2026
+
+Admin đã tách giao diện khỏi khách/điều hành; dùng chung thành phần báo cáo, cùng bảng/màu xanh/thống kê và phân trang, thẻ bài chờ duyệt mở danh sách có đủ trạng thái. PayOS có trang cấu hình riêng trong mục thanh toán, xử lý xác thực/đối soát thật và giữ khóa phía máy chủ. Phần còn chờ để hoạt động thật là đăng nhập/kênh thanh toán PayOS và HTTPS webhook; không đánh dấu đã kết nối khi chưa có khóa.
+
+Đã bổ sung dịch vụ trong buổi chơi vào hóa đơn, giữ giảm giá chỉ trên sân; chọn sân trống cùng chi nhánh khi đổi lịch; biểu mẫu khách mới có kiểm tra trùng; lưu bước đặt sân và giới hạn thời lượng; phân trang chi nhánh/sân/huấn luyện viên/bảng dữ liệu; làm lại chi tiết bài, trả lời bình luận có focus, thông báo từ chối và khóa sửa nội dung đã duyệt; làm rõ đường dẫn viết đánh giá sau buổi chơi và sửa cửa sổ đặt học. Gỡ bài cũ qua bộ lọc thời gian là ẩn có lưu lịch sử, chưa có dọn ảnh/tin nhắn vật lý tự động. Giới hạn đổi lịch có ưu đãi/huấn luyện viên, lịch đã bắt đầu, khoản thu vượt giá mới vẫn giữ để tránh sai hóa đơn.
+
+Địa chỉ mẫu dùng phường/xã theo [danh sách chính thức TP.HCM](https://tphcm.baochinhphu.vn/danh-sach-chinh-thuc-168-phuong-xa-cua-tphcm-sau-sap-xep-101250617000144317.htm). Đây là dữ liệu môn học, không phải danh bạ sân đã kiểm chứng địa chỉ thực. Google Maps hiện dùng [Maps URLs](https://developers.google.com/maps/documentation/urls/get-started), không phải bản đồ nhúng/Directions API tính phí. Admin có trường tọa độ và Place ID để chỉnh vị trí đúng.
+
 
 Phạm vi: mã Laravel/React hiện tại, dữ liệu MySQL, 5 vai trò, nguồn giao diện `huancode2203/SNCUCAHuNRose` tại `ae1c406618c1f60590640dce41f7a3c17d709ed7` và hai chat đã xác nhận: “Kiểm tra hệ thống đặt sân”, “Kiểm tra tính năng layout”. Đây là bản đồ chức năng và các điểm phát hiện khi đọc mã, chạy kiểm thử và thử một số luồng trên trình duyệt; không phải cam kết đã thử thủ công mọi tổ hợp thao tác.
 

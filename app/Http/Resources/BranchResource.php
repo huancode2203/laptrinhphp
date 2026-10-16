@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\LocationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -12,7 +13,11 @@ class BranchResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'district' => $this->district,
+            'district' => $this->ward ?: $this->district,
+            'ward' => $this->ward ?: $this->district,
+            'directions_url' => app(LocationService::class)->directions($this->resource),
+            'google_place_id' => $this->google_place_id,
+            'latitude' => $this->latitude, 'longitude' => $this->longitude,
             'address' => $this->address,
             'phone' => $this->phone,
             'amenities' => $this->amenities,

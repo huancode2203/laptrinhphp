@@ -3,8 +3,14 @@ import Icon from "./Icon";
 import { api, useHub } from "./hub";
 import { Card, Empty, Editor } from "./ui";
 import type { Row } from "./data";
+import PayosSetup from "./PayosSetup";
 
 const guides: Record<string, string[]> = {
+    payos: [
+        "Mở PayOS, tạo kênh thanh toán gắn với tài khoản ngân hàng được PayOS hỗ trợ.",
+        "Lấy Client ID, API Key và Checksum Key của kênh rồi nhập vào biểu mẫu PayOS phía trên.",
+        "Đăng ký địa chỉ nhận kết quả khi website đã có HTTPS công khai. Khóa bí mật chỉ lưu trên máy chủ.",
+    ],
     ai_search: [
         "Ollama: tải model tìm sân và giữ Ollama chạy trên máy chủ.",
         "OpenAI: tạo API key trong tài khoản API của bạn, chọn provider openai và đặt tên model OpenAI cho tìm sân.",
@@ -90,6 +96,7 @@ export default function IntegrationPanel() {
                     Demo. OTP demo không xác thực email hay điện thoại thật.
                 </p>
             )}
+            <PayosSetup />
             <FirebaseSetup
                 after={async () => {
                     await load();

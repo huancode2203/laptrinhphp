@@ -1,4 +1,16 @@
-# Kiểm tra bản Laravel / MySQL · cập nhật 12/10/2026
+# Kiểm tra bản Laravel / MySQL · cập nhật 17/10/2026
+
+## Kiểm chứng cập nhật · 16/10/2026
+
+- Thử trên trình duyệt ngày 17/10: Admin 390px không tràn ngang; bấm thẻ bài chờ duyệt mở danh sách; nhóm từ chối có đầy đủ nội dung/lý do. Đặt lúc 22:30 chỉ còn 30 phút nếu cơ sở đóng 23:00; lúc 21:00 tối đa 2 giờ. Chọn trả 100%, Lưu và thoát, Tiếp tục giữ chỗ khôi phục đúng bước và lựa chọn, không gia hạn lượt giữ. Lượt giữ kiểm thử đã được giải phóng qua Đổi lựa chọn, không xác nhận đặt hay trừ tiền trên dữ liệu ứng dụng.
+
+- Toàn bộ PHPUnit: **180 tests đạt** trên SQLite (4.925 assertions) và MySQL 8.4 (lần chạy đầy đủ 4.923 assertions, nhóm cuối 30 tests / 226 assertions) dùng database kiểm thử riêng; không reset database ứng dụng.
+- Laragon Apache/PHP: **160 yêu cầu đạt**, gồm đọc đồng thời và giữ phiên cho customer/manager/staff/cashier/admin.
+- Kiểm thử mới: phân trang/tìm/lọc và phạm vi chi nhánh; khớp chính xác phường kể cả phản hồi AI sai/đưa trường dư; trả toàn bộ chuỗi 4 tuần; chỉ đường Maps; xóa chat cá nhân và AI; quản trị bài bị từ chối/thông báo/khóa sửa bài đã duyệt; phản hồi bình luận cùng bài; thêm dịch vụ nguyên giá/idempotency/khóa hóa đơn đã hoàn tất; đổi sân có cọc và kiểm tra phạm vi, lịch trùng; nhận diện khách trùng +84/0 và email.
+- PayOS kiểm thử với HTTP giả lập có chữ ký: tiền lấy từ hóa đơn, request ký đúng chuẩn, chống request key dùng lại sai, webhook và kiểm tra trạng thái ghi tiền đúng một lần; từ chối chữ ký/số tiền sai; URL trở về giả mạo không ghi tiền; lịch hủy nhận tiền vào ví; phục hồi link khi mất phản hồi tạo giao dịch; chỉ Admin ghi cấu hình mã hóa và không trả khóa trong JSON. Các kiểm thử MoMo vẫn đạt sau khi dùng chung phần ghi nhận tiền.
+- Chưa kiểm thử chuyển tiền thật: PayOS đang ở trang đăng nhập Casso, chưa có thông tin kênh. HTTPS webhook công khai chưa được triển khai. Không gửi email/SMS thật trong lượt này.
+- TypeScript, Vite production build và Pint được chạy cho mã đã sửa. Các ảnh trong thư mục outputs ghi lại giao diện chạy trên Laragon; dữ liệu ứng dụng thực có thể khác SQL demo sạch.
+
 
 ## Mua nước khi đang chơi và gộp hóa đơn sân · 12/10/2026
 

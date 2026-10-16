@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\BookingService;
 use App\CommerceService;
+use App\DemoCatalog;
+use App\LocationService;
 use App\LoyaltyService;
 use App\Models\Branch;
 use App\Models\GameEvent;
@@ -97,6 +99,8 @@ class ExpandedDemoSeeder extends Seeder
             DB::table('demo_data_batches')->where('key', 'expanded-demo-v2')->update(['counts' => json_encode($this->counts), 'updated_at' => now()]);
             $this->command?->info('Đã bổ sung '.array_sum($this->counts).' bản ghi liên kết; '.count($this->bookings).' lịch đặt sân.');
         }, 5);
+        app(LocationService::class)->updateDemoAddresses();
+        app(DemoCatalog::class)->refreshPrices();
     }
 
     private function booking(Branch $branch, User $admin, int $branchIndex, int $day, int $slot, int $hour): void

@@ -268,6 +268,21 @@ export default function SearchAssistant({
                                     >
                                         Chọn sân này
                                     </button>
+                                    <a
+                                        className="btn-outline"
+                                        href={
+                                            c.directions_url ||
+                                            "https://www.google.com/maps/dir/?api=1&destination=" +
+                                                encodeURIComponent(c.address)
+                                        }
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        aria-label={
+                                            "Chỉ đường đến " + c.branch_name
+                                        }
+                                    >
+                                        Chỉ đường ↗
+                                    </a>
                                     {data?.user && (
                                         <button
                                             className="btn-outline"

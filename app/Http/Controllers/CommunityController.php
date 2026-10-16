@@ -45,7 +45,7 @@ class CommunityController extends Controller
             $term = str_replace(['%', '_'], '', $data['search']);
             $query->where(fn ($q) => $q->where('title', 'like', '%'.$term.'%')->orWhere('content', 'like', '%'.$term.'%'));
         }
-        $posts = $query->with(['user:id,name,skill_level', 'branch:id,name,district'])->withCount(['likes', 'comments', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')])->latest()->paginate(20);
+        $posts = $query->with(['user:id,name,skill_level', 'branch:id,name,district,ward'])->withCount(['likes', 'comments', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')])->latest()->paginate(20);
         $posts->through(function ($post) use ($request): array {
             $item = $post->toArray();
             $item['saved'] = $request->user() ? DB::table('saved_posts')->where('user_id', $request->user()->id)->where('community_post_id', $post->id)->exists() : false;
@@ -64,7 +64,7 @@ class CommunityController extends Controller
             $this->assertNotBlocked($request->user(), $post->user_id);
         }
         abort_if(($post->status === 'hidden' || $post->moderation_status !== 'approved') && $post->user_id !== $request->user()?->id && $request->user()?->role !== 'admin', 404);
-        $post->load(['user:id,name,skill_level', 'branch:id,name,district', 'comments.user:id,name'])->loadCount(['likes', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')]);
+        $post->load(['user:id,name,skill_level', 'branch:id,name,district,ward', 'comments.user:id,name'])->loadCount(['likes', 'joins as joined_count' => fn ($q) => $q->where('status', 'accepted')]);
         $data = $post->toArray();
         $data['joins'] = $post->joins()->with('user:id,name,skill_level')->where(function ($q) use ($request, $post): void {
             if ($post->user_id !== $request->user()?->id) {
@@ -80,6 +80,7 @@ class CommunityController extends Controller
     {
         if ($post) {
             abort_unless($post->user_id === $request->user()->id && $post->status !== 'hidden', 403);
+            abort_if($post->moderation_status === 'approved', 422, 'Bài viết đã được duyệt nên không thể sửa nội dung. Bạn có thể đóng bài hoặc đăng bài mới.');
         }
         $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id'], 'title' => ['required', 'string', 'max:150'], 'content' => ['required', 'string', 'max:5000'], 'type' => ['required', Rule::in(['Tìm người đánh', 'Tìm đối thủ', 'Tuyển thành viên', 'Chia sẻ', 'Hỏi đáp', 'Giao lưu'])], 'skill_level' => ['required', 'string', 'max:40'], 'starts_at' => ['required', 'date', 'after:now'], 'capacity' => ['required', 'integer', 'between:1,100'], 'status' => ['sometimes', Rule::in(['open', 'closed'])]]);
         $images = $request->validate(['images' => 'sometimes|array|list|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
@@ -90,6 +91,7 @@ class CommunityController extends Controller
             if ($post) {
                 $post = CommunityPost::query()->lockForUpdate()->findOrFail($post->id);
                 abort_unless($post->user_id === $request->user()->id && $post->status !== 'hidden', 403);
+                abort_if($post->moderation_status === 'approved', 422, 'Bài viết đã được duyệt nên không thể sửa nội dung.');
                 abort_if($post->joins()->where('status', 'accepted')->count() > $data['capacity'], 422, 'Số suất không được nhỏ hơn số người đã duyệt.');
             } else {
                 $post = new CommunityPost;
@@ -216,10 +218,13 @@ class CommunityController extends Controller
 
     public function moderate(Request $request, CommunityPost $post): JsonResponse
     {
-        $data = $request->validate(['status' => ['required', Rule::in(['open', 'closed', 'hidden'])]]);
+        $data = $request->validate(['status' => ['required', Rule::in(['open', 'closed', 'hidden'])], 'reason' => 'nullable|string|max:500']);
+        $reason = $data['reason'] ?? 'Bài viết đã được quản trị viên cập nhật trạng thái.';
+        unset($data['reason']);
         $post->update($data);
         DB::table('content_reports')->where('community_post_id', $post->id)->update(['status' => 'resolved', 'updated_at' => now()]);
         app(BookingService::class)->audit($request->user(), 'community.moderated', $post->id, $data, 'post');
+        $post->user->notify(new HubNotification(['type' => 'community.moderated', 'title' => $post->status === 'hidden' ? 'Bài viết đã được gỡ khỏi cộng đồng' : 'Đã cập nhật bài viết', 'body' => $post->title.': '.$reason, 'post_id' => $post->id]));
 
         return response()->json(['data' => $post]);
     }
@@ -251,7 +256,17 @@ class CommunityController extends Controller
 
     public function conversations(Request $request): JsonResponse
     {
-        $items = app(AccessService::class)->conversations($request->user())->with(['members:id,name,skill_level,last_seen_at,avatar_path', 'messages' => fn ($q) => $q->latest('id')->limit(1)])->latest('updated_at')->get();
+        $items = app(AccessService::class)->conversations($request->user())->with(['members:id,name,skill_level,last_seen_at,avatar_path', 'messages' => fn ($q) => $q->latest('id')->limit(1)])->latest('updated_at')->get()->filter(function ($conversation) use ($request) {
+            $pivot = $conversation->members->firstWhere('id', $request->user()->id)->pivot;
+
+            return ! $pivot->hidden_at || ($conversation->messages->first()?->id ?? 0) > $pivot->cleared_through_id;
+        })->map(function ($conversation) use ($request) {
+            $cutoff = $conversation->members->firstWhere('id', $request->user()->id)->pivot->cleared_through_id;
+            $conversation->setRelation('messages', $conversation->messages->filter(fn ($message) => $message->id > $cutoff)->values());
+            $conversation->members->each(fn ($member) => $member->pivot->makeHidden(['hidden_at', 'cleared_through_id']));
+
+            return $conversation;
+        })->values();
 
         return response()->json(['data' => $items]);
     }
@@ -268,6 +283,7 @@ class CommunityController extends Controller
             User::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
             $conversation = Conversation::firstOrCreate(['direct_key' => implode(':', $ids)], ['title' => $request->user()->name.' · '.$peer->name]);
             $conversation->members()->syncWithoutDetaching($ids);
+            $conversation->members()->updateExistingPivot($request->user()->id, ['hidden_at' => null]);
 
             return $conversation;
         }, 5);
@@ -284,11 +300,15 @@ class CommunityController extends Controller
     {
         $this->assertMember($request, $conversation);
         $data = $request->validate(['after' => ['sometimes', 'integer', 'min:0']]);
-        $query = $conversation->messages()->with('user:id,name');
+        $cutoff = $conversation->members()->where('users.id', $request->user()->id)->firstOrFail()->pivot->cleared_through_id;
+        $query = $conversation->messages()->where('id', '>', $cutoff)->with('user:id,name');
         $messages = isset($data['after']) ? $query->where('id', '>', $data['after'])->orderBy('id')->limit(100)->get() : $query->latest('id')->limit(100)->get()->reverse()->values();
         $conversation->members()->updateExistingPivot($request->user()->id, ['read_at' => now()]);
 
-        return response()->json(['data' => $messages, 'members' => $conversation->members()->get(['users.id', 'name', 'last_seen_at']), 'attachments' => DB::table('media_uploads')->whereIn('id', $messages->flatMap(fn ($m) => $m->attachments ?? []))->get(['id', 'name', 'mime'])]);
+        $members = $conversation->members()->get(['users.id', 'name', 'last_seen_at']);
+        $members->each(fn ($member) => $member->pivot->makeHidden(['hidden_at', 'cleared_through_id']));
+
+        return response()->json(['data' => $messages, 'members' => $members, 'attachments' => DB::table('media_uploads')->whereIn('id', $messages->flatMap(fn ($m) => $m->attachments ?? []))->get(['id', 'name', 'mime'])]);
     }
 
     public function send(Request $request, Conversation $conversation): JsonResponse
@@ -327,6 +347,17 @@ class CommunityController extends Controller
         $conversation->members()->updateExistingPivot($request->user()->id, ['typing_until' => now()->addSeconds(5)]);
 
         return response()->json(['message' => 'ok']);
+    }
+
+    public function deleteConversation(Request $request, Conversation $conversation): JsonResponse
+    {
+        DB::transaction(function () use ($request, $conversation): void {
+            $conversation = Conversation::whereKey($conversation->id)->lockForUpdate()->firstOrFail();
+            $this->assertMember($request, $conversation);
+            $conversation->members()->updateExistingPivot($request->user()->id, ['hidden_at' => now(), 'cleared_through_id' => $conversation->messages()->max('id') ?? 0, 'read_at' => now(), 'typing_until' => null]);
+        });
+
+        return response()->json(['message' => 'Đã xóa cuộc trò chuyện khỏi tài khoản của bạn.']);
     }
 
     public function stream(Request $request, Conversation $conversation): StreamedResponse

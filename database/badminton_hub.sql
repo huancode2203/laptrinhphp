@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.4.3, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: badminton_hub_export_firebase_20261011
+-- Host: 127.0.0.1    Database: badminton_hub_export_workspaces_20261016
 -- ------------------------------------------------------
 -- Server version	8.4.3
 
@@ -25,8 +25,8 @@ DROP TABLE IF EXISTS `ai_search_turns`;
 CREATE TABLE `ai_search_turns` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `result` json NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -56,8 +56,8 @@ DROP TABLE IF EXISTS `audit_logs`;
 CREATE TABLE `audit_logs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
-  `action` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `action` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `subject_id` bigint unsigned NOT NULL,
   `details` json NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -87,9 +87,9 @@ DROP TABLE IF EXISTS `auth_codes`;
 CREATE TABLE `auth_codes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `reset_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reset_hash` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `attempts` tinyint unsigned NOT NULL DEFAULT '0',
   `expires_at` datetime NOT NULL,
   `verified_at` datetime DEFAULT NULL,
@@ -150,7 +150,7 @@ CREATE TABLE `booking_services` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `booking_id` bigint unsigned NOT NULL,
   `service_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `quantity` int unsigned NOT NULL,
   `unit_price` int unsigned NOT NULL,
   `amount` int unsigned NOT NULL,
@@ -181,27 +181,27 @@ DROP TABLE IF EXISTS `bookings`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `bookings` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `reference` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reference` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint unsigned NOT NULL,
   `court_id` bigint unsigned NOT NULL,
   `starts_at` datetime NOT NULL,
   `ends_at` datetime NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'confirmed',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'confirmed',
   `court_amount` int unsigned NOT NULL,
   `service_amount` int unsigned NOT NULL DEFAULT '0',
   `total_amount` int unsigned NOT NULL,
   `paid_amount` int unsigned NOT NULL DEFAULT '0',
-  `notes` text COLLATE utf8mb4_unicode_ci,
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `checked_in_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `coupon_id` bigint unsigned DEFAULT NULL,
   `discount_amount` int unsigned NOT NULL DEFAULT '0',
-  `booking_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single',
-  `series_key` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `coupon_code` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `source` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'online',
+  `booking_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single',
+  `series_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `coupon_code` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `source` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'online',
   `deposit_amount` int NOT NULL DEFAULT '0',
   `payment_expires_at` timestamp NULL DEFAULT NULL,
   `reminded_at` timestamp NULL DEFAULT NULL,
@@ -239,10 +239,10 @@ DROP TABLE IF EXISTS `branches`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `branches` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `district` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `address` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `district` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `amenities` json DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -254,8 +254,13 @@ CREATE TABLE `branches` (
   `deposit_percent` tinyint unsigned NOT NULL DEFAULT '50',
   `payment_minutes` smallint unsigned NOT NULL DEFAULT '30',
   `fixed_discount` tinyint unsigned NOT NULL DEFAULT '15',
-  `image_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  `image_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ward` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `google_place_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `latitude` decimal(10,7) DEFAULT NULL,
+  `longitude` decimal(10,7) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `branches_ward_index` (`ward`)
 ) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -265,7 +270,7 @@ CREATE TABLE `branches` (
 
 LOCK TABLES `branches` WRITE;
 /*!40000 ALTER TABLE `branches` DISABLE KEYS */;
-INSERT INTO `branches` VALUES (1,'Badminton Hub – Quận 1','Quận 1','18 Nguyễn Bỉnh Khiêm, Q.1','028 3822 1108','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(2,'Badminton Hub – Quận 3','Quận 3','210 Võ Văn Tần, Q.3','028 3930 8847','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(3,'Badminton Hub – Bình Thạnh','Bình Thạnh','72 Điện Biên Phủ, Bình Thạnh','028 3514 2233','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(4,'Badminton Hub – Phú Nhuận','Phú Nhuận','93 Phan Xích Long, Phú Nhuận','028 3845 7762','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(5,'Badminton Hub – Gò Vấp','Gò Vấp','45 Quang Trung, Gò Vấp','028 3894 5521','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(6,'Badminton Hub – Tân Bình','Tân Bình','110 Cộng Hòa, Tân Bình','028 3812 3340','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(7,'Badminton Hub – Thủ Đức','Thủ Đức','52 Võ Văn Ngân, Thủ Đức','028 3720 8811','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(8,'Badminton Hub – Quận 7','Quận 7','88 Nguyễn Hữu Thọ, Q.7','028 5416 9203','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL),(9,'Badminton Hub – Thành Thái','Quận 10','Khu thể thao Thành Thái, Quận 10, TP. Hồ Chí Minh','0804000001','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(10,'Badminton Hub – Lạc Long Quân','Quận 11','Khu thể thao Lạc Long Quân, Quận 11, TP. Hồ Chí Minh','0804000002','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(11,'Badminton Hub – Khánh Hội','Quận 4','Khu thể thao Khánh Hội, Quận 4, TP. Hồ Chí Minh','0804000003','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(12,'Badminton Hub – An Dương Vương','Quận 5','Khu thể thao An Dương Vương, Quận 5, TP. Hồ Chí Minh','0804000004','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(13,'Badminton Hub – Bình Phú','Quận 6','Khu thể thao Bình Phú, Quận 6, TP. Hồ Chí Minh','0804000005','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(14,'Badminton Hub – Phạm Hùng','Quận 8','Khu thể thao Phạm Hùng, Quận 8, TP. Hồ Chí Minh','0804000006','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(15,'Badminton Hub – Tân Thới Hiệp','Quận 12','Khu thể thao Tân Thới Hiệp, Quận 12, TP. Hồ Chí Minh','0804000007','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(16,'Badminton Hub – Tên Lửa','Bình Tân','Khu thể thao Tên Lửa, Bình Tân, TP. Hồ Chí Minh','0804000008','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(17,'Badminton Hub – Lũy Bán Bích','Tân Phú','Khu thể thao Lũy Bán Bích, Tân Phú, TP. Hồ Chí Minh','0804000009','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(18,'Badminton Hub – Phú Xuân','Nhà Bè','Khu thể thao Phú Xuân, Nhà Bè, TP. Hồ Chí Minh','0804000010','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(19,'Badminton Hub – Phong Phú','Bình Chánh','Khu thể thao Phong Phú, Bình Chánh, TP. Hồ Chí Minh','0804000011','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(20,'Badminton Hub – Bà Điểm','Hóc Môn','Khu thể thao Bà Điểm, Hóc Môn, TP. Hồ Chí Minh','0804000012','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(21,'Badminton Hub – Tân Phú Trung','Củ Chi','Khu thể thao Tân Phú Trung, Củ Chi, TP. Hồ Chí Minh','0804000013','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(22,'Badminton Hub – An Phú','Thủ Đức','Khu thể thao An Phú, Thủ Đức, TP. Hồ Chí Minh','0804000014','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(23,'Badminton Hub – Thanh Đa','Bình Thạnh','Khu thể thao Thanh Đa, Bình Thạnh, TP. Hồ Chí Minh','0804000015','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(24,'Badminton Hub – Bàu Cát','Tân Bình','Khu thể thao Bàu Cát, Tân Bình, TP. Hồ Chí Minh','0804000016','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(25,'Badminton Hub – Tân Phong','Quận 7','Khu thể thao Tân Phong, Quận 7, TP. Hồ Chí Minh','0804000017','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(26,'Badminton Hub – Phường An Hội','Gò Vấp','Khu thể thao Phường An Hội, Gò Vấp, TP. Hồ Chí Minh','0804000018','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(27,'Badminton Hub – Linh Trung','Thủ Đức','Khu thể thao Linh Trung, Thủ Đức, TP. Hồ Chí Minh','0804000019','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(28,'Badminton Hub – Vĩnh Lộc','Bình Chánh','Khu thể thao Vĩnh Lộc, Bình Chánh, TP. Hồ Chí Minh','0804000020','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(29,'Badminton Hub – Sơn Kỳ','Tân Phú','Khu thể thao Sơn Kỳ, Tân Phú, TP. Hồ Chí Minh','0804000021','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL),(30,'Badminton Hub – An Lạc','Bình Tân','Khu thể thao An Lạc, Bình Tân, TP. Hồ Chí Minh','0804000022','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL);
+INSERT INTO `branches` VALUES (1,'Badminton Hub – Quận 1','Quận 1','18 Nguyễn Bỉnh Khiêm, Phường Sài Gòn, Thành phố Hồ Chí Minh','028 3822 1108','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Sài Gòn',NULL,NULL,NULL),(2,'Badminton Hub – Quận 3','Quận 3','210 Võ Văn Tần, Phường Bàn Cờ, Thành phố Hồ Chí Minh','028 3930 8847','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Bàn Cờ',NULL,NULL,NULL),(3,'Badminton Hub – Bình Thạnh','Bình Thạnh','72 Điện Biên Phủ, Phường Thạnh Mỹ Tây, Thành phố Hồ Chí Minh','028 3514 2233','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Thạnh Mỹ Tây',NULL,NULL,NULL),(4,'Badminton Hub – Phú Nhuận','Phú Nhuận','93 Phan Xích Long, Phường Cầu Kiệu, Thành phố Hồ Chí Minh','028 3845 7762','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Cầu Kiệu',NULL,NULL,NULL),(5,'Badminton Hub – Gò Vấp','Gò Vấp','45 Quang Trung, Phường Hạnh Thông, Thành phố Hồ Chí Minh','028 3894 5521','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Hạnh Thông',NULL,NULL,NULL),(6,'Badminton Hub – Tân Bình','Tân Bình','110 Cộng Hòa, Phường Tân Bình, Thành phố Hồ Chí Minh','028 3812 3340','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Tân Bình',NULL,NULL,NULL),(7,'Badminton Hub – Thủ Đức','Thủ Đức','52 Võ Văn Ngân, Phường Thủ Đức, Thành phố Hồ Chí Minh','028 3720 8811','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Thủ Đức',NULL,NULL,NULL),(8,'Badminton Hub – Quận 7','Quận 7','88 Nguyễn Hữu Thọ, Phường Tân Hưng, Thành phố Hồ Chí Minh','028 5416 9203','[\"Parking\", \"Shower\", \"Cafe\", \"WiFi\"]',1,'2026-10-11 10:43:33','2026-10-11 10:43:33',180,1380,960,90,50,30,15,NULL,'Phường Tân Hưng',NULL,NULL,NULL),(9,'Badminton Hub – Thành Thái','Quận 10','Khu thể thao Thành Thái, Phường Diên Hồng, Thành phố Hồ Chí Minh','0804000001','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Diên Hồng',NULL,NULL,NULL),(10,'Badminton Hub – Lạc Long Quân','Quận 11','Khu thể thao Lạc Long Quân, Phường Hòa Bình, Thành phố Hồ Chí Minh','0804000002','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Hòa Bình',NULL,NULL,NULL),(11,'Badminton Hub – Khánh Hội','Quận 4','Khu thể thao Khánh Hội, Phường Khánh Hội, Thành phố Hồ Chí Minh','0804000003','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Khánh Hội',NULL,NULL,NULL),(12,'Badminton Hub – An Dương Vương','Quận 5','Khu thể thao An Dương Vương, Phường An Đông, Thành phố Hồ Chí Minh','0804000004','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường An Đông',NULL,NULL,NULL),(13,'Badminton Hub – Bình Phú','Quận 6','Khu thể thao Bình Phú, Phường Bình Phú, Thành phố Hồ Chí Minh','0804000005','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Bình Phú',NULL,NULL,NULL),(14,'Badminton Hub – Phạm Hùng','Quận 8','Khu thể thao Phạm Hùng, Phường Chánh Hưng, Thành phố Hồ Chí Minh','0804000006','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Chánh Hưng',NULL,NULL,NULL),(15,'Badminton Hub – Tân Thới Hiệp','Quận 12','Khu thể thao Tân Thới Hiệp, Phường Tân Thới Hiệp, Thành phố Hồ Chí Minh','0804000007','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Tân Thới Hiệp',NULL,NULL,NULL),(16,'Badminton Hub – Tên Lửa','Bình Tân','Khu thể thao Tên Lửa, Phường An Lạc, Thành phố Hồ Chí Minh','0804000008','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường An Lạc',NULL,NULL,NULL),(17,'Badminton Hub – Lũy Bán Bích','Tân Phú','Khu thể thao Lũy Bán Bích, Phường Tân Phú, Thành phố Hồ Chí Minh','0804000009','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Tân Phú',NULL,NULL,NULL),(18,'Badminton Hub – Phú Xuân','Nhà Bè','Khu thể thao Phú Xuân, Xã Nhà Bè, Thành phố Hồ Chí Minh','0804000010','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Xã Nhà Bè',NULL,NULL,NULL),(19,'Badminton Hub – Phong Phú','Bình Chánh','Khu thể thao Phong Phú, Xã Bình Hưng, Thành phố Hồ Chí Minh','0804000011','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Xã Bình Hưng',NULL,NULL,NULL),(20,'Badminton Hub – Bà Điểm','Hóc Môn','Khu thể thao Bà Điểm, Xã Bà Điểm, Thành phố Hồ Chí Minh','0804000012','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Xã Bà Điểm',NULL,NULL,NULL),(21,'Badminton Hub – Tân Phú Trung','Củ Chi','Khu thể thao Tân Phú Trung, Xã Củ Chi, Thành phố Hồ Chí Minh','0804000013','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Xã Củ Chi',NULL,NULL,NULL),(22,'Badminton Hub – An Phú','Thủ Đức','Khu thể thao An Phú, Phường An Khánh, Thành phố Hồ Chí Minh','0804000014','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường An Khánh',NULL,NULL,NULL),(23,'Badminton Hub – Thanh Đa','Bình Thạnh','Khu thể thao Thanh Đa, Phường Bình Quới, Thành phố Hồ Chí Minh','0804000015','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Bình Quới',NULL,NULL,NULL),(24,'Badminton Hub – Bàu Cát','Tân Bình','Khu thể thao Bàu Cát, Phường Tân Bình, Thành phố Hồ Chí Minh','0804000016','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Tân Bình',NULL,NULL,NULL),(25,'Badminton Hub – Tân Phong','Quận 7','Khu thể thao Tân Phong, Phường Tân Hưng, Thành phố Hồ Chí Minh','0804000017','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Tân Hưng',NULL,NULL,NULL),(26,'Badminton Hub – Phường An Hội','Gò Vấp','Khu thể thao Phường An Hội, Phường An Hội Tây, Thành phố Hồ Chí Minh','0804000018','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường An Hội Tây',NULL,NULL,NULL),(27,'Badminton Hub – Linh Trung','Thủ Đức','Khu thể thao Linh Trung, Phường Linh Xuân, Thành phố Hồ Chí Minh','0804000019','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Linh Xuân',NULL,NULL,NULL),(28,'Badminton Hub – Vĩnh Lộc','Bình Chánh','Khu thể thao Vĩnh Lộc, Xã Vĩnh Lộc, Thành phố Hồ Chí Minh','0804000020','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Xã Vĩnh Lộc',NULL,NULL,NULL),(29,'Badminton Hub – Sơn Kỳ','Tân Phú','Khu thể thao Sơn Kỳ, Phường Tân Phú, Thành phố Hồ Chí Minh','0804000021','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường Tân Phú',NULL,NULL,NULL),(30,'Badminton Hub – An Lạc','Bình Tân','Khu thể thao An Lạc, Phường An Lạc, Thành phố Hồ Chí Minh','0804000022','[\"Parking\", \"WiFi\", \"Shower\"]',1,'2026-10-11 10:43:36','2026-10-11 10:43:36',360,1380,960,90,50,30,15,NULL,'Phường An Lạc',NULL,NULL,NULL);
 /*!40000 ALTER TABLE `branches` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -277,8 +282,8 @@ DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cache` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` bigint NOT NULL,
   PRIMARY KEY (`key`),
   KEY `cache_expiration_index` (`expiration`)
@@ -302,8 +307,8 @@ DROP TABLE IF EXISTS `cache_locks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cache_locks` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `owner` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `owner` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` bigint NOT NULL,
   PRIMARY KEY (`key`),
   KEY `cache_locks_expiration_index` (`expiration`)
@@ -328,10 +333,10 @@ DROP TABLE IF EXISTS `chat_messages`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `chat_messages` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `conversation_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -370,7 +375,7 @@ CREATE TABLE `coach_sessions` (
   `starts_at` timestamp NOT NULL,
   `ends_at` timestamp NOT NULL,
   `amount` int NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'confirmed',
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'confirmed',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -403,8 +408,8 @@ DROP TABLE IF EXISTS `coaches`;
 CREATE TABLE `coaches` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `branch_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `bio` text COLLATE utf8mb4_unicode_ci,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bio` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `hourly_rate` int unsigned NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -437,10 +442,10 @@ CREATE TABLE `commerce_payments` (
   `branch_id` bigint unsigned DEFAULT NULL,
   `user_id` bigint unsigned NOT NULL,
   `actor_id` bigint unsigned NOT NULL,
-  `subject_type` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_type` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `subject_id` bigint unsigned NOT NULL,
-  `kind` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `method` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `kind` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `method` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `amount` int unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -476,16 +481,16 @@ CREATE TABLE `community_posts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
   `branch_id` bigint unsigned NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `skill_level` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `skill_level` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `starts_at` datetime NOT NULL,
   `capacity` smallint unsigned NOT NULL DEFAULT '4',
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `moderation_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'approved',
+  `moderation_status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'approved',
   `moderation_result` json DEFAULT NULL,
   `moderated_at` timestamp NULL DEFAULT NULL,
   `moderated_by` bigint unsigned DEFAULT NULL,
@@ -521,10 +526,10 @@ DROP TABLE IF EXISTS `content_pages`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `content_pages` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'page',
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'page',
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `published` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -554,8 +559,8 @@ CREATE TABLE `content_reports` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `community_post_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned NOT NULL,
-  `reason` varchar(1000) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reason` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -588,6 +593,8 @@ CREATE TABLE `conversation_members` (
   `user_id` bigint unsigned NOT NULL,
   `read_at` datetime DEFAULT NULL,
   `typing_until` timestamp NULL DEFAULT NULL,
+  `hidden_at` timestamp NULL DEFAULT NULL,
+  `cleared_through_id` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`conversation_id`,`user_id`),
   KEY `conversation_members_user_id_foreign` (`user_id`),
   CONSTRAINT `conversation_members_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE,
@@ -601,7 +608,7 @@ CREATE TABLE `conversation_members` (
 
 LOCK TABLES `conversation_members` WRITE;
 /*!40000 ALTER TABLE `conversation_members` DISABLE KEYS */;
-INSERT INTO `conversation_members` VALUES (1,27,NULL,NULL),(1,31,NULL,NULL),(2,28,NULL,NULL),(2,32,NULL,NULL),(3,29,NULL,NULL),(3,33,NULL,NULL),(4,30,NULL,NULL),(4,34,NULL,NULL),(5,31,NULL,NULL),(5,35,NULL,NULL),(6,33,NULL,NULL),(6,37,NULL,NULL),(7,5,NULL,NULL),(7,38,NULL,NULL),(8,35,NULL,NULL),(8,39,NULL,NULL),(9,36,NULL,NULL),(9,40,NULL,NULL),(10,37,NULL,NULL),(10,41,NULL,NULL),(11,39,NULL,NULL),(11,43,NULL,NULL),(12,40,NULL,NULL),(12,44,NULL,NULL),(13,41,NULL,NULL),(13,45,NULL,NULL),(14,5,NULL,NULL),(14,46,NULL,NULL),(15,43,NULL,NULL),(15,47,NULL,NULL),(16,45,NULL,NULL),(16,49,NULL,NULL),(17,46,NULL,NULL),(17,50,NULL,NULL),(18,47,NULL,NULL),(18,51,NULL,NULL),(19,48,NULL,NULL),(19,52,NULL,NULL),(20,49,NULL,NULL),(20,53,NULL,NULL),(21,51,NULL,NULL),(21,55,NULL,NULL),(22,52,NULL,NULL),(22,56,NULL,NULL),(23,53,NULL,NULL),(23,57,NULL,NULL),(24,54,NULL,NULL),(24,58,NULL,NULL),(25,55,NULL,NULL),(25,59,NULL,NULL),(26,57,NULL,NULL),(26,61,NULL,NULL),(27,5,NULL,NULL),(27,62,NULL,NULL),(28,59,NULL,NULL),(28,63,NULL,NULL),(29,60,NULL,NULL),(29,64,NULL,NULL),(30,61,NULL,NULL),(30,65,NULL,NULL),(31,27,NULL,NULL),(31,63,NULL,NULL),(32,28,NULL,NULL),(32,64,NULL,NULL),(33,29,NULL,NULL),(33,65,NULL,NULL),(34,5,NULL,NULL),(34,30,NULL,NULL),(35,27,NULL,NULL),(35,31,NULL,NULL),(36,29,NULL,NULL),(36,33,NULL,NULL),(37,30,NULL,NULL),(37,34,NULL,NULL),(38,31,NULL,NULL),(38,35,NULL,NULL),(39,32,NULL,NULL),(39,36,NULL,NULL),(40,33,NULL,NULL),(40,37,NULL,NULL),(41,35,NULL,NULL),(41,39,NULL,NULL),(42,36,NULL,NULL),(42,40,NULL,NULL),(43,37,NULL,NULL),(43,41,NULL,NULL),(44,38,NULL,NULL),(44,42,NULL,NULL),(45,39,NULL,NULL),(45,43,NULL,NULL),(46,41,NULL,NULL),(46,45,NULL,NULL),(47,5,NULL,NULL),(47,46,NULL,NULL),(48,43,NULL,NULL),(48,47,NULL,NULL),(49,44,NULL,NULL),(49,48,NULL,NULL),(50,45,NULL,NULL),(50,49,NULL,NULL);
+INSERT INTO `conversation_members` VALUES (1,27,NULL,NULL,NULL,0),(1,31,NULL,NULL,NULL,0),(2,28,NULL,NULL,NULL,0),(2,32,NULL,NULL,NULL,0),(3,29,NULL,NULL,NULL,0),(3,33,NULL,NULL,NULL,0),(4,30,NULL,NULL,NULL,0),(4,34,NULL,NULL,NULL,0),(5,31,NULL,NULL,NULL,0),(5,35,NULL,NULL,NULL,0),(6,33,NULL,NULL,NULL,0),(6,37,NULL,NULL,NULL,0),(7,5,NULL,NULL,NULL,0),(7,38,NULL,NULL,NULL,0),(8,35,NULL,NULL,NULL,0),(8,39,NULL,NULL,NULL,0),(9,36,NULL,NULL,NULL,0),(9,40,NULL,NULL,NULL,0),(10,37,NULL,NULL,NULL,0),(10,41,NULL,NULL,NULL,0),(11,39,NULL,NULL,NULL,0),(11,43,NULL,NULL,NULL,0),(12,40,NULL,NULL,NULL,0),(12,44,NULL,NULL,NULL,0),(13,41,NULL,NULL,NULL,0),(13,45,NULL,NULL,NULL,0),(14,5,NULL,NULL,NULL,0),(14,46,NULL,NULL,NULL,0),(15,43,NULL,NULL,NULL,0),(15,47,NULL,NULL,NULL,0),(16,45,NULL,NULL,NULL,0),(16,49,NULL,NULL,NULL,0),(17,46,NULL,NULL,NULL,0),(17,50,NULL,NULL,NULL,0),(18,47,NULL,NULL,NULL,0),(18,51,NULL,NULL,NULL,0),(19,48,NULL,NULL,NULL,0),(19,52,NULL,NULL,NULL,0),(20,49,NULL,NULL,NULL,0),(20,53,NULL,NULL,NULL,0),(21,51,NULL,NULL,NULL,0),(21,55,NULL,NULL,NULL,0),(22,52,NULL,NULL,NULL,0),(22,56,NULL,NULL,NULL,0),(23,53,NULL,NULL,NULL,0),(23,57,NULL,NULL,NULL,0),(24,54,NULL,NULL,NULL,0),(24,58,NULL,NULL,NULL,0),(25,55,NULL,NULL,NULL,0),(25,59,NULL,NULL,NULL,0),(26,57,NULL,NULL,NULL,0),(26,61,NULL,NULL,NULL,0),(27,5,NULL,NULL,NULL,0),(27,62,NULL,NULL,NULL,0),(28,59,NULL,NULL,NULL,0),(28,63,NULL,NULL,NULL,0),(29,60,NULL,NULL,NULL,0),(29,64,NULL,NULL,NULL,0),(30,61,NULL,NULL,NULL,0),(30,65,NULL,NULL,NULL,0),(31,27,NULL,NULL,NULL,0),(31,63,NULL,NULL,NULL,0),(32,28,NULL,NULL,NULL,0),(32,64,NULL,NULL,NULL,0),(33,29,NULL,NULL,NULL,0),(33,65,NULL,NULL,NULL,0),(34,5,NULL,NULL,NULL,0),(34,30,NULL,NULL,NULL,0),(35,27,NULL,NULL,NULL,0),(35,31,NULL,NULL,NULL,0),(36,29,NULL,NULL,NULL,0),(36,33,NULL,NULL,NULL,0),(37,30,NULL,NULL,NULL,0),(37,34,NULL,NULL,NULL,0),(38,31,NULL,NULL,NULL,0),(38,35,NULL,NULL,NULL,0),(39,32,NULL,NULL,NULL,0),(39,36,NULL,NULL,NULL,0),(40,33,NULL,NULL,NULL,0),(40,37,NULL,NULL,NULL,0),(41,35,NULL,NULL,NULL,0),(41,39,NULL,NULL,NULL,0),(42,36,NULL,NULL,NULL,0),(42,40,NULL,NULL,NULL,0),(43,37,NULL,NULL,NULL,0),(43,41,NULL,NULL,NULL,0),(44,38,NULL,NULL,NULL,0),(44,42,NULL,NULL,NULL,0),(45,39,NULL,NULL,NULL,0),(45,43,NULL,NULL,NULL,0),(46,41,NULL,NULL,NULL,0),(46,45,NULL,NULL,NULL,0),(47,5,NULL,NULL,NULL,0),(47,46,NULL,NULL,NULL,0),(48,43,NULL,NULL,NULL,0),(48,47,NULL,NULL,NULL,0),(49,44,NULL,NULL,NULL,0),(49,48,NULL,NULL,NULL,0),(50,45,NULL,NULL,NULL,0),(50,49,NULL,NULL,NULL,0);
 /*!40000 ALTER TABLE `conversation_members` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -614,8 +621,8 @@ DROP TABLE IF EXISTS `conversations`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `conversations` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `direct_key` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `direct_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `community_post_id` bigint unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -648,9 +655,9 @@ DROP TABLE IF EXISTS `coupons`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `coupons` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `branch_id` bigint unsigned DEFAULT NULL,
-  `kind` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `kind` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `value` int unsigned NOT NULL,
   `minimum_amount` int unsigned NOT NULL DEFAULT '0',
   `max_discount` int unsigned DEFAULT NULL,
@@ -720,7 +727,7 @@ DROP TABLE IF EXISTS `court_holds`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `court_holds` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint unsigned NOT NULL,
   `court_id` bigint unsigned NOT NULL,
   `starts_at` datetime NOT NULL,
@@ -758,8 +765,8 @@ DROP TABLE IF EXISTS `courts`;
 CREATE TABLE `courts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `branch_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
   `hourly_rate` int unsigned NOT NULL,
   `peak_rate` int unsigned NOT NULL,
   `weekend_rate` int unsigned NOT NULL,
@@ -789,7 +796,7 @@ DROP TABLE IF EXISTS `demo_data_batches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `demo_data_batches` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `counts` json NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -820,8 +827,8 @@ CREATE TABLE `event_registrations` (
   `user_id` bigint unsigned NOT NULL,
   `amount` int unsigned NOT NULL,
   `paid_amount` int unsigned NOT NULL DEFAULT '0',
-  `method` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cash',
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `method` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cash',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -851,11 +858,11 @@ DROP TABLE IF EXISTS `failed_jobs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `failed_jobs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uuid` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `connection` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `uuid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `connection` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `exception` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`),
@@ -910,17 +917,17 @@ CREATE TABLE `game_events` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `branch_id` bigint unsigned NOT NULL,
   `created_by` bigint unsigned NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `format` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đơn · Loại trực tiếp',
-  `skill_level` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Mọi trình độ',
-  `image` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'photo-1626224583764-f87db24ac4ea',
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `format` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Đơn · Loại trực tiếp',
+  `skill_level` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Mọi trình độ',
+  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'photo-1626224583764-f87db24ac4ea',
   `starts_at` datetime NOT NULL,
   `ends_at` datetime NOT NULL,
   `capacity` smallint unsigned NOT NULL,
   `fee` int unsigned NOT NULL DEFAULT '0',
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -949,8 +956,8 @@ DROP TABLE IF EXISTS `integration_settings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `integration_settings` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`key`)
@@ -975,15 +982,15 @@ DROP TABLE IF EXISTS `integration_transactions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `integration_transactions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `transaction_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `provider` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `transaction_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `booking_id` bigint unsigned DEFAULT NULL,
   `amount` int NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `account` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci,
+  `account` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   UNIQUE KEY `integration_transactions_provider_transaction_id_unique` (`provider`,`transaction_id`),
   KEY `integration_transactions_booking_id_foreign` (`booking_id`),
@@ -1010,11 +1017,11 @@ DROP TABLE IF EXISTS `inventory_adjustments`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `inventory_adjustments` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `product_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned NOT NULL,
   `delta` int NOT NULL,
-  `reason` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1044,13 +1051,13 @@ DROP TABLE IF EXISTS `job_batches`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `job_batches` (
-  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `total_jobs` int NOT NULL,
   `pending_jobs` int NOT NULL,
   `failed_jobs` int NOT NULL,
-  `failed_job_ids` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `options` mediumtext COLLATE utf8mb4_unicode_ci,
+  `failed_job_ids` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `options` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `cancelled_at` int DEFAULT NULL,
   `created_at` int NOT NULL,
   `finished_at` int DEFAULT NULL,
@@ -1076,8 +1083,8 @@ DROP TABLE IF EXISTS `jobs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `jobs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `attempts` smallint unsigned NOT NULL,
   `reserved_at` int unsigned DEFAULT NULL,
   `available_at` int unsigned NOT NULL,
@@ -1106,10 +1113,10 @@ DROP TABLE IF EXISTS `loyalty_entries`;
 CREATE TABLE `loyalty_entries` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
-  `request_key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `points` int NOT NULL,
   `balance` int NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1138,7 +1145,7 @@ DROP TABLE IF EXISTS `loyalty_rewards`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `loyalty_rewards` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `points` int unsigned NOT NULL,
   `wallet_amount` int unsigned NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
@@ -1170,8 +1177,8 @@ CREATE TABLE `maintenances` (
   `court_id` bigint unsigned NOT NULL,
   `starts_at` datetime NOT NULL,
   `ends_at` datetime NOT NULL,
-  `reason` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'scheduled',
+  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'scheduled',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1200,9 +1207,9 @@ DROP TABLE IF EXISTS `media_uploads`;
 CREATE TABLE `media_uploads` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
-  `path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `mime` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mime` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `size` int unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -1231,7 +1238,7 @@ DROP TABLE IF EXISTS `membership_plans`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `membership_plans` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` int unsigned NOT NULL,
   `discount_percent` tinyint unsigned NOT NULL DEFAULT '0',
   `duration_days` smallint unsigned NOT NULL DEFAULT '30',
@@ -1266,9 +1273,9 @@ CREATE TABLE `memberships` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
   `membership_plan_id` bigint unsigned NOT NULL,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `amount` int unsigned NOT NULL,
-  `method` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `method` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `starts_at` datetime NOT NULL,
   `expires_at` datetime NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1301,10 +1308,10 @@ DROP TABLE IF EXISTS `migrations`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `migrations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `migration` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1313,7 +1320,7 @@ CREATE TABLE `migrations` (
 
 LOCK TABLES `migrations` WRITE;
 /*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_10_08_080648_create_badminton_tables',1),(5,'2026_10_08_173715_create_notifications_table',1),(6,'2026_10_08_174754_extend_hub_business_modules',1),(7,'2026_10_08_175737_finish_hub_integrations',1),(8,'2026_10_09_033306_complete_hub_features_and_ai',1),(9,'2026_10_09_090952_add_bank_reconciliation_details',1),(10,'2026_10_09_200716_align_booking_pos_ai_and_demo_data',1),(11,'2026_10_11_002447_add_demo_codes_and_bank_settings',1),(12,'2026_10_11_122654_add_firebase_identity_to_users',1);
+INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_10_08_080648_create_badminton_tables',1),(5,'2026_10_08_173715_create_notifications_table',1),(6,'2026_10_08_174754_extend_hub_business_modules',1),(7,'2026_10_08_175737_finish_hub_integrations',1),(8,'2026_10_09_033306_complete_hub_features_and_ai',1),(9,'2026_10_09_090952_add_bank_reconciliation_details',1),(10,'2026_10_09_200716_align_booking_pos_ai_and_demo_data',1),(11,'2026_10_11_002447_add_demo_codes_and_bank_settings',1),(12,'2026_10_11_122654_add_firebase_identity_to_users',1),(13,'2026_10_16_164420_add_ward_and_personal_chat_visibility',2),(14,'2026_10_16_213704_refresh_default_demo_catalog_prices',3);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1325,11 +1332,11 @@ DROP TABLE IF EXISTS `notifications`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `notifications` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `notifiable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `notifiable_id` bigint unsigned NOT NULL,
-  `data` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `data` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `read_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -1356,8 +1363,8 @@ DROP TABLE IF EXISTS `password_reset_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `password_reset_tokens` (
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1381,18 +1388,18 @@ DROP TABLE IF EXISTS `payment_attempts`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `payment_attempts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `order_id` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `order_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint unsigned NOT NULL,
   `booking_id` bigint unsigned DEFAULT NULL,
-  `purpose` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `partner_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `purpose` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `partner_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `amount` int unsigned NOT NULL,
-  `order_info` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `extra_data` varchar(1000) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `pay_url` text COLLATE utf8mb4_unicode_ci,
-  `trans_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `order_info` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `extra_data` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `pay_url` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `trans_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `expires_at` datetime NOT NULL,
   `result_code` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1429,11 +1436,11 @@ CREATE TABLE `payments` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `booking_id` bigint unsigned NOT NULL,
   `received_by` bigint unsigned NOT NULL,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `kind` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'payment',
-  `method` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `kind` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'payment',
+  `method` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `amount` int unsigned NOT NULL,
-  `notes` text COLLATE utf8mb4_unicode_ci,
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1465,8 +1472,8 @@ DROP TABLE IF EXISTS `phone_codes`;
 CREATE TABLE `phone_codes` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
-  `phone` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `attempts` tinyint unsigned NOT NULL DEFAULT '0',
   `expires_at` timestamp NOT NULL,
   `used_at` timestamp NULL DEFAULT NULL,
@@ -1498,7 +1505,7 @@ CREATE TABLE `post_comments` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `community_post_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `parent_id` bigint unsigned DEFAULT NULL,
@@ -1533,7 +1540,7 @@ CREATE TABLE `post_joins` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `community_post_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1592,7 +1599,7 @@ CREATE TABLE `pricing_rules` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `branch_id` bigint unsigned NOT NULL,
   `court_id` bigint unsigned DEFAULT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `weekday` tinyint unsigned DEFAULT NULL,
   `date` date DEFAULT NULL,
   `from_minute` smallint unsigned NOT NULL,
@@ -1630,10 +1637,10 @@ DROP TABLE IF EXISTS `products`;
 CREATE TABLE `products` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `branch_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sku` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `icon` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 0xF09F8FB8,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sku` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `icon` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 0xF09F8FB8,
   `price` int unsigned NOT NULL,
   `stock` int unsigned NOT NULL DEFAULT '0',
   `active` tinyint(1) NOT NULL DEFAULT '1',
@@ -1651,7 +1658,7 @@ CREATE TABLE `products` (
 
 LOCK TABLES `products` WRITE;
 /*!40000 ALTER TABLE `products` DISABLE KEYS */;
-INSERT INTO `products` VALUES (1,1,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(2,1,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(3,1,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(4,1,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(5,1,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(6,1,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(7,2,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(8,2,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(9,2,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(10,2,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(11,2,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(12,2,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(13,3,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(14,3,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(15,3,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(16,3,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(17,3,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(18,3,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(19,4,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(20,4,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(21,4,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(22,4,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(23,4,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(24,4,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(25,5,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(26,5,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(27,5,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(28,5,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(29,5,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(30,5,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(31,6,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(32,6,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(33,6,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(34,6,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(35,6,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(36,6,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(37,7,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(38,7,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(39,7,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(40,7,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(41,7,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(42,7,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(43,8,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(44,8,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',15000,24,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(45,8,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',120000,15,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(46,8,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',55000,30,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(47,8,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(48,8,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(49,9,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,96,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(50,9,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(51,10,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,96,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(52,10,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(53,11,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,96,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(54,11,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(55,12,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(56,12,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(57,13,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(58,13,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(59,14,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(60,14,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(61,15,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(62,15,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(63,16,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(64,16,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(65,17,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(66,17,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(67,18,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(68,18,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(69,19,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(70,19,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(71,20,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(72,20,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(73,21,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(74,21,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(75,22,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(76,22,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(77,23,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(78,23,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(79,24,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(80,24,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(81,25,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(82,25,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(83,26,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(84,26,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(85,27,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(86,27,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(87,28,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(88,28,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(89,29,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(90,29,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(91,30,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(92,30,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36');
+INSERT INTO `products` VALUES (1,1,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(2,1,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(3,1,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(4,1,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(5,1,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(6,1,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(7,2,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(8,2,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(9,2,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(10,2,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(11,2,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(12,2,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(13,3,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(14,3,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(15,3,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(16,3,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(17,3,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(18,3,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(19,4,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(20,4,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(21,4,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(22,4,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(23,4,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(24,4,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(25,5,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(26,5,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(27,5,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(28,5,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(29,5,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(30,5,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(31,6,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(32,6,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(33,6,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(34,6,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(35,6,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(36,6,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(37,7,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(38,7,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(39,7,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(40,7,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(41,7,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(42,7,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(43,8,'Aquafina 500ml','WTR-001','Nước uống','💧',10000,44,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(44,8,'Pocari Sweat 500ml','WTR-002','Nước uống','🥤',20000,24,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(45,8,'Yonex AS-30 (12 quả)','SHT-001','Cầu lông','🏸',1239000,15,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(46,8,'RSL Tourney (6 quả)','SHT-003','Cầu lông','🏸',150000,30,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(47,8,'Vợt Yonex Astrox 88S','RAC-001','Vợt','🎾',2800000,3,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(48,8,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🎀',35000,42,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(49,9,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,96,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(50,9,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(51,10,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,96,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(52,10,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(53,11,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,96,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(54,11,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(55,12,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(56,12,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(57,13,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(58,13,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(59,14,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(60,14,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(61,15,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(62,15,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(63,16,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(64,16,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(65,17,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(66,17,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(67,18,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(68,18,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(69,19,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(70,19,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(71,20,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(72,20,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(73,21,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(74,21,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(75,22,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(76,22,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(77,23,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(78,23,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(79,24,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(80,24,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(81,25,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(82,25,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(83,26,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(84,26,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(85,27,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(86,27,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(87,28,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(88,28,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(89,29,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(90,29,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(91,30,'Aquafina 500ml','WTR-001','Nước uống','🏸',10000,98,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(92,30,'Grip cuộn Yonex AC102','ACC-001','Phụ kiện','🏸',35000,60,1,'2026-10-11 10:43:36','2026-10-11 10:43:36');
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1666,11 +1673,11 @@ CREATE TABLE `refund_requests` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `booking_id` bigint unsigned NOT NULL,
   `payment_attempt_id` bigint unsigned DEFAULT NULL,
-  `request_key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `order_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `order_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `amount` int NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
-  `message` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `message` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1706,12 +1713,12 @@ CREATE TABLE `reviews` (
   `branch_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned NOT NULL,
   `rating` tinyint unsigned NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `visible` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `images` json DEFAULT NULL,
-  `reply` text COLLATE utf8mb4_unicode_ci,
+  `reply` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `replied_by` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `reviews_booking_id_unique` (`booking_id`),
@@ -1744,8 +1751,8 @@ DROP TABLE IF EXISTS `role_permissions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `role_permissions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `role` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `permission` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `role` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `permission` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `allowed` tinyint(1) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `role_permissions_role_permission_unique` (`role`,`permission`)
@@ -1772,7 +1779,7 @@ CREATE TABLE `sale_items` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `sale_id` bigint unsigned NOT NULL,
   `product_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `quantity` int unsigned NOT NULL,
   `unit_price` int unsigned NOT NULL,
   `amount` int unsigned NOT NULL,
@@ -1805,13 +1812,13 @@ DROP TABLE IF EXISTS `sales`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sales` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `reference` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reference` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `branch_id` bigint unsigned NOT NULL,
   `clerk_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned DEFAULT NULL,
   `total_amount` int unsigned NOT NULL,
-  `method` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `method` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `booking_id` bigint unsigned DEFAULT NULL,
@@ -1876,8 +1883,8 @@ DROP TABLE IF EXISTS `services`;
 CREATE TABLE `services` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `branch_id` bigint unsigned NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `unit` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unit` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` int unsigned NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1894,7 +1901,7 @@ CREATE TABLE `services` (
 
 LOCK TABLES `services` WRITE;
 /*!40000 ALTER TABLE `services` DISABLE KEYS */;
-INSERT INTO `services` VALUES (1,1,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(2,1,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(3,1,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(4,1,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(5,1,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(6,1,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(7,1,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(8,1,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(9,2,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(10,2,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(11,2,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(12,2,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(13,2,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(14,2,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(15,2,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(16,2,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(17,3,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(18,3,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(19,3,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(20,3,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(21,3,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(22,3,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(23,3,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(24,3,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(25,4,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(26,4,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(27,4,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(28,4,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(29,4,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(30,4,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(31,4,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(32,4,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(33,5,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(34,5,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(35,5,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(36,5,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(37,5,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(38,5,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(39,5,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(40,5,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(41,6,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(42,6,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(43,6,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(44,6,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(45,6,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(46,6,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(47,6,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(48,6,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(49,7,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(50,7,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(51,7,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(52,7,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(53,7,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(54,7,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(55,7,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(56,7,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(57,8,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(58,8,'Cầu Yonex AS-30','hộp',120000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(59,8,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(60,8,'Pocari Sweat','chai',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(61,8,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(62,8,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(63,8,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(64,8,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(65,9,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(66,9,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(67,9,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(68,10,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(69,10,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(70,10,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(71,11,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(72,11,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(73,11,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(74,12,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(75,12,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(76,12,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(77,13,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(78,13,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(79,13,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(80,14,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(81,14,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(82,14,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(83,15,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(84,15,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(85,15,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(86,16,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(87,16,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(88,16,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(89,17,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(90,17,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(91,17,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(92,18,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(93,18,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(94,18,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(95,19,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(96,19,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(97,19,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(98,20,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(99,20,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(100,20,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(101,21,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(102,21,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(103,21,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(104,22,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(105,22,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(106,22,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(107,23,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(108,23,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(109,23,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(110,24,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(111,24,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(112,24,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(113,25,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(114,25,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(115,25,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(116,26,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(117,26,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(118,26,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(119,27,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(120,27,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(121,27,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(122,28,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(123,28,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(124,28,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(125,29,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(126,29,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(127,29,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(128,30,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(129,30,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(130,30,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(131,1,'Buổi học cùng Lý Đức Anh #62','buổi',360000,0,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(132,1,'Buổi học cùng Lý Đức Anh #93','buổi',180000,0,'2026-10-11 10:43:37','2026-10-11 10:43:37'),(133,2,'Buổi học cùng Phan Thanh Vy #124','buổi',400000,0,'2026-10-11 10:43:37','2026-10-11 10:43:37'),(134,3,'Buổi học cùng Trương Quốc Minh #155','buổi',220000,0,'2026-10-11 10:43:37','2026-10-11 10:43:37'),(135,3,'Buổi học cùng Trương Quốc Minh #186','buổi',440000,0,'2026-10-11 10:43:38','2026-10-11 10:43:38'),(136,4,'Buổi học cùng Hồ Ngọc Ánh #217','buổi',240000,0,'2026-10-11 10:43:38','2026-10-11 10:43:38'),(137,5,'Buổi học cùng Lâm Hải Đăng #248','buổi',360000,0,'2026-10-11 10:43:38','2026-10-11 10:43:38'),(138,5,'Buổi học cùng Lâm Hải Đăng #279','buổi',180000,0,'2026-10-11 10:43:39','2026-10-11 10:43:39'),(139,6,'Buổi học cùng Cao Ngọc Nhi #310','buổi',400000,0,'2026-10-11 10:43:39','2026-10-11 10:43:39'),(140,7,'Buổi học cùng Đinh Hoàng Nam #341','buổi',220000,0,'2026-10-11 10:43:39','2026-10-11 10:43:39'),(141,8,'Buổi học cùng Tạ Hà My #372','buổi',480000,0,'2026-10-11 10:43:40','2026-10-11 10:43:40'),(142,8,'Buổi học cùng Tạ Hà My #403','buổi',240000,0,'2026-10-11 10:43:40','2026-10-11 10:43:40'),(143,9,'Buổi học cùng Nguyễn Quang Huy #434','buổi',360000,0,'2026-10-11 10:43:41','2026-10-11 10:43:41'),(144,10,'Buổi học cùng Trần Hoài An #465','buổi',200000,0,'2026-10-11 10:43:41','2026-10-11 10:43:41'),(145,11,'Buổi học cùng Lê Minh Đức #496','buổi',440000,0,'2026-10-11 10:43:42','2026-10-11 10:43:42'),(146,11,'Buổi học cùng Lê Minh Đức #527','buổi',220000,0,'2026-10-11 10:43:42','2026-10-11 10:43:42'),(147,12,'Buổi học cùng Phạm Phương Thảo #558','buổi',480000,0,'2026-10-11 10:43:43','2026-10-11 10:43:43'),(148,13,'Buổi học cùng Võ Anh Khoa #589','buổi',180000,0,'2026-10-11 10:43:43','2026-10-11 10:43:43'),(149,14,'Buổi học cùng Đặng Tú Uyên #620','buổi',400000,0,'2026-10-11 10:43:43','2026-10-11 10:43:43'),(150,14,'Buổi học cùng Đặng Tú Uyên #651','buổi',200000,0,'2026-10-11 10:43:44','2026-10-11 10:43:44'),(151,15,'Buổi học cùng Bùi Thanh Sơn #682','buổi',440000,0,'2026-10-11 10:43:44','2026-10-11 10:43:44'),(152,16,'Buổi học cùng Huỳnh Kim Ngân #713','buổi',240000,0,'2026-10-11 10:43:45','2026-10-11 10:43:45'),(153,17,'Buổi học cùng Đỗ Bảo Long #744','buổi',360000,0,'2026-10-11 10:43:45','2026-10-11 10:43:45'),(154,18,'Buổi học cùng Ngô Trúc Quỳnh #775','buổi',200000,0,'2026-10-11 10:43:46','2026-10-11 10:43:46'),(155,18,'Buổi học cùng Ngô Trúc Quỳnh #806','buổi',400000,0,'2026-10-11 10:43:46','2026-10-11 10:43:46'),(156,19,'Buổi học cùng Dương Gia Huy #837','buổi',220000,0,'2026-10-11 10:43:47','2026-10-11 10:43:47'),(157,20,'Buổi học cùng Mai Thanh Hà #868','buổi',480000,0,'2026-10-11 10:43:47','2026-10-11 10:43:47'),(158,21,'Buổi học cùng Lý Hoàng Phúc #899','buổi',180000,0,'2026-10-11 10:43:47','2026-10-11 10:43:47'),(159,21,'Buổi học cùng Lý Hoàng Phúc #930','buổi',360000,0,'2026-10-11 10:43:48','2026-10-11 10:43:48'),(160,22,'Buổi học cùng Phan Bảo Ngân #961','buổi',200000,0,'2026-10-11 10:43:48','2026-10-11 10:43:48'),(161,23,'Buổi học cùng Trương Anh Dũng #992','buổi',440000,0,'2026-10-11 10:43:49','2026-10-11 10:43:49'),(162,24,'Buổi học cùng Hồ Minh Tâm #1023','buổi',240000,0,'2026-10-11 10:43:49','2026-10-11 10:43:49'),(163,25,'Buổi học cùng Lâm Khánh Duy #1054','buổi',360000,0,'2026-10-11 10:43:49','2026-10-11 10:43:49'),(164,25,'Buổi học cùng Lâm Khánh Duy #1085','buổi',180000,0,'2026-10-11 10:43:50','2026-10-11 10:43:50'),(165,26,'Buổi học cùng Cao Phương Anh #1116','buổi',400000,0,'2026-10-11 10:43:51','2026-10-11 10:43:51'),(166,27,'Buổi học cùng Đinh Nhật Quang #1147','buổi',220000,0,'2026-10-11 10:43:51','2026-10-11 10:43:51'),(167,28,'Buổi học cùng Tạ Thu Trang #1178','buổi',480000,0,'2026-10-11 10:43:51','2026-10-11 10:43:51'),(168,28,'Buổi học cùng Tạ Thu Trang #1209','buổi',240000,0,'2026-10-11 10:43:52','2026-10-11 10:43:52'),(169,29,'Buổi học cùng Nguyễn Minh Khôi #1240','buổi',360000,0,'2026-10-11 10:43:52','2026-10-11 10:43:52'),(170,30,'Buổi học cùng Trần Gia Hân #1271','buổi',200000,0,'2026-10-11 10:43:53','2026-10-11 10:43:53');
+INSERT INTO `services` VALUES (1,1,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(2,1,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(3,1,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(4,1,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(5,1,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(6,1,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(7,1,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(8,1,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(9,2,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(10,2,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(11,2,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(12,2,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(13,2,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(14,2,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(15,2,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(16,2,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(17,3,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(18,3,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(19,3,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(20,3,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(21,3,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(22,3,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(23,3,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(24,3,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(25,4,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(26,4,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(27,4,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(28,4,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(29,4,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(30,4,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(31,4,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(32,4,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(33,5,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(34,5,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(35,5,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(36,5,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(37,5,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(38,5,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(39,5,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(40,5,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(41,6,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(42,6,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(43,6,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(44,6,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(45,6,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(46,6,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(47,6,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(48,6,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(49,7,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(50,7,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(51,7,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(52,7,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(53,7,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(54,7,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(55,7,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(56,7,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(57,8,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(58,8,'Cầu Yonex AS-30','hộp',1239000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(59,8,'Nước suối','chai',10000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(60,8,'Pocari Sweat','chai',20000,1,'2026-10-11 10:43:33','2026-10-16 14:42:01'),(61,8,'Thuê giày','buổi',25000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(62,8,'Locker','buổi',15000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(63,8,'Shower','lần',30000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(64,8,'Huấn luyện viên','buổi',200000,1,'2026-10-11 10:43:33','2026-10-11 10:43:33'),(65,9,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(66,9,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(67,9,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(68,10,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(69,10,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(70,10,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(71,11,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(72,11,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(73,11,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(74,12,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(75,12,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(76,12,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(77,13,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(78,13,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(79,13,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(80,14,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(81,14,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(82,14,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(83,15,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(84,15,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(85,15,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(86,16,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(87,16,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(88,16,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(89,17,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(90,17,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(91,17,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(92,18,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(93,18,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(94,18,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(95,19,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(96,19,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(97,19,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(98,20,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(99,20,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(100,20,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(101,21,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(102,21,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(103,21,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(104,22,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(105,22,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(106,22,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(107,23,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(108,23,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(109,23,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(110,24,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(111,24,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(112,24,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(113,25,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(114,25,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(115,25,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(116,26,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(117,26,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(118,26,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(119,27,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(120,27,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(121,27,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(122,28,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(123,28,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(124,28,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(125,29,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(126,29,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(127,29,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(128,30,'Nước suối','chai',10000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(129,30,'Thuê vợt','buổi',30000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(130,30,'Locker','buổi',15000,1,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(131,1,'Buổi học cùng Lý Đức Anh #62','buổi',360000,0,'2026-10-11 10:43:36','2026-10-11 10:43:36'),(132,1,'Buổi học cùng Lý Đức Anh #93','buổi',180000,0,'2026-10-11 10:43:37','2026-10-11 10:43:37'),(133,2,'Buổi học cùng Phan Thanh Vy #124','buổi',400000,0,'2026-10-11 10:43:37','2026-10-11 10:43:37'),(134,3,'Buổi học cùng Trương Quốc Minh #155','buổi',220000,0,'2026-10-11 10:43:37','2026-10-11 10:43:37'),(135,3,'Buổi học cùng Trương Quốc Minh #186','buổi',440000,0,'2026-10-11 10:43:38','2026-10-11 10:43:38'),(136,4,'Buổi học cùng Hồ Ngọc Ánh #217','buổi',240000,0,'2026-10-11 10:43:38','2026-10-11 10:43:38'),(137,5,'Buổi học cùng Lâm Hải Đăng #248','buổi',360000,0,'2026-10-11 10:43:38','2026-10-11 10:43:38'),(138,5,'Buổi học cùng Lâm Hải Đăng #279','buổi',180000,0,'2026-10-11 10:43:39','2026-10-11 10:43:39'),(139,6,'Buổi học cùng Cao Ngọc Nhi #310','buổi',400000,0,'2026-10-11 10:43:39','2026-10-11 10:43:39'),(140,7,'Buổi học cùng Đinh Hoàng Nam #341','buổi',220000,0,'2026-10-11 10:43:39','2026-10-11 10:43:39'),(141,8,'Buổi học cùng Tạ Hà My #372','buổi',480000,0,'2026-10-11 10:43:40','2026-10-11 10:43:40'),(142,8,'Buổi học cùng Tạ Hà My #403','buổi',240000,0,'2026-10-11 10:43:40','2026-10-11 10:43:40'),(143,9,'Buổi học cùng Nguyễn Quang Huy #434','buổi',360000,0,'2026-10-11 10:43:41','2026-10-11 10:43:41'),(144,10,'Buổi học cùng Trần Hoài An #465','buổi',200000,0,'2026-10-11 10:43:41','2026-10-11 10:43:41'),(145,11,'Buổi học cùng Lê Minh Đức #496','buổi',440000,0,'2026-10-11 10:43:42','2026-10-11 10:43:42'),(146,11,'Buổi học cùng Lê Minh Đức #527','buổi',220000,0,'2026-10-11 10:43:42','2026-10-11 10:43:42'),(147,12,'Buổi học cùng Phạm Phương Thảo #558','buổi',480000,0,'2026-10-11 10:43:43','2026-10-11 10:43:43'),(148,13,'Buổi học cùng Võ Anh Khoa #589','buổi',180000,0,'2026-10-11 10:43:43','2026-10-11 10:43:43'),(149,14,'Buổi học cùng Đặng Tú Uyên #620','buổi',400000,0,'2026-10-11 10:43:43','2026-10-11 10:43:43'),(150,14,'Buổi học cùng Đặng Tú Uyên #651','buổi',200000,0,'2026-10-11 10:43:44','2026-10-11 10:43:44'),(151,15,'Buổi học cùng Bùi Thanh Sơn #682','buổi',440000,0,'2026-10-11 10:43:44','2026-10-11 10:43:44'),(152,16,'Buổi học cùng Huỳnh Kim Ngân #713','buổi',240000,0,'2026-10-11 10:43:45','2026-10-11 10:43:45'),(153,17,'Buổi học cùng Đỗ Bảo Long #744','buổi',360000,0,'2026-10-11 10:43:45','2026-10-11 10:43:45'),(154,18,'Buổi học cùng Ngô Trúc Quỳnh #775','buổi',200000,0,'2026-10-11 10:43:46','2026-10-11 10:43:46'),(155,18,'Buổi học cùng Ngô Trúc Quỳnh #806','buổi',400000,0,'2026-10-11 10:43:46','2026-10-11 10:43:46'),(156,19,'Buổi học cùng Dương Gia Huy #837','buổi',220000,0,'2026-10-11 10:43:47','2026-10-11 10:43:47'),(157,20,'Buổi học cùng Mai Thanh Hà #868','buổi',480000,0,'2026-10-11 10:43:47','2026-10-11 10:43:47'),(158,21,'Buổi học cùng Lý Hoàng Phúc #899','buổi',180000,0,'2026-10-11 10:43:47','2026-10-11 10:43:47'),(159,21,'Buổi học cùng Lý Hoàng Phúc #930','buổi',360000,0,'2026-10-11 10:43:48','2026-10-11 10:43:48'),(160,22,'Buổi học cùng Phan Bảo Ngân #961','buổi',200000,0,'2026-10-11 10:43:48','2026-10-11 10:43:48'),(161,23,'Buổi học cùng Trương Anh Dũng #992','buổi',440000,0,'2026-10-11 10:43:49','2026-10-11 10:43:49'),(162,24,'Buổi học cùng Hồ Minh Tâm #1023','buổi',240000,0,'2026-10-11 10:43:49','2026-10-11 10:43:49'),(163,25,'Buổi học cùng Lâm Khánh Duy #1054','buổi',360000,0,'2026-10-11 10:43:49','2026-10-11 10:43:49'),(164,25,'Buổi học cùng Lâm Khánh Duy #1085','buổi',180000,0,'2026-10-11 10:43:50','2026-10-11 10:43:50'),(165,26,'Buổi học cùng Cao Phương Anh #1116','buổi',400000,0,'2026-10-11 10:43:51','2026-10-11 10:43:51'),(166,27,'Buổi học cùng Đinh Nhật Quang #1147','buổi',220000,0,'2026-10-11 10:43:51','2026-10-11 10:43:51'),(167,28,'Buổi học cùng Tạ Thu Trang #1178','buổi',480000,0,'2026-10-11 10:43:51','2026-10-11 10:43:51'),(168,28,'Buổi học cùng Tạ Thu Trang #1209','buổi',240000,0,'2026-10-11 10:43:52','2026-10-11 10:43:52'),(169,29,'Buổi học cùng Nguyễn Minh Khôi #1240','buổi',360000,0,'2026-10-11 10:43:52','2026-10-11 10:43:52'),(170,30,'Buổi học cùng Trần Gia Hân #1271','buổi',200000,0,'2026-10-11 10:43:53','2026-10-11 10:43:53');
 /*!40000 ALTER TABLE `services` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1906,11 +1913,11 @@ DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sessions` (
-  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint unsigned DEFAULT NULL,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` text COLLATE utf8mb4_unicode_ci,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `payload` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_activity` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `sessions_user_id_index` (`user_id`),
@@ -1938,10 +1945,10 @@ CREATE TABLE `support_tickets` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
   `branch_id` bigint unsigned DEFAULT NULL,
-  `subject` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
-  `reply` text COLLATE utf8mb4_unicode_ci,
+  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
+  `reply` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `replied_by` bigint unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -2042,27 +2049,27 @@ DROP TABLE IF EXISTS `users`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `remember_token` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `role` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'customer',
-  `phone` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `role` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'customer',
+  `phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `branch_id` bigint unsigned DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   `wallet_balance` bigint unsigned NOT NULL DEFAULT '0',
-  `skill_level` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Sơ cấp',
+  `skill_level` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Sơ cấp',
   `public_profile` tinyint(1) NOT NULL DEFAULT '0',
   `loyalty_points` int NOT NULL DEFAULT '0',
   `earned_points` int NOT NULL DEFAULT '0',
-  `google_sub` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `google_sub` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `phone_verified_at` timestamp NULL DEFAULT NULL,
   `last_seen_at` timestamp NULL DEFAULT NULL,
-  `avatar_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `firebase_uid` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `avatar_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `firebase_uid` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_email_unique` (`email`),
   UNIQUE KEY `users_google_sub_unique` (`google_sub`),
@@ -2096,7 +2103,7 @@ CREATE TABLE `waitlist_entries` (
   `user_id` bigint unsigned NOT NULL,
   `starts_at` datetime NOT NULL,
   `ends_at` datetime NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'waiting',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'waiting',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -2129,12 +2136,12 @@ CREATE TABLE `wallet_entries` (
   `user_id` bigint unsigned NOT NULL,
   `actor_id` bigint unsigned NOT NULL,
   `branch_id` bigint unsigned DEFAULT NULL,
-  `request_key` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `amount` bigint NOT NULL,
   `balance_after` bigint unsigned NOT NULL,
-  `kind` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject_type` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `kind` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_type` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `subject_id` bigint unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -2168,4 +2175,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-11 17:44:35
+-- Dump completed on 2026-10-16 21:42:02

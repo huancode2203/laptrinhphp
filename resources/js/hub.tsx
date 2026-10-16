@@ -213,8 +213,18 @@ export function HubProvider({ children }: { children: ReactNode }) {
                 </div>
             )}
             {loading && (
-                <div className="fixed right-4 top-4 z-[110] rounded-full bg-[#b7ff36] px-4 py-2 text-sm font-bold">
-                    Đang xử lý…
+                <div
+                    className="hub-loading-screen"
+                    role="status"
+                    aria-live="polite"
+                    aria-label="Đang hoàn tất yêu cầu"
+                    aria-busy="true"
+                >
+                    <div className="hub-loading-card">
+                        <span className="hub-loading-ring" aria-hidden="true" />
+                        <strong>Đang hoàn tất yêu cầu</strong>
+                        <p>Vui lòng chờ trong giây lát.</p>
+                    </div>
                 </div>
             )}
         </Context.Provider>

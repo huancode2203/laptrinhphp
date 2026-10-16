@@ -24,7 +24,7 @@ class EventController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate(['type' => ['sometimes', Rule::in(['friendly', 'league', 'training', 'workshop'])], 'branch_id' => ['sometimes', 'integer', 'exists:branches,id']]);
-        $query = GameEvent::whereIn('status', ['published', 'completed'])->with('branch:id,name,district')->withCount(['registrations as confirmed_count' => fn ($q) => $q->where('status', 'confirmed'), 'registrations as reserved_count' => fn ($q) => $q->where('status', 'confirmed')->orWhere(fn ($p) => $p->where('status', 'pending')->where('created_at', '>', now()->subMinutes(30)))]);
+        $query = GameEvent::whereIn('status', ['published', 'completed'])->with('branch:id,name,district,ward')->withCount(['registrations as confirmed_count' => fn ($q) => $q->where('status', 'confirmed'), 'registrations as reserved_count' => fn ($q) => $q->where('status', 'confirmed')->orWhere(fn ($p) => $p->where('status', 'pending')->where('created_at', '>', now()->subMinutes(30)))]);
         if ($request->filled('type')) {
             $query->where('type', $request->input('type'));
         }

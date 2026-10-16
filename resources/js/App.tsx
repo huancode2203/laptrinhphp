@@ -7,28 +7,35 @@ import CustomerHome, { CourtIllustration } from "./CustomerHome";
 import SiteHeader from "./SiteHeader";
 import BookingFlow from "./BookingFlow";
 import AuthScreen from "./AuthScreen";
+import WorkspaceAccount from "./WorkspaceAccount";
+const AdminWorkspace = lazy(() => import("./AdminWorkspace"));
 import Account from "./Account";
 import CommunityApp from "./CommunityApp";
 import EventsPage from "./EventsPage";
 const Management = lazy(() => import("./Management"));
 import { api, useHub } from "./hub";
-import { BRANCHES, day, money, type Row } from "./data";
+import { BRANCHES, day, money, statusText, type Row } from "./data";
 import { Card, Empty, Modal } from "./ui";
 function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
     const { data, toast } = useHub();
     const [date, setDate] = useState(day(1)),
         [schedule, setSchedule] = useState<Row | null>(null),
-        [reviews, setReviews] = useState<Row[]>([]);
+        [reviews, setReviews] = useState<Row[]>([]),
+        [reviewPage, setReviewPage] = useState(1),
+        [reviewLast, setReviewLast] = useState(1);
     const b = BRANCHES.find((b) => b.id === id),
         raw = data!.branches.find((b: Row) => b.id === id);
     useEffect(() => {
         api("branches/" + id + "/schedule?date=" + date)
             .then((r) => setSchedule(r.data))
             .catch((e) => toast(e.message));
-        api("branches/" + id + "/reviews")
-            .then((r) => setReviews(r.data.data))
+        api("branches/" + id + "/reviews?page=" + reviewPage)
+            .then((r) => {
+                setReviews(r.data.data);
+                setReviewLast(r.data.last_page);
+            })
             .catch((e) => toast(e.message));
-    }, [id, date]);
+    }, [id, date, reviewPage]);
     if (!b) return <Empty />;
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
@@ -62,8 +69,9 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                             target="_blank"
                             rel="noreferrer"
                             href={
-                                "https://www.google.com/maps/search/?api=1&query=" +
-                                encodeURIComponent(b.address)
+                                b.directions_url ||
+                                "https://www.google.com/maps/dir/?api=1&destination=" +
+                                    encodeURIComponent(b.address)
                             }
                         >
                             Chỉ đường ↗
@@ -126,11 +134,24 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
             <h2 className="my-6 text-2xl font-bold">
                 Đánh giá từ người đã chơi
             </h2>
+            <p className="mb-5 text-sm text-slate-500">
+                Sau buổi chơi, mở chi tiết lịch đã hoàn tất trong Lịch của tôi
+                để chấm sao, chia sẻ cảm nhận và gửi ảnh sân.
+            </p>
+            <button
+                className="btn-outline mb-5"
+                onClick={() => {
+                    location.hash = data!.user ? "account/bookings" : "auth";
+                }}
+            >
+                Xem lịch để viết đánh giá
+            </button>
             {reviews.length ? (
                 reviews.map((r) => (
                     <Card key={r.id} className="mb-3">
                         <b>
-                            {r.user?.name} · {r.rating}★
+                            {r.user?.name} · {r.rating}★ ·{" "}
+                            {r.booking?.court?.name}
                         </b>
                         <p className="mt-2 whitespace-pre-wrap">{r.content}</p>
                         {r.images?.map((id: number) => (
@@ -152,12 +173,36 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
             ) : (
                 <Empty text="Chưa có đánh giá. Bạn có thể đánh giá sau khi hoàn tất buổi chơi." />
             )}
+            {reviewLast > 1 && (
+                <div className="my-4 flex items-center justify-between gap-3">
+                    <span className="text-sm">
+                        Trang {reviewPage}/{reviewLast}
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            className="btn-outline"
+                            disabled={reviewPage <= 1}
+                            onClick={() => setReviewPage((p) => p - 1)}
+                        >
+                            Đánh giá trước
+                        </button>
+                        <button
+                            className="btn-outline"
+                            disabled={reviewPage >= reviewLast}
+                            onClick={() => setReviewPage((p) => p + 1)}
+                        >
+                            Đánh giá tiếp
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 export default function App() {
     const { data, run, refresh } = useHub();
     const loggingOut = useRef(false);
+    const [, setRouteVersion] = useState(0);
     const user = data!.user;
     const routePage = () => {
         const name = location.hash.slice(1).split("/")[0];
@@ -169,6 +214,8 @@ export default function App() {
             "community",
             "events",
             "manage",
+            "admin",
+            "counter-booking",
             "account",
             "content",
             "coaching",
@@ -185,6 +232,7 @@ export default function App() {
         [afterAuth, setAfterAuth] = useState("");
     useEffect(() => {
         const cb = () => {
+            setRouteVersion((v) => v + 1);
             setPage(routePage());
             if (location.hash.startsWith("#branch/"))
                 setBranch(Number(location.hash.split("/")[1]));
@@ -208,14 +256,24 @@ export default function App() {
             auth("booking");
             return;
         }
-        go("booking");
+        go(user.role === "customer" ? "booking" : "counter-booking");
     }
     function signInDestination(role?: string, requested = afterAuth) {
+        if (role === "admin")
+            return requested.startsWith("admin/")
+                ? requested
+                : "admin/dashboard";
+        if (["manager", "staff", "cashier"].includes(role ?? ""))
+            return requested.startsWith("manage/")
+                ? requested
+                : "manage/dashboard";
         const manages = ["manager", "admin", "staff", "cashier"].includes(
             role ?? "",
         );
         if (requested) {
-            return requested.split("/")[0] === "manage" && !manages
+            return ["manage", "admin", "counter-booking"].includes(
+                requested.split("/")[0],
+            ) && !manages
                 ? "account"
                 : requested;
         }
@@ -251,6 +309,86 @@ export default function App() {
     }, [page, user?.id]);
     const manager =
         user && ["manager", "admin", "staff", "cashier"].includes(user.role);
+    const logout = () =>
+        run(async () => {
+            loggingOut.current = true;
+            try {
+                await api("logout", "POST");
+                await refresh();
+                go("auth");
+            } finally {
+                loggingOut.current = false;
+            }
+        });
+    useEffect(() => {
+        if (user?.role === "admin" && !location.hash.startsWith("#admin/"))
+            go("admin/dashboard");
+        if (
+            user?.role === "customer" &&
+            ["admin", "manage", "counter-booking"].includes(page)
+        )
+            go("account");
+        if (
+            user &&
+            ["manager", "staff", "cashier"].includes(user.role) &&
+            !["manage", "counter-booking"].includes(page)
+        )
+            go("manage/dashboard");
+    }, [user?.role, page]);
+    if (user?.role === "admin")
+        return (
+            <Suspense fallback={<Empty text="Đang mở trung tâm quản trị…" />}>
+                <AdminWorkspace logout={logout} />
+            </Suspense>
+        );
+    if (manager)
+        return (
+            <div className="branch-workspace">
+                <header className="workspace-topbar">
+                    <div>
+                        <b>Điều hành chi nhánh</b>
+                        <p className="text-xs text-slate-500">
+                            {user.name} · {statusText(user.role)}
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            className="btn-outline text-sm"
+                            onClick={() => go("manage/dashboard")}
+                        >
+                            Quản lý sân
+                        </button>
+                        <button
+                            className="btn-outline text-sm"
+                            onClick={() => go("manage/profile")}
+                        >
+                            Tài khoản làm việc
+                        </button>
+                        <button
+                            className="btn-outline text-sm"
+                            onClick={logout}
+                        >
+                            Đăng xuất
+                        </button>
+                    </div>
+                </header>
+                {page === "counter-booking" ? (
+                    <BookingFlow
+                        initial={initial}
+                        close={() => go("manage/bookings")}
+                        done={() => go("manage/bookings")}
+                    />
+                ) : location.hash === "#manage/profile" ? (
+                    <div className="p-5">
+                        <WorkspaceAccount />
+                    </div>
+                ) : (
+                    <Suspense fallback={<Empty text="Đang mở điều hành…" />}>
+                        <Management book={book} />
+                    </Suspense>
+                )}
+            </div>
+        );
     return (
         <div className={"app-shell page-" + page}>
             <SiteHeader
@@ -332,7 +470,7 @@ export default function App() {
                 <ContentSupport />
             ) : page === "coaching" ? (
                 <Coaching />
-            ) : page === "manage" ? (
+            ) : ["manage", "admin", "counter-booking"].includes(page) ? (
                 manager ? (
                     <Suspense fallback={<Empty text="Đang mở quản lý…" />}>
                         <Management book={book} />

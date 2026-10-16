@@ -72,7 +72,7 @@ class ReportService
                 continue;
             } $potential = ($c->branch->closes_minute - $c->branch->opens_minute) * $days;
             $available += $potential;
-            $occupancy[$c->id] = ['name' => $c->branch->district.' · '.$c->name, 'minutes' => 0, 'available_minutes' => $potential];
+            $occupancy[$c->id] = ['name' => ($c->branch->ward ?: $c->branch->district).' · '.$c->name, 'minutes' => 0, 'available_minutes' => $potential];
         }
         foreach ($bookings->where('status', '!=', 'cancelled') as $b) {
             $played = (int) $b->starts_at->diffInMinutes($b->ends_at);
@@ -96,7 +96,7 @@ class ReportService
             'occupancy_percent' => $available ? round(100 * $minutes / $available, 1) : 0, 'average_order' => $bookings->where('status', '!=', 'cancelled')->count() ? round($bookings->where('status', '!=', 'cancelled')->avg('total_amount')) : 0,
             'daily' => collect($daily)->map(fn ($v, $k) => ['date' => $k, 'revenue' => $v])->values()->all(), 'methods' => $methods,
             'by_branch' => collect($byBranch)->map(fn ($v, $k) => ['name' => $branches[$k]->name ?? 'Toàn hệ thống', 'revenue' => $v])->values()->all(),
-            'by_court' => collect($byCourt)->map(fn ($v, $k) => ['name' => isset($courts[$k]) ? $courts[$k]->branch->district.' · '.$courts[$k]->name : '#'.$k, 'revenue' => $v])->values()->all(),
+            'by_court' => collect($byCourt)->map(fn ($v, $k) => ['name' => isset($courts[$k]) ? ($courts[$k]->branch->ward ?: $courts[$k]->branch->district).' · '.$courts[$k]->name : '#'.$k, 'revenue' => $v])->values()->all(),
             'by_service' => collect($byService)->map(fn ($v, $k) => ['name' => $k, 'revenue' => $v])->values()->all(), 'by_product' => collect($byProduct)->map(fn ($v, $k) => ['name' => $k, 'revenue' => $v])->values()->all(),
             'occupancy' => collect($occupancy)->map(fn ($v) => $v + ['percent' => $v['available_minutes'] ? round(100 * $v['minutes'] / $v['available_minutes'], 1) : 0])->values()->all(),
             'heatmap' => collect($heat)->map(function ($v, $k) {

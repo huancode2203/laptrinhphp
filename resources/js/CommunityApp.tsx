@@ -11,7 +11,7 @@ import {
     statusText,
     type Row,
 } from "./data";
-import { Card, Editor, Empty, Modal, type Field } from "./ui";
+import { Card, Confirm, Editor, Empty, Modal, type Field } from "./ui";
 export default function CommunityApp({
     auth,
     book,
@@ -35,6 +35,8 @@ export default function CommunityApp({
         [page, setPage] = useState(1),
         [lastPage, setLastPage] = useState(1);
     const messageEnd = useRef<HTMLDivElement>(null);
+    const commentInput = useRef<HTMLInputElement>(null);
+    const [deletingChat, setDeletingChat] = useState(false);
     useEffect(() => {
         const list = messageEnd.current?.parentElement;
         if (list) list.scrollTo({ top: list.scrollHeight });
@@ -152,7 +154,11 @@ export default function CommunityApp({
     }, [conversation?.id]);
     function renderComments(parent: number | null, depth = 0): React.ReactNode {
         return post?.comments
-            ?.filter((c: Row) => (c.parent_id ?? null) === parent)
+            ?.filter(
+                (c: Row) =>
+                    (c.parent_id == null ? null : Number(c.parent_id)) ===
+                    parent,
+            )
             .map((c: Row) => (
                 <div
                     key={c.id}
@@ -179,7 +185,14 @@ export default function CommunityApp({
                     <div className="mt-2 flex gap-3">
                         <button
                             className="text-xs font-bold text-[#168449]"
-                            onClick={() => setReply(c)}
+                            onClick={() => {
+                                setReply(c);
+                                commentInput.current?.focus();
+                                commentInput.current?.scrollIntoView({
+                                    block: "center",
+                                    behavior: "smooth",
+                                });
+                            }}
                         >
                             Trả lời
                         </button>
@@ -595,6 +608,16 @@ export default function CommunityApp({
                                                     : "Hẹn lịch, trò chuyện, cùng lên sân"}
                                             </p>
                                         </div>
+                                        <button
+                                            type="button"
+                                            className="btn-outline ml-auto shrink-0 text-sm"
+                                            disabled={loading}
+                                            onClick={() =>
+                                                setDeletingChat(true)
+                                            }
+                                        >
+                                            Xóa trò chuyện
+                                        </button>
                                     </div>
                                     {conversation.id === "hub-ai" &&
                                         !messages.length && (
@@ -919,12 +942,51 @@ export default function CommunityApp({
                     </Card>
                 ))}
             {post && (
-                <Modal title={post.title} close={() => setPost(null)}>
-                    <p className="mb-3 text-sm text-[#6d8474]">
-                        {post.user?.name} · {stamp(post.starts_at)} ·{" "}
-                        {statusText(post.status)}
+                <Modal
+                    title={post.title}
+                    close={() => {
+                        setPost(null);
+                        setReply(null);
+                        setText("");
+                    }}
+                    className="post-detail-modal"
+                >
+                    <div className="post-detail-hero">
+                        <span className="report-pill">
+                            {post.type} · {post.skill_level}
+                        </span>
+                        <div className="post-detail-author">
+                            <span className="post-author-avatar">
+                                {post.user?.name?.split(" ").at(-1)?.[0]}
+                            </span>
+                            <div>
+                                <b>{post.user?.name}</b>
+                                <p className="text-xs text-slate-500">
+                                    Đăng {stamp(post.created_at)}
+                                </p>
+                            </div>
+                        </div>
+                        <p className="mb-3 text-sm text-[#6d8474]">
+                            {post.user?.name} · {stamp(post.starts_at)} ·{" "}
+                            {statusText(post.status)}
+                        </p>
+                        <div className="post-session-summary">
+                            <div>
+                                <small>ĐỊA ĐIỂM</small>
+                                <b>{post.branch?.name}</b>
+                            </div>
+                            <div>
+                                <small>SỐ NGƯỜI</small>
+                                <b>
+                                    {post.joined_count || 0}/{post.capacity}{" "}
+                                    người
+                                </b>
+                            </div>
+                        </div>
+                    </div>
+                    <p className="post-detail-content whitespace-pre-wrap">
+                        {post.content}
                     </p>
-                    <p className="whitespace-pre-wrap">{post.content}</p>
                     {post.images?.map((id: number) => (
                         <img
                             key={id}
@@ -997,12 +1059,19 @@ export default function CommunityApp({
                     </div>
                     <div className="my-4 flex flex-wrap gap-2">
                         {post.user_id === user?.id ? (
-                            <button
-                                className="btn-outline"
-                                onClick={() => setForm("edit")}
-                            >
-                                Sửa / đóng bài
-                            </button>
+                            post.moderation_status !== "approved" ? (
+                                <button
+                                    className="btn-outline"
+                                    onClick={() => setForm("edit")}
+                                >
+                                    Sửa nội dung bài
+                                </button>
+                            ) : (
+                                <p className="rounded-xl bg-emerald-50 p-3 text-sm">
+                                    Bài đã được duyệt. Nội dung được giữ nguyên
+                                    để những người tham gia theo dõi chính xác.
+                                </p>
+                            )
                         ) : (
                             <>
                                 <button
@@ -1117,6 +1186,7 @@ export default function CommunityApp({
                         }}
                     >
                         <input
+                            ref={commentInput}
                             aria-label="Bình luận"
                             className="input min-w-0 flex-1"
                             required
@@ -1124,7 +1194,12 @@ export default function CommunityApp({
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                         />
-                        <button className="btn">Bình luận</button>
+                        <button
+                            className="btn"
+                            disabled={!text.trim() || loading}
+                        >
+                            {reply ? "Gửi trả lời" : "Bình luận"}
+                        </button>
                     </form>
                 </Modal>
             )}
@@ -1190,6 +1265,31 @@ export default function CommunityApp({
                         toast("Đã gửi báo cáo.");
                     }}
                 />
+            )}
+            {deletingChat && conversation && (
+                <Confirm
+                    title="Xóa cuộc trò chuyện?"
+                    close={() => setDeletingChat(false)}
+                    action={async () => {
+                        await api(
+                            conversation.id === "hub-ai"
+                                ? "ai/chat"
+                                : "conversations/" + conversation.id,
+                            "DELETE",
+                        );
+                        setDeletingChat(false);
+                        setMessages([]);
+                        setConversation(null);
+                        location.hash = "community";
+                        setTab("chat");
+                        await load();
+                        toast("Đã xóa lịch sử trò chuyện của bạn.");
+                    }}
+                >
+                    Lịch sử sẽ được xóa khỏi tài khoản của bạn. Những người khác
+                    vẫn giữ tin nhắn của họ; tin nhắn mới có thể làm cuộc trò
+                    chuyện xuất hiện lại.
+                </Confirm>
             )}
         </div>
     );

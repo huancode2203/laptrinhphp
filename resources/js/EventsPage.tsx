@@ -468,7 +468,8 @@ export default function EventsPage({ auth }: { auth: () => void }) {
                         </span>
                         <h2 className="my-3 text-xl font-bold">{e.title}</h2>
                         <p className="text-sm text-[#6d8474]">
-                            {e.branch?.district} · {stamp(e.starts_at)}
+                            {e.branch?.ward || e.branch?.district} ·{" "}
+                            {stamp(e.starts_at)}
                         </p>
                         <p className="my-3 font-bold">
                             {money(e.fee)} ·{" "}

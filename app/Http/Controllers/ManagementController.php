@@ -44,6 +44,7 @@ class ManagementController extends Controller
         $branch ??= new Branch;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'], 'district' => ['required', 'string', 'max:100'],
+            'ward' => ['sometimes', 'string', 'max:100'], 'google_place_id' => ['nullable', 'string', 'max:255'], 'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'], 'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'address' => ['required', 'string', 'max:255'], 'phone' => ['nullable', 'string', 'max:30'],
             'amenities' => ['sometimes', 'array', 'max:20'], 'amenities.*' => ['string', 'max:100'], 'active' => ['required', 'boolean'],
             'opens_minute' => 'sometimes|integer|between:0,1380|multiple_of:30', 'closes_minute' => 'sometimes|integer|between:30,1410|multiple_of:30|gt:opens_minute',
@@ -53,6 +54,7 @@ class ManagementController extends Controller
             'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'manager')->where('active', true)],
         ]);
         DB::transaction(function () use ($branch, $data, $request): void {
+            $data['ward'] = $data['ward'] ?? $data['district'];
             $creating = ! $branch->exists;
             $branch->fill(array_diff_key($data, array_flip(['court_count', 'hourly_rate', 'peak_rate', 'weekend_rate', 'manager_id'])));
             abort_if(($branch->opens_minute ?? 180) >= ($branch->closes_minute ?? 1380), 422, 'Giờ đóng cửa phải sau giờ mở cửa.');
@@ -107,6 +109,19 @@ class ManagementController extends Controller
 
     public function courts(Request $request): JsonResponse
     {
+        if ($request->has('page') || $request->has('search') || $request->has('status')) {
+            $data = $request->validate(['page' => 'sometimes|integer|min:1|max:100000', 'per_page' => 'sometimes|integer|between:1,50', 'search' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'maintenance', 'locked'])]]);
+            $query = $this->scope(Court::query(), $request)->with('branch');
+            if (! empty($data['search'])) {
+                $query->where('name', 'like', '%'.str_replace(['%', '_'], '', $data['search']).'%');
+            }
+            if (! empty($data['status'])) {
+                $query->where('status', $data['status']);
+            }
+
+            return response()->json(['data' => $query->orderBy('id')->paginate($data['per_page'] ?? 10)]);
+        }
+
         return response()->json(['data' => $this->scope(Court::query(), $request)->with('branch')->orderBy('id')->get()]);
     }
 
@@ -232,7 +247,8 @@ class ManagementController extends Controller
         $term = str_replace(['%', '_', '\\'], '', $data['search'] ?? '');
         $query = User::query()->where('role', 'customer')->where('active', true);
         if ($term !== '') {
-            $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%'));
+            $alternate = str_starts_with($term, '+84') ? '0'.substr($term, 3) : (str_starts_with($term, '0') ? '+84'.substr($term, 1) : $term);
+            $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$alternate.'%'));
         } elseif (! empty($data['user_id'])) {
             $query->whereKey($data['user_id']);
         } else {

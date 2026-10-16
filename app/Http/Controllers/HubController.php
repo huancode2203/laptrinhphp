@@ -31,6 +31,7 @@ use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Models\WalletEntry;
 use App\MomoService;
+use App\PayosSettings;
 use App\Rules\VietnamesePhone;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -49,21 +50,21 @@ class HubController extends Controller
         $today = Booking::whereDate('starts_at', now()->toDateString())->where('status', '!=', 'cancelled')->get(['status', 'starts_at']);
         $stats = ['members' => User::where('role', 'customer')->where('active', true)->count(), 'bookings' => $today->count(), 'checkins' => $today->whereIn('status', ['checked_in', 'completed'])->count(), 'playing' => $today->where('status', 'checked_in')->count(), 'hours' => collect(range(6, 19))->map(fn ($h) => $today->filter(fn ($b) => $b->starts_at->hour === $h)->count())->all()];
 
-        return response()->json(['data' => ['stats' => $stats, 'user' => $r->user(), 'branches' => BranchResource::collection($branches), 'plans' => MembershipPlan::where('active', true)->get(), 'ratings' => $ratings, 'momo_enabled' => app(MomoService::class)->enabled(), 'google_enabled' => app(IntegrationStatus::class)->ready('google'), 'firebase' => app(FirebaseAuthService::class)->webConfig(), 'sms_enabled' => app(IntegrationStatus::class)->ready('sms') || app(DemoService::class)->uses('sms'), 'email_enabled' => app(IntegrationStatus::class)->emailEnabled() || app(DemoService::class)->uses('email'), 'auth_notice' => $r->session()->pull('auth_notice'), 'bank' => app(BankSettings::class)->details(), 'demo' => ['enabled' => app(DemoService::class)->active(), 'google' => app(DemoService::class)->uses('google'), 'momo' => app(DemoService::class)->uses('momo'), 'sms' => app(DemoService::class)->uses('sms'), 'email' => app(DemoService::class)->uses('email')], 'permissions' => $r->user() ? collect(AccessService::PERMISSIONS)->mapWithKeys(fn ($p) => [$p => app(AccessService::class)->allows($r->user(), $p)])->all() : [], 'managed_branch_ids' => $r->user() ? app(AccessService::class)->branches($r->user()) : [], 'membership' => $r->user() ? Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first() : null]]);
+        return response()->json(['data' => ['stats' => $stats, 'user' => $r->user(), 'branches' => BranchResource::collection($branches), 'plans' => MembershipPlan::where('active', true)->get(), 'ratings' => $ratings, 'payos_enabled' => app(PayosSettings::class)->ready(), 'momo_enabled' => app(MomoService::class)->enabled(), 'google_enabled' => app(IntegrationStatus::class)->ready('google'), 'firebase' => app(FirebaseAuthService::class)->webConfig(), 'sms_enabled' => app(IntegrationStatus::class)->ready('sms') || app(DemoService::class)->uses('sms'), 'email_enabled' => app(IntegrationStatus::class)->emailEnabled() || app(DemoService::class)->uses('email'), 'auth_notice' => $r->session()->pull('auth_notice'), 'bank' => app(BankSettings::class)->details(), 'demo' => ['enabled' => app(DemoService::class)->active(), 'google' => app(DemoService::class)->uses('google'), 'momo' => app(DemoService::class)->uses('momo'), 'sms' => app(DemoService::class)->uses('sms'), 'email' => app(DemoService::class)->uses('email')], 'permissions' => $r->user() ? collect(AccessService::PERMISSIONS)->mapWithKeys(fn ($p) => [$p => app(AccessService::class)->allows($r->user(), $p)])->all() : [], 'managed_branch_ids' => $r->user() ? app(AccessService::class)->branches($r->user()) : [], 'membership' => $r->user() ? Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first() : null]]);
     }
 
     public function account(Request $r): JsonResponse
     {
         return response()->json(['data' => [
-            'my_posts' => CommunityPost::where('user_id', $r->user()->id)->with('branch:id,name,district')->latest('id')->get(),
-            'my_matches' => CommunityPost::whereHas('joins', fn ($q) => $q->where('user_id', $r->user()->id)->whereIn('status', ['pending', 'accepted']))->where('moderation_status', 'approved')->where('status', '!=', 'hidden')->with('branch:id,name,district')->latest('starts_at')->get(),
+            'my_posts' => CommunityPost::where('user_id', $r->user()->id)->with('branch:id,name,district,ward')->latest('id')->get(),
+            'my_matches' => CommunityPost::whereHas('joins', fn ($q) => $q->where('user_id', $r->user()->id)->whereIn('status', ['pending', 'accepted']))->where('moderation_status', 'approved')->where('status', '!=', 'hidden')->with('branch:id,name,district,ward')->latest('starts_at')->get(),
             'coupons' => Coupon::where('active', true)->where('starts_at', '<=', now())->where('expires_at', '>', now())->get(['code', 'branch_id', 'kind', 'value', 'max_discount', 'minimum_amount', 'expires_at']),
             'profile_stats' => ['sessions' => Booking::where('user_id', $r->user()->id)->where('status', 'completed')->count(), 'hours' => round(Booking::where('user_id', $r->user()->id)->where('status', 'completed')->get(['starts_at', 'ends_at'])->sum(fn ($b) => $b->starts_at->diffInMinutes($b->ends_at) / 60), 1), 'favorites' => DB::table('favorite_courts')->where('user_id', $r->user()->id)->count()], 'user' => $r->user(), 'membership' => Membership::where('user_id', $r->user()->id)->where('expires_at', '>', now())->with('plan')->latest('id')->first(), 'payment_attempts' => PaymentAttempt::where('user_id', $r->user()->id)->latest('id')->limit(30)->get(), 'wallet_entries' => WalletEntry::where('user_id', $r->user()->id)->latest('id')->limit(100)->get(), 'memberships' => Membership::where('user_id', $r->user()->id)->with('plan')->latest('id')->get(), 'waitlist' => WaitlistEntry::where('user_id', $r->user()->id)->with('court.branch')->latest('id')->limit(50)->get()]]);
     }
 
     public function reviews(Branch $branch): JsonResponse
     {
-        return response()->json(['data' => Review::where('branch_id', $branch->id)->where('visible', true)->with('user:id,name')->latest('id')->paginate(20)]);
+        return response()->json(['data' => Review::where('branch_id', $branch->id)->where('visible', true)->with(['user:id,name', 'booking:id,court_id', 'booking.court:id,name'])->latest('id')->paginate(20)]);
     }
 
     private function branch(Request $r): ?int
@@ -139,7 +140,7 @@ class HubController extends Controller
 
     public function admin(Request $r): JsonResponse
     {
-        return response()->json(['data' => ['stats' => ['users' => User::count(), 'pending_posts' => DB::table('community_posts')->where('moderation_status', 'pending')->count()], 'branches' => Branch::withCount('courts')->get(), 'users' => User::latest('id')->limit(500)->get(['id', 'name', 'email', 'phone', 'role', 'branch_id', 'active']), 'plans' => MembershipPlan::all(), 'coupons' => Coupon::latest('id')->get(), 'audits' => DB::table('audit_logs')->latest('id')->limit(100)->get(), 'reports' => DB::table('content_reports')->join('community_posts', 'community_posts.id', '=', 'content_reports.community_post_id')->select('content_reports.*', 'community_posts.title')->latest('content_reports.id')->limit(100)->get(), 'reviews' => Review::with('user:id,name')->latest('id')->limit(100)->get()]]);
+        return response()->json(['data' => ['stats' => ['users' => User::count(), 'pending_posts' => DB::table('community_posts')->where('moderation_status', 'pending')->where('status', '!=', 'hidden')->count()], 'branches' => Branch::withCount('courts')->get(), 'users' => User::latest('id')->limit(500)->get(['id', 'name', 'email', 'phone', 'role', 'branch_id', 'active']), 'plans' => MembershipPlan::all(), 'coupons' => Coupon::latest('id')->get(), 'audits' => DB::table('audit_logs')->latest('id')->limit(100)->get(), 'reports' => DB::table('content_reports')->join('community_posts', 'community_posts.id', '=', 'content_reports.community_post_id')->select('content_reports.*', 'community_posts.title')->latest('content_reports.id')->limit(100)->get(), 'reviews' => Review::with('user:id,name')->latest('id')->limit(100)->get()]]);
     }
 
     public function userActive(Request $r, User $user, BookingService $engine): JsonResponse
