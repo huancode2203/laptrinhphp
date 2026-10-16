@@ -80,7 +80,7 @@ class CommunityController extends Controller
     {
         if ($post) {
             abort_unless($post->user_id === $request->user()->id && $post->status !== 'hidden', 403);
-            abort_if($post->moderation_status === 'approved', 422, 'Bài viết đã được duyệt nên không thể sửa nội dung. Bạn có thể đóng bài hoặc đăng bài mới.');
+            abort_if($post->moderation_status === 'approved', 422, 'Bài viết đã được duyệt nên không thể sửa nội dung. Bạn có thể gỡ bài hoặc đăng bài mới.');
         }
         $data = $request->validate(['branch_id' => ['required', 'integer', 'exists:branches,id'], 'title' => ['required', 'string', 'max:150'], 'content' => ['required', 'string', 'max:5000'], 'type' => ['required', Rule::in(['Tìm người đánh', 'Tìm đối thủ', 'Tuyển thành viên', 'Chia sẻ', 'Hỏi đáp', 'Giao lưu'])], 'skill_level' => ['required', 'string', 'max:40'], 'starts_at' => ['required', 'date', 'after:now'], 'capacity' => ['required', 'integer', 'between:1,100'], 'status' => ['sometimes', Rule::in(['open', 'closed'])]]);
         $images = $request->validate(['images' => 'sometimes|array|list|max:6', 'images.*' => 'integer|distinct|exists:media_uploads,id']);
