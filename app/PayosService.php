@@ -62,7 +62,12 @@ class PayosService
                 }
                 abort_unless($amount >= 1000 && $amount <= 50000000, 422, 'Số tiền thanh toán phải từ 1.000 đến 50.000.000đ.');
 
-                return PaymentAttempt::create(['request_key' => $data['request_key'], 'order_id' => (string) random_int(1000000000000, 900000000000000), 'user_id' => $user->id, 'booking_id' => $booking?->id, 'purpose' => $data['purpose'], 'partner_code' => 'PAYOS', 'amount' => $amount, 'order_info' => $booking ? 'BH '.$booking->reference : 'BH NAP VI', 'extra_data' => base64_encode(json_encode(['deposit_only' => (bool) ($data['deposit_only'] ?? false)])), 'status' => 'pending', 'expires_at' => now()->addMinutes(15)]);
+                $expires = now()->addMinutes(15)->toImmutable();
+                if ($booking && $booking->payment_expires_at && $booking->paid_amount < $booking->deposit_amount) {
+                    $expires = $expires->min($booking->payment_expires_at);
+                }
+
+                return PaymentAttempt::create(['request_key' => $data['request_key'], 'order_id' => (string) random_int(1000000000000, 900000000000000), 'user_id' => $user->id, 'booking_id' => $booking?->id, 'purpose' => $data['purpose'], 'partner_code' => 'PAYOS', 'amount' => $amount, 'order_info' => $booking ? 'BH '.$booking->reference : 'BH NAP VI', 'extra_data' => base64_encode(json_encode(['deposit_only' => (bool) ($data['deposit_only'] ?? false)])), 'status' => 'pending', 'expires_at' => $expires]);
             }, 5);
             if ($attempt->pay_url || $attempt->status !== 'pending') {
                 return $attempt;
@@ -77,7 +82,7 @@ class PayosService
                 }
             }
             abort_if($attempt->expires_at->isPast(), 422, 'Giao dịch đã hết hạn. Vui lòng tạo giao dịch mới.');
-            $payload = ['orderCode' => (int) $attempt->order_id, 'amount' => $attempt->amount, 'description' => substr($attempt->order_info, 0, 25), 'returnUrl' => url('/payments/payos/return'), 'cancelUrl' => url('/payments/payos/return')];
+            $payload = ['orderCode' => (int) $attempt->order_id, 'amount' => $attempt->amount, 'description' => 'BH'.substr($attempt->order_id, -7), 'returnUrl' => url('/payments/payos/return'), 'cancelUrl' => url('/payments/payos/return')];
             $payload['signature'] = $this->sign($payload);
             $payload['expiredAt'] = $attempt->expires_at->timestamp;
             $reply = $this->request('POST', '/v2/payment-requests', $payload);

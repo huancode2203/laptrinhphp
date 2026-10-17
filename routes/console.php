@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('hub:maintain')->everyMinute()->withoutOverlapping();
+Schedule::command('hub:sync-payos')->everyMinute()->withoutOverlapping(5);

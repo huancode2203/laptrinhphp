@@ -59,8 +59,10 @@ export default function PayosSetup() {
                     </p>
                     <p className="text-slate-500">
                         Điền địa chỉ này trong kênh thanh toán PayOS khi website
-                        có HTTPS công khai. Khi chạy trên máy, có thể dùng nút
-                        kiểm tra giao dịch để đối soát trực tiếp.
+                        có HTTPS công khai để nhận kết quả ngay. Khi máy chủ
+                        đang chạy, hệ thống cũng kiểm tra giao dịch đang chờ mỗi
+                        phút; bạn có thể chủ động kiểm tra trong lịch thanh
+                        toán.
                     </p>
                 </div>
             )}

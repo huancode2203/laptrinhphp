@@ -1,5 +1,13 @@
 # Kiểm tra bản Laravel / MySQL · cập nhật 17/10/2026
 
+## Tiếp tục PayOS sau xác thực Casso · 17/10/2026
+
+- Đã kiểm tra trực tiếp hồ sơ chủ dự án trên Chrome: Casso và PayOS đều hiển thị **Đã xác thực**, đã mở được trang quản lý PayOS. Danh sách kênh thanh toán và tài khoản ngân hàng đều chưa có dữ liệu. Đã mở form kênh Website và điền tên Badminton Hub; chưa tạo kênh/khóa, chưa liên kết ngân hàng. Không lưu thông tin định danh hoặc dữ liệu Cas ID trong mã nguồn/tài liệu. Website vẫn thiếu ba khóa PayOS; chưa tạo checkout hoặc chuyển tiền với merchant thật. Ảnh xác nhận ở `outputs/payos-verified-20261017.png`, không có khóa API.
+- Thêm nạp ví PayOS khi đủ cấu hình, rút mô tả ngân hàng còn 9 ký tự và giới hạn link cọc theo hạn thanh toán của lịch. Cấu hình kênh thu vẫn lưu mã hóa, không trả khóa qua API trạng thái.
+- `hub:sync-payos` được lên lịch mỗi phút, tối đa 10 giao dịch/lượt; lấy giao dịch đang chờ kể cả vừa hết hạn trong 24 giờ qua, luân phiên theo `updated_at`. Chỉ truy vấn PayOS rồi dùng sổ tiền hiện có để ghi nhận; gửi lặp không thu/cộng ví hai lần. Thiếu cấu hình không gọi mạng; lỗi xác thực/mạng không làm đổi tiền hoặc lộ nội dung lỗi/khóa từ provider. Có thể chạy thủ công với `--limit=1..50 --json`.
+- **201/201 tests, 5.103 assertions** đạt trên SQLite in-memory. Nhóm PayOS và an toàn kết nối đạt **24/24 tests, 142 assertions** trên MySQL test riêng, trong đó 12 tests PayOS/đối soát có 70 assertions. HTTP của PayOS trong kiểm thử là giả lập có chữ ký, không phải bằng chứng giao dịch thật. TypeScript, Vite 906 modules và Pint đạt.
+- Không đổi schema, reset dữ liệu vận hành, nhập khóa giả hoặc mở HTTPS công khai trong đợt bổ sung này. Kết nối merchant thật và khoản chuyển ngân hàng vẫn cần được kiểm chứng sau khi có cấu hình kênh thu.
+
 ## Tài khoản, lịch cố định, báo cáo và lịch sử · 17/10/2026
 
 - **196/196 tests, 5.069 assertions** đạt trên SQLite in-memory và MySQL `badminton_hub_codex_test_20261008`. Thêm 16 bài: chuẩn hóa/không trùng số cũ và mới; Admin sửa liên hệ thật, rollback khi trùng và giữ phân công phụ; phân bổ khoản thu bất biến sau mua hàng; phạm vi nhiều chi nhánh; trừ bảo trì chồng lấn/đã hoàn tất và bỏ bảo trì đã hủy; xem trước đổi giá/hoàn, retry, quyền thu tiền, chờ chốt hóa đơn; đổi/hủy chuỗi nguyên tử; chặn cộng đồng/chat nhóm; tải tin cũ/xóa cá nhân; phân trang lịch sử riêng tư và CSV chống công thức.

@@ -1159,6 +1159,14 @@ export default function Account({
                                 ? "Nạp ví · Demo"
                                 : "Nạp qua MoMo"}
                         </button>
+                        {data!.payos_enabled && (
+                            <button
+                                className="btn-outline ml-3"
+                                onClick={() => setForm("payos-topup")}
+                            >
+                                Nạp qua PayOS
+                            </button>
+                        )}
                         <p className="mt-3 text-sm text-[#6d8474]">
                             Bạn có thể nạp tiền tại quầy.{" "}
                         </p>
@@ -1545,12 +1553,14 @@ export default function Account({
                     save={(d) => changed(() => api("me/password", "PUT", d))}
                 />
             )}
-            {form === "topup" && (
+            {["topup", "payos-topup"].includes(form) && (
                 <Editor
                     title={
-                        data!.demo?.momo
-                            ? "Nạp ví demo · Không chuyển tiền thật"
-                            : "Nạp ví qua MoMo"
+                        form === "payos-topup"
+                            ? "Nạp ví qua PayOS"
+                            : data!.demo?.momo
+                              ? "Nạp ví demo · Không chuyển tiền thật"
+                              : "Nạp ví qua MoMo"
                     }
                     close={() => setForm("")}
                     initial={{ amount: 100000 }}
@@ -1565,10 +1575,15 @@ export default function Account({
                         },
                     ]}
                     save={async (d) => {
-                        const p = await api("payments/momo", "POST", {
-                            ...d,
-                            purpose: "wallet",
-                        });
+                        const p = await api(
+                            "payments/" +
+                                (form === "payos-topup" ? "payos" : "momo"),
+                            "POST",
+                            {
+                                ...d,
+                                purpose: "wallet",
+                            },
+                        );
                         location.assign(p.data.pay_url);
                     }}
                 />

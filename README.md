@@ -1,5 +1,13 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
+## Bổ sung PayOS · 17/10/2026
+
+Nạp ví qua PayOS đã có trên giao diện khi đủ cấu hình; đặt cọc/trả đủ lịch sân dùng cùng luồng xác thực chữ ký và ghi tiền một lần. Mô tả chuyển khoản dùng 9 ký tự, tương thích giới hạn của ngân hàng. Link thanh toán cọc không vượt quá hạn thanh toán của lịch sân.
+
+Scheduler đối soát các giao dịch PayOS đang chờ mỗi phút, tối đa 10 giao dịch/lượt và luân phiên theo lần kiểm tra gần nhất. Cả giao dịch vừa hết hạn trong 24 giờ qua vẫn được kiểm tra để nhận khoản tới muộn; lịch đã hủy nhận tiền vào ví. Giao dịch hủy/đã trả và quá cửa sổ đối soát tự động vẫn có thể kiểm tra thủ công. Chạy `php artisan schedule:work` trên Laragon; kiểm tra riêng bằng `php artisan hub:sync-payos --json`. Thiếu khóa thì lệnh không gọi PayOS. Nếu máy mất mạng, kết quả không bị giả thành thành công. Webhook HTTPS được ưu tiên để nhận kết quả ngay khi triển khai công khai.
+
+Hồ sơ Casso của chủ dự án đã được kiểm tra trực tiếp và hiển thị **Đã xác thực**. Việc này chưa đồng nghĩa website đã có cấu hình kênh thu hoặc đã nhận chuyển khoản thật. Xem trạng thái kết nối và giới hạn kiểm chứng hiện tại trong [VALIDATION](docs/VALIDATION.md).
+
 ## Cập nhật vận hành · 17/10/2026
 
 - Chuẩn hóa điện thoại tài khoản về `+84`, kiểm tra trùng khi đăng ký, sửa hồ sơ, tạo khách tại quầy và xác thực SMS. Dữ liệu cũ không hợp lệ/trùng không bị tự gộp; Admin thấy nhãn cần kiểm tra. Khách đã có hồ sơ tại quầy có nút **Nhận tài khoản**, xác minh email qua luồng khôi phục hiện có; email thật cần SMTP.
@@ -7,7 +15,7 @@
 - Hết giờ chơi hiện **Chờ chốt hóa đơn** và gửi thông báo trong tài khoản; chỉ hoàn tất sau khi quầy kiểm tra, thu đủ. Không tự trừ tiền hay cộng điểm khi chỉ hết giờ.
 - Khoản thu/hoàn mới giữ phân bổ sân/dịch vụ/hàng hóa tại thời điểm ghi nhận, tránh thay đổi báo cáo cũ khi mua thêm. Phân bổ của khoản thu cũ được gắn nhãn ước tính. Báo cáo quản lý có lựa chọn gộp các chi nhánh được giao và trừ thời gian bảo trì/khóa sân khỏi công suất có thể bán.
 - Lịch sử ví, thanh toán, điểm, tài khoản, báo cáo vi phạm và audit có phân trang phía máy chủ, tìm kiếm/lọc ngày; audit xuất CSV. Chat tải thêm tin cũ, tôn trọng mốc xóa cá nhân và tài khoản bị chặn. Chặn một người trong nhóm chỉ ẩn người đó, không khóa gửi cho cả nhóm; duyệt bài đóng các báo cáo đang chờ.
-- Kiểm chứng hiện tại: **196 kiểm thử / 5.069 assertions** trên SQLite và MySQL riêng. Chi tiết và phạm vi còn thiếu ở [PROJECT_AUDIT](docs/PROJECT_AUDIT.md) và [VALIDATION](docs/VALIDATION.md). PayOS thật được hoãn theo yêu cầu chủ dự án.
+- Kiểm chứng nhóm vận hành: **196 kiểm thử / 5.069 assertions** trên SQLite và MySQL riêng. Chi tiết và phạm vi còn thiếu ở [PROJECT_AUDIT](docs/PROJECT_AUDIT.md) và [VALIDATION](docs/VALIDATION.md). Phần PayOS được tiếp tục sau khi chủ dự án hoàn tất xác thực Casso.
 
 ## Admin, đặt sân và PayOS · 16–17/10/2026
 
@@ -27,7 +35,7 @@ Mở **Admin → Thanh toán & kết nối → Kết nối PayOS**, nhập Clien
 
 Luồng tạo link, xác thực chữ ký phản hồi/webhook, kiểm tra trạng thái trực tiếp và chống ghi tiền trùng đã tích hợp theo [tài liệu PayOS](https://payos.vn/docs/api/) và [quy tắc chữ ký](https://payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/). URL nhận webhook: `/api/v1/payments/payos/webhook`; URL trở về: `/payments/payos/return`. Trang trở về không xác nhận tiền dựa trên tham số URL. Kết quả chỉ được ghi khi máy chủ PayOS xác nhận; tiền đến sau lịch hủy ghi vào ví khách để đối soát. Chưa tích hợp hoàn tiền PayOS tự động.
 
-Thiết lập tài khoản PayOS thật được chủ dự án hoãn tại bước xác minh Casso/Cas ID; máy chưa có bộ khóa kênh thanh toán. Chức năng thanh toán thật chỉ xuất hiện khi có cấu hình đầy đủ; không giả lập PayOS thành công. Webhook tự động cần địa chỉ HTTPS công khai; khi chạy localhost có nút kiểm tra giao dịch trực tiếp từ máy chủ.
+Hồ sơ Casso đã xác thực; máy hiện chưa có bộ khóa kênh thanh toán. Chức năng thanh toán thật chỉ xuất hiện khi có cấu hình đầy đủ; không giả lập PayOS thành công. Webhook cần địa chỉ HTTPS công khai; khi chạy localhost có đối soát định kỳ trên máy chủ và nút kiểm tra giao dịch trực tiếp.
 
 Nâng cấp bản đang chạy bằng `php artisan migrate` (sao lưu MySQL trước); không dùng `migrate:fresh`. SQL đi kèm được xuất từ cơ sở dữ liệu demo riêng: 95 tài khoản, 30 chi nhánh, không có phiên đăng nhập hoặc cấu hình dịch vụ của máy người dùng. Migration giá chỉ sửa các giá mẫu cũ còn khớp, không tính lại hóa đơn lịch sử. Yonex AS-30 12 quả cập nhật 1.239.000đ theo [giá tham khảo VNB](https://shopvnb.com/ong-cau-long-yonex-as30.html); Pocari 20.000đ/chai và RSL 150.000đ/6 quả là giá bán mẫu cho sân, có thể sửa trong quản lý.
 
