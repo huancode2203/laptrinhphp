@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\BookingSeries;
 use App\BookingService;
 use App\CommerceService;
 use App\FeatureService;
@@ -100,11 +101,32 @@ class BookingController extends Controller
         return new BookingResource($engine->changeStatus($request->user(), $booking, $data['status']));
     }
 
-    public function reschedule(Request $request, Booking $booking, BookingService $engine): BookingResource
+    public function reschedule(Request $request, Booking $booking, BookingService $engine): BookingResource|JsonResponse
     {
-        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id']);
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id', 'request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'sometimes|in:wallet,cash,bank', 'refund_confirmed' => 'sometimes|boolean', 'scope' => 'sometimes|in:single,remaining']);
+        if (($data['scope'] ?? '') === 'remaining') {
+            return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'move')]);
+        }
 
         return new BookingResource($engine->reschedule($request->user(), $booking, $data));
+    }
+
+    public function rescheduleQuote(Request $request, Booking $booking, BookingService $engine): JsonResponse
+    {
+        $data = $request->validate(['starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'court_id' => 'required|integer|exists:courts,id', 'scope' => 'sometimes|in:single,remaining']);
+        if (($data['scope'] ?? '') === 'remaining') {
+            return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'move', true)]);
+        }
+        $quote = $engine->reschedule($request->user(), $booking, $data, true);
+
+        return response()->json(['data' => ['booking' => new BookingResource($quote), 'refund_amount' => max(0, $quote->paid_amount - $quote->total_amount), 'difference' => $quote->total_amount - $booking->total_amount]]);
+    }
+
+    public function cancelSeries(Request $request, Booking $booking): JsonResponse
+    {
+        $data = $request->validate(['request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'sometimes|nullable|in:wallet,cash,bank', 'refund_confirmed' => 'sometimes|boolean']);
+
+        return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'cancel', $request->is('*/series-cancel-quote'))]);
     }
 
     public function receipt(Request $request, Booking $booking, BookingService $engine): JsonResponse

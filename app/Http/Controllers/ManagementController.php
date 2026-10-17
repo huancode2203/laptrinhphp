@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\AccessService;
+use App\AccountIdentity;
 use App\BookingService;
 use App\FeatureService;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BranchResource;
+use App\Models\AuthCode;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\Court;
@@ -14,6 +16,7 @@ use App\Models\Maintenance;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
+use App\Rules\VietnamesePhone;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -294,13 +297,28 @@ class ManagementController extends Controller
         $data = $request->validate([
             'role' => ['required', Rule::in(['customer', 'manager', 'staff', 'cashier', 'admin'])],
             'branch_id' => ['nullable', 'required_if:role,manager,staff,cashier', 'integer', 'exists:branches,id'],
+            'name' => 'sometimes|required|string|max:100',
+            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30', new VietnamesePhone],
         ]);
         DB::transaction(function () use ($user, $data): void {
-            DB::table('user_branches')->where('user_id', $user->id)->delete();
-            $user->forceFill(['role' => $data['role'], 'branch_id' => in_array($data['role'], ['manager', 'staff', 'cashier'], true) ? $data['branch_id'] : null])->save();
+            $user = User::lockForUpdate()->findOrFail($user->id);
+            $branch = in_array($data['role'], ['manager', 'staff', 'cashier'], true) ? (int) $data['branch_id'] : null;
+            if ($user->role !== $data['role'] || $user->branch_id !== $branch) {
+                DB::table('user_branches')->where('user_id', $user->id)->delete();
+            }
+            if (isset($data['email']) && $data['email'] !== mb_strtolower($user->email)) {
+                abort_if($user->google_sub || $user->firebase_uid, 422, 'Email tài khoản đã liên kết Google cần được chủ tài khoản tự cập nhật.');
+                $user->email_verified_at = null;
+                AuthCode::where('user_id', $user->id)->whereNull('used_at')->update(['used_at' => now()]);
+            }
+            if (array_key_exists('phone', $data) && $data['phone'] !== AccountIdentity::phone($user->phone)) {
+                $user->phone_verified_at = null;
+            }
+            $user->fill(collect($data)->only(['name', 'email', 'phone'])->all())->forceFill(['role' => $data['role'], 'branch_id' => $branch])->save();
         });
         $this->engine->audit($request->user(), 'user.role_changed', $user->id, $data, 'user');
 
-        return response()->json(['data' => $user]);
+        return response()->json(['data' => $user->fresh()]);
     }
 }

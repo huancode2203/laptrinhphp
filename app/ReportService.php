@@ -12,13 +12,14 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
-    public function data(string $from, string $to, ?int $branch): array
+    public function data(string $from, string $to, int|array|null $branch): array
     {
         $start = CarbonImmutable::parse($from)->startOfDay();
         $end = CarbonImmutable::parse($to)->endOfDay();
-        $bookings = Booking::whereBetween('starts_at', [$start, $end])->whereHas('court', fn ($q) => $q->when($branch, fn ($q) => $q->where('branch_id', $branch)))->with('court.branch', 'services')->get();
-        $courtPayments = Payment::whereBetween('created_at', [$start, $end])->whereHas('booking.court', fn ($q) => $q->when($branch, fn ($q) => $q->where('branch_id', $branch)))->with('booking.court.branch', 'booking.services', 'booking.sales.items')->get();
-        $commerce = DB::table('commerce_payments')->whereBetween('created_at', [$start, $end])->when($branch, fn ($q) => $q->where('branch_id', $branch))->get();
+        $scope = fn ($q) => $q->when($branch !== null, fn ($q) => $q->whereIn('branch_id', (array) $branch));
+        $bookings = Booking::whereBetween('starts_at', [$start, $end])->whereHas('court', $scope)->with('court.branch', 'services')->get();
+        $courtPayments = Payment::whereBetween('created_at', [$start, $end])->whereHas('booking.court', $scope)->with('booking.court.branch', 'booking.services', 'booking.sales.items')->get();
+        $commerce = $scope(DB::table('commerce_payments')->whereBetween('created_at', [$start, $end]))->get();
         $daily = [];
         $byBranch = [];
         $byCourt = [];
@@ -28,6 +29,7 @@ class ReportService
         $collected = 0;
         $refunded = 0;
         $pos = 0;
+        $estimated = 0;
         foreach ($courtPayments->concat($commerce) as $p) {
             $value = $p->kind === 'refund' ? -$p->amount : $p->amount;
             $date = substr((string) $p->created_at, 0, 10);
@@ -42,15 +44,18 @@ class ReportService
             }
             if ($p instanceof Payment) {
                 $b = $p->booking;
-                $cid = $b->court_id;
+                $snapshot = $p->allocation ?? app(PaymentAllocation::class)->capture($b, (int) $p->amount, $p->kind, $p->id, true);
+                $estimated += ! empty($snapshot['estimated']) ? 1 : 0;
+                $cid = $snapshot['court_id'];
                 $byCourt[$cid] = ($byCourt[$cid] ?? 0) + $value;
-                foreach ($b->sales->flatMap(fn ($s) => $s->items) as $item) {
-                    $share = $b->total_amount ? (int) round($value * $item->amount / $b->total_amount) : 0;
-                    $pos += $share;
-                    $byProduct[$item->name] = ($byProduct[$item->name] ?? 0) + $share;
-                }
-                foreach ($b->services as $s) {
-                    $byService[$s->pivot->name] = ($byService[$s->pivot->name] ?? 0) + ($b->total_amount ? (int) round($value * $s->pivot->amount / $b->total_amount) : 0);
+                foreach ($snapshot['items'] as $item) {
+                    $share = ($p->kind === 'refund' ? -1 : 1) * $item['amount'];
+                    if ($item['kind'] === 'product') {
+                        $pos += $share;
+                        $byProduct[$item['name']] = ($byProduct[$item['name']] ?? 0) + $share;
+                    } elseif ($item['kind'] === 'service') {
+                        $byService[$item['name']] = ($byService[$item['name']] ?? 0) + $share;
+                    }
                 }
             } elseif ($p->subject_type === 'sale') {
                 $pos += $value;
@@ -59,8 +64,10 @@ class ReportService
                 }
             }
         }
-        $branches = Branch::when($branch, fn ($q) => $q->where('id', $branch))->get()->keyBy('id');
-        $courts = Court::when($branch, fn ($q) => $q->where('branch_id', $branch))->with('branch')->get()->keyBy('id');
+        $branches = Branch::when($branch !== null, fn ($q) => $q->whereIn('id', (array) $branch))->get()->keyBy('id');
+        $courts = $scope(Court::query())->with('branch')->get()->keyBy('id');
+        $blocked = DB::table('maintenances')->whereIn('court_id', $courts->keys())->whereIn('status', ['scheduled', 'completed'])->where('starts_at', '<', $end)->where('ends_at', '>', $start)->get()
+            ->concat(DB::table('court_blocks')->whereIn('court_id', $courts->keys())->where('active', true)->where('starts_at', '<', $end)->where('ends_at', '>', $start)->get())->groupBy('court_id');
         $days = (int) $start->startOfDay()->diffInDays($end->startOfDay()) + 1;
         $occupancy = [];
         $heat = [];
@@ -70,7 +77,20 @@ class ReportService
         foreach ($courts as $c) {
             if ($c->status !== 'active') {
                 continue;
-            } $potential = ($c->branch->closes_minute - $c->branch->opens_minute) * $days;
+            }
+            $potential = 0;
+            for ($day = $start; $day->lte($end); $day = $day->addDay()) {
+                $opens = $day->startOfDay()->addMinutes($c->branch->opens_minute)->timestamp;
+                $closes = $day->startOfDay()->addMinutes($c->branch->closes_minute)->timestamp;
+                $ranges = collect($blocked[$c->id] ?? [])->map(fn ($block) => [max($opens, CarbonImmutable::parse($block->starts_at)->timestamp), min($closes, CarbonImmutable::parse($block->ends_at)->timestamp)])->filter(fn ($range) => $range[1] > $range[0])->sortBy(fn ($range) => $range[0]);
+                $unavailable = 0;
+                $through = $opens;
+                foreach ($ranges as [$left, $right]) {
+                    $unavailable += max(0, $right - max($through, $left));
+                    $through = max($through, $right);
+                }
+                $potential += max(0, intdiv($closes - $opens - $unavailable, 60));
+            }
             $available += $potential;
             $occupancy[$c->id] = ['name' => ($c->branch->ward ?: $c->branch->district).' · '.$c->name, 'minutes' => 0, 'available_minutes' => $potential];
         }
@@ -91,7 +111,7 @@ class ReportService
         $net = $collected - $refunded;
         ksort($daily);
 
-        return ['from' => $from, 'to' => $to, 'collected' => $collected, 'refunded' => $refunded, 'net_revenue' => $net, 'pos_revenue' => $pos, 'bookings' => $bookings->count(), 'cancelled' => $bookings->where('status', 'cancelled')->count(), 'cancellation_rate' => $bookings->count() ? round(100 * $bookings->where('status', 'cancelled')->count() / $bookings->count(), 1) : 0,
+        return ['from' => $from, 'to' => $to, 'estimated_allocation_count' => $estimated, 'collected' => $collected, 'refunded' => $refunded, 'net_revenue' => $net, 'pos_revenue' => $pos, 'bookings' => $bookings->count(), 'cancelled' => $bookings->where('status', 'cancelled')->count(), 'cancellation_rate' => $bookings->count() ? round(100 * $bookings->where('status', 'cancelled')->count() / $bookings->count(), 1) : 0,
             'outstanding' => $bookings->where('status', '!=', 'cancelled')->sum(fn ($b) => max(0, $b->total_amount - $b->paid_amount)),
             'occupancy_percent' => $available ? round(100 * $minutes / $available, 1) : 0, 'average_order' => $bookings->where('status', '!=', 'cancelled')->count() ? round($bookings->where('status', '!=', 'cancelled')->avg('total_amount')) : 0,
             'daily' => collect($daily)->map(fn ($v, $k) => ['date' => $k, 'revenue' => $v])->values()->all(), 'methods' => $methods,

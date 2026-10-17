@@ -1,10 +1,20 @@
 # Rà soát toàn bộ Badminton Hub · 17/10/2026
 
+## Hoàn thiện vận hành · 17/10/2026
+
+Đã chuẩn hóa đầu vào điện thoại tài khoản về `+84`, chống trùng cả dữ liệu `0...` cũ và kiểm tra email/điện thoại khi Admin sửa tài khoản. Không tự gộp tài khoản hoặc sửa số cũ không hợp lệ; trên database đang dùng còn **1 hồ sơ cần kiểm tra**, được gắn nhãn trong danh sách Admin. Có điểm vào nhận tài khoản tại quầy qua xác minh email/khôi phục; gửi thư thật vẫn cần SMTP.
+
+Đổi lịch có báo giá chênh lệch/hoàn và kiểm tra lại giá trước ghi; hỗ trợ lịch đã trả hoàn toàn bằng ví trước ít nhất 4 giờ, cùng chi nhánh. Nhân sự có thể ghi nhận hoàn ví hoặc xác nhận đã hoàn tiền mặt/ngân hàng theo quyền. Đổi/hủy toàn bộ buổi chưa bắt đầu của chuỗi có xem trước từng buổi, kiểm tra xung đột nguyên tử và chống gửi lặp. Lịch có coupon/huấn luyện viên vẫn bị giới hạn. Hết giờ chơi chuyển nhãn **Chờ chốt hóa đơn**, không tự thu tiền, hoàn tất hoặc phát điểm.
+
+Phân bổ khoản thu/hoàn mới được lưu cố định tại thời điểm ghi nhận; **1.218 khoản thu/hoàn cũ** trên database đang dùng được backfill từ dữ liệu hiện có và đánh dấu ước tính, không khẳng định tái dựng chính xác hóa đơn tại thời điểm cũ. Báo cáo gộp chi nhánh được giao, công suất trừ hợp thời gian bảo trì/khóa sân; mẫu số vẫn dùng trạng thái sân và giờ mở hiện tại, chưa có sổ lịch sử thay đổi trạng thái để tái dựng toàn bộ quá khứ.
+
+Đã đồng bộ chặn ở bài đã lưu/bài đã tham gia và chat nhóm; tải tin cũ theo trang, tôn trọng xóa cá nhân. Báo cáo vi phạm chống gửi lặp khi đang chờ, có bộ lọc trạng thái và được đóng khi người duyệt quyết định. Lịch sử ví/thanh toán/điểm/audit/báo cáo và danh sách tài khoản có phân trang phía máy chủ, tìm kiếm; lịch sử có lọc ngày, audit xuất CSV. Kiểm chứng: **196 tests / 5.069 assertions** trên cả SQLite và MySQL riêng. PayOS thật được hoãn theo yêu cầu; các phần mở rộng còn thiếu ghi bên dưới.
+
 ## Phạm vi hoàn thiện mới · 16/10/2026
 
 Admin đã tách giao diện khỏi khách/điều hành; dùng chung thành phần báo cáo, cùng bảng/màu xanh/thống kê và phân trang, thẻ bài chờ duyệt mở danh sách có đủ trạng thái. PayOS có trang cấu hình riêng trong mục thanh toán, xử lý xác thực/đối soát thật và giữ khóa phía máy chủ. Phần còn chờ để hoạt động thật là đăng nhập/kênh thanh toán PayOS và HTTPS webhook; không đánh dấu đã kết nối khi chưa có khóa.
 
-Đã bổ sung dịch vụ trong buổi chơi vào hóa đơn, giữ giảm giá chỉ trên sân; chọn sân trống cùng chi nhánh khi đổi lịch; biểu mẫu khách mới có kiểm tra trùng; lưu bước đặt sân và giới hạn thời lượng; phân trang chi nhánh/sân/huấn luyện viên/bảng dữ liệu; làm lại chi tiết bài, trả lời bình luận có focus, thông báo từ chối và khóa sửa nội dung đã duyệt; làm rõ đường dẫn viết đánh giá sau buổi chơi và sửa cửa sổ đặt học. Gỡ bài cũ qua bộ lọc thời gian là ẩn có lưu lịch sử, chưa có dọn ảnh/tin nhắn vật lý tự động. Giới hạn đổi lịch có ưu đãi/huấn luyện viên, lịch đã bắt đầu, khoản thu vượt giá mới vẫn giữ để tránh sai hóa đơn.
+Đã bổ sung dịch vụ trong buổi chơi vào hóa đơn, giữ giảm giá chỉ trên sân; chọn sân trống cùng chi nhánh khi đổi lịch; biểu mẫu khách mới có kiểm tra trùng; lưu bước đặt sân và giới hạn thời lượng; phân trang chi nhánh/sân/huấn luyện viên/bảng dữ liệu; làm lại chi tiết bài, trả lời bình luận có focus, thông báo từ chối và khóa sửa nội dung đã duyệt; làm rõ đường dẫn viết đánh giá sau buổi chơi và sửa cửa sổ đặt học. Gỡ bài cũ qua bộ lọc thời gian là ẩn có lưu lịch sử, chưa có dọn ảnh/tin nhắn vật lý tự động. Giới hạn đổi lịch có coupon/huấn luyện viên hoặc đã bắt đầu vẫn giữ; khoản thu vượt giá mới được bổ sung xử lý hoàn ngày 17/10.
 
 Địa chỉ mẫu dùng phường/xã theo [danh sách chính thức TP.HCM](https://tphcm.baochinhphu.vn/danh-sach-chinh-thuc-168-phuong-xa-cua-tphcm-sau-sap-xep-101250617000144317.htm). Đây là dữ liệu môn học, không phải danh bạ sân đã kiểm chứng địa chỉ thực. Google Maps hiện dùng [Maps URLs](https://developers.google.com/maps/documentation/urls/get-started), không phải bản đồ nhúng/Directions API tính phí. Admin có trường tọa độ và Place ID để chỉnh vị trí đúng.
 
@@ -79,15 +89,9 @@ Các mục dưới là phát hiện đọc mã; không gộp vào những lỗi 
 
 | Mức | Khu vực/vai trò | Phát hiện và tác động | Hướng xử lý |
 | --- | --- | --- | --- |
-| P1 | Khách tại quầy/hồ sơ/SMS | Tạo khách và sửa hồ sơ chưa thống nhất chuẩn số `0...`/`+84...` với luồng SMS; cùng một số có thể có hai dạng | Chuẩn hóa số tại mọi đầu vào, rà soát dữ liệu trước khi thêm ràng buộc duy nhất |
-| P1 | Báo cáo quản lý/admin | Phân bổ khoản thu một phần cho sản phẩm/dịch vụ dựa trên hóa đơn hiện tại; thêm hàng sau khoản thu có thể thay đổi phân bổ lịch sử | Lưu phân bổ tại thời điểm thu/hoàn. Tổng thu/hoàn hiện có sổ tiền riêng, nhưng số chi tiết là phân bổ theo tỷ lệ |
-| P2 | Báo cáo công suất | Mẫu số tính giờ mở của sân đang active, chưa trừ bảo trì/khóa sự kiện, dựa trên trạng thái sân hiện tại | Tính thời gian thực có thể bán và trạng thái lịch sử; nói rõ đang đo tỷ lệ đặt trên giờ mở |
-| P2 | Phân công nhiều chi nhánh | Có phân công nhiều chi nhánh và lọc từng chi nhánh; tổng quan chính mặc định chi nhánh chính, chưa có tổng hợp toàn bộ các chi nhánh được giao cho quản lý | Thêm lựa chọn “Các chi nhánh được giao” và dùng cùng một bộ xác định phạm vi ở các trang |
-| P2 | Cộng đồng | Bài đã lưu/danh sách tìm người chưa đồng bộ lọc tài khoản bị chặn như danh sách bài. Mở bài trực tiếp đã bị chặn trong đợt này | Lọc thống nhất các danh sách và bỏ/ẩn nội dung đã lưu khi có chặn |
-| P2 | Chat nhóm | Chặn một thành viên hiện có thể khiến người dùng không gửi được vào cả nhóm | Chốt quy tắc chặn trong nhóm: ẩn từng người, rời nhóm hoặc ngăn gửi; thông báo rõ |
-| P2 | Duyệt/báo cáo vi phạm | Báo cáo có thể gửi lặp; một số thao tác duyệt AI chưa đồng bộ đóng báo cáo, danh sách báo cáo có cả đã xử lý | Chống lặp theo người/bài, lọc trạng thái, thống nhất đóng vụ việc và lưu quyết định |
-| P2 | Danh sách/lịch sử | Nhiều màn hình chỉ lấy 30/100/500 bản ghi gần nhất; chưa có phân trang toàn bộ ví/audit/người dùng trên giao diện chính và lịch sử chat cũ | Phân trang phía máy chủ và giao diện; tránh gọi toàn bộ dữ liệu khi hệ thống lớn |
-| P2 | Tài khoản khách tại quầy | Tài khoản tạo nhanh có mật khẩu ngẫu nhiên; chưa có luồng mời khách nhận quyền quản lý tài khoản của mình | Gửi liên kết nhận tài khoản qua kênh đã xác minh, kiểm tra trùng email/số điện thoại |
+| P2 | Dữ liệu liên hệ cũ | Đã chuẩn hóa và chống trùng đầu vào mới; hồ sơ cũ không hợp lệ/trùng được giữ để tránh gộp sai chủ | Admin đối chiếu với khách và cập nhật các dòng được gắn nhãn cần kiểm tra |
+| P2 | Báo cáo quá khứ | Khoản thu mới có phân bổ cố định; phân bổ cũ là ước tính. Công suất đã trừ bảo trì/khóa sân nhưng chưa có lịch sử trạng thái/giờ mở đầy đủ | Giữ nhãn ước tính, bổ sung sổ thay đổi nếu cần báo cáo vận hành dài hạn |
+| P2 | Tài khoản khách tại quầy | Đã có nhận tài khoản qua email; khách thiếu email và SMTP chưa cấu hình vẫn cần quầy hỗ trợ | Xác minh email thật; không cấp quyền chỉ dựa vào số điện thoại chưa xác minh |
 | P2 | AI | Chưa đánh giá rộng trên câu thiếu ngày/giờ, nhầm AM/PM, viết tắt địa phương, xúc phạm viết biến thể hoặc trích dẫn | Tạo bộ câu có đáp án, đo sai/đúng và giữ kiểm duyệt người với trường hợp không chắc |
 
 ## 5. Chức năng chưa xây dựng đầy đủ
@@ -98,17 +102,17 @@ Các mục dưới là phát hiện đọc mã; không gộp vào những lỗi 
 | POS đổi/trả | Thu ngân, quản lý | Hủy/đổi/trả hóa đơn POS có hoàn tiền, trả tồn kho và điều chỉnh điểm trong cùng luồng; chỉnh kho thủ công không thay thế nghiệp vụ này |
 | Ca thu ngân | Thu ngân, quản lý | Mở/đóng ca, tiền đầu ca, kiểm đếm, chênh lệch, bàn giao và đối soát theo ca |
 | Hoàn hỗn hợp | Khách, thu ngân, admin | Tự chia hoàn theo các nguồn ví/tiền mặt/ngân hàng/MoMo của cùng hóa đơn; chưa tự chuyển tiền hoàn ra ngân hàng |
-| Chuỗi lịch cố định | Khách, nhân viên | Hủy/đổi đồng loạt một chuỗi với xem trước phí/hoàn. Hiện chuỗi được tạo nguyên tử, xử lý lịch theo từng buổi |
+| Chuỗi lịch cố định | Khách, nhân viên | Đã đổi/hủy các buổi chưa bắt đầu cùng xem trước phí/hoàn; chưa đổi chuỗi có coupon/huấn luyện viên hoặc qua chi nhánh khác |
 | Huấn luyện viên | Khách, quản lý | Tài khoản người dạy, ca làm/ngày nghỉ, lịch rảnh độc lập, khóa học nhiều buổi và quản lý học viên. Đã kiểm tra trùng sân/người dạy khi đặt một buổi |
 | Giải cầu lông | Người chơi, quản lý | Đăng ký đôi/đội, chốt từng set 21 điểm/best-of-3/deuce, xếp giờ và sân cho từng trận, sửa kết quả có lịch sử. Hiện dùng từng tài khoản và tổng tỷ số |
 | Nhắc lịch ngoài hệ thống | Khách, quản lý | Email/SMS nhắc trước buổi chơi. Scheduler hiện nhắc trong tài khoản; email/SMS adapter phục vụ OTP |
-| Nhật ký vận hành | Admin | Tìm/lọc/xuất nhật ký đầy đủ, lịch sử thay đổi và giao diện sao lưu/khôi phục. Hiện có ghi audit và danh sách gần nhất |
+| Nhật ký vận hành | Admin | Đã tìm/lọc/phân trang/xuất CSV toàn bộ audit; chưa có giao diện sao lưu/khôi phục và so sánh mọi trường trước/sau |
 
 Chi phí/lợi nhuận, bảng lương, nhà cung cấp/đơn nhập hàng, hóa đơn điện tử và máy in quầy chuyên dụng chưa được xây dựng. Đây là phần mở rộng, không bắt buộc cho demo môn học nếu thuyết minh rõ phạm vi.
 
 ## 6. Giới hạn nghiệp vụ hiện tại cần giải thích khi demo
 
-- Đổi lịch tự phục vụ chỉ dành cho lịch chưa trả, còn hiệu lực, cùng chi nhánh; lịch có coupon hoặc huấn luyện viên cần hủy/đặt lại theo chính sách. Đổi lịch đã trả chưa có luồng tính chênh lệch/hoàn.
+- Đổi lịch tự phục vụ dành cho lịch chưa trả còn hiệu lực hoặc lịch trả hoàn toàn bằng ví trước ít nhất 4 giờ, cùng chi nhánh; lịch có coupon/huấn luyện viên cần xử lý riêng. Có xem trước giá/hoàn; khoản ngoài ví do nhân sự xử lý theo quyền. Hoàn ngân hàng/tiền mặt là ghi nhận khoản quầy đã trả, không tự chuyển tiền.
 - Hủy tự hoàn chỉ với lịch thanh toán hoàn toàn bằng ví và đáp ứng mốc trước giờ chơi. Khoản khác hoặc trả hỗn hợp qua quầy; thao tác hủy không chứng minh đã hoàn ra ngân hàng.
 - Danh sách chờ gửi lời mời khi có chỗ, không tự đặt hoặc tự trừ ví khách.
 - Kết quả AI là sân đang thỏa tiêu chí tại thời điểm hỏi; chọn sân vẫn kiểm tra lại. Khi không có kết quả, chưa có bộ tối ưu gợi ý giờ/khu vực gần nhất.
@@ -117,10 +121,10 @@ Chi phí/lợi nhuận, bảng lương, nhà cung cấp/đơn nhập hàng, hóa
 
 ## 7. Thứ tự hoàn thiện đề xuất
 
-1. Chuẩn hóa số điện thoại và hoàn thiện quy trình chuyển khoản thủ công/đối soát.
-2. Hủy/đổi/trả POS và hoàn thanh toán hỗn hợp, bổ sung phân bổ doanh thu cố định theo thời điểm thu.
+1. Hoàn thiện quy trình chuyển khoản thủ công/đối soát khi chủ dự án tiếp tục phần thanh toán; sửa hồ sơ cũ được gắn nhãn sau khi xác minh với khách.
+2. Hủy/đổi/trả POS và hoàn thanh toán hỗn hợp; phân bổ doanh thu cố định đã hoàn thành cho khoản thu mới.
 3. Ca thu ngân và phân quyền nhân viên/thu ngân theo nhu cầu thực tế.
-4. Đồng bộ chặn cộng đồng, hàng kiểm duyệt và phân trang lịch sử.
+4. Tự động dọn media cũ có chính sách lưu giữ và khôi phục; chặn cộng đồng, hàng kiểm duyệt và phân trang lịch sử đã được đồng bộ.
 5. Lịch huấn luyện viên, giải đôi/từng set, nhắc lịch email/SMS nếu nằm trong phạm vi chấm đồ án.
 
 Không cần chờ đăng ký doanh nghiệp để demo chuyển khoản cá nhân thủ công. Việc kết nối provider thật vẫn cần thông tin của chủ tài khoản; không đưa mật khẩu SMTP/khóa API vào GitHub. Những phần “chưa xác minh dịch vụ thật” khác với “chưa viết bộ kết nối”.

@@ -1,4 +1,6 @@
 import RescheduleBooking from "./RescheduleBooking";
+import HistoryBrowser from "./HistoryBrowser";
+import SeriesCancel from "./SeriesCancel";
 import Profile from "./Profile";
 import { AccountExtras } from "./FeaturePages";
 import { useEffect, useRef, useState } from "react";
@@ -78,6 +80,19 @@ export function BookingDetail({
     }
     return (
         <Modal title={booking.reference} close={close}>
+            {booking.needs_checkout && (
+                <div
+                    role="status"
+                    className="mb-4 rounded-2xl bg-amber-50 p-4 text-amber-900"
+                >
+                    <b>Buổi chơi đã hết giờ · Chờ chốt hóa đơn</b>
+                    <p className="mt-2 text-sm">
+                        Kiểm tra tiền sân, sản phẩm và dịch vụ đã sử dụng. Còn
+                        cần thanh toán {money(booking.remaining_amount)} trước
+                        khi hoàn tất.
+                    </p>
+                </div>
+            )}
             <p className="text-sm text-[#6d8474]">
                 {booking.court?.branch?.name} · {booking.court?.name}
             </p>
@@ -477,16 +492,14 @@ export function BookingDetail({
                                 )}
                             </>
                         )}
-                        {booking.status === "confirmed" &&
-                            (!booking.paid_amount ||
-                                data!.user.role !== "customer") && (
-                                <button
-                                    className="btn-outline"
-                                    onClick={() => setForm("reschedule")}
-                                >
-                                    Đổi lịch
-                                </button>
-                            )}
+                        {booking.status === "confirmed" && (
+                            <button
+                                className="btn-outline"
+                                onClick={() => setForm("reschedule")}
+                            >
+                                Đổi lịch
+                            </button>
+                        )}
                         {booking.status === "confirmed" && (
                             <button
                                 className="btn-outline text-red-600"
@@ -495,6 +508,15 @@ export function BookingDetail({
                                 Hủy lịch
                             </button>
                         )}
+                        {booking.status === "confirmed" &&
+                            booking.series_key && (
+                                <button
+                                    className="btn-outline text-red-600"
+                                    onClick={() => setForm("cancel-series")}
+                                >
+                                    Hủy các buổi còn lại
+                                </button>
+                            )}
                     </>
                 )}
                 {booking.status === "completed" &&
@@ -725,6 +747,13 @@ export function BookingDetail({
                     after={refreshPayment}
                 />
             )}
+            {form === "cancel-series" && (
+                <SeriesCancel
+                    booking={booking}
+                    close={() => setForm("")}
+                    after={refreshPayment}
+                />
+            )}
             {form === "review" && (
                 <Editor
                     title="Đánh giá buổi chơi"
@@ -786,6 +815,8 @@ export default function Account({
         [emailSent, setEmailSent] = useState(false),
         [emailDemoCode, setEmailDemoCode] = useState(""),
         [page, setPage] = useState(1),
+        [couponPage, setCouponPage] = useState(1),
+        [paymentVersion, setPaymentVersion] = useState(0),
         [lastPage, setLastPage] = useState(1),
         [deletingNotification, setDeletingNotification] = useState<Row | null>(
             null,
@@ -863,6 +894,11 @@ export default function Account({
         await load();
     }
     const user = data!.user;
+    const couponPages = Math.max(
+        1,
+        Math.ceil((account?.coupons?.length ?? 0) / 6),
+    );
+    const currentCouponPage = Math.min(couponPage, couponPages);
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
             <div className="page-heading">
@@ -959,7 +995,9 @@ export default function Account({
                                     <div className="flex justify-between">
                                         <b>{b.reference}</b>
                                         <span className="badge badge-green">
-                                            {statusText(b.status)}
+                                            {b.needs_checkout
+                                                ? "Chờ chốt hóa đơn"
+                                                : statusText(b.status)}
                                         </span>
                                     </div>
                                     <p className="my-3">
@@ -1127,110 +1165,103 @@ export default function Account({
                     </Card>
                     <h2 className="my-5 text-xl font-bold">Voucher của bạn</h2>
                     <div className="mb-6 grid gap-3 sm:grid-cols-2">
-                        {account?.coupons?.map((c: Row) => (
-                            <Card key={c.code}>
-                                <span className="badge badge-green">
-                                    {c.kind === "percent"
-                                        ? "Giảm " + c.value + "%"
-                                        : money(c.value)}
-                                </span>
-                                <b className="mt-3 block">{c.code}</b>
-                                <p className="mt-2 text-sm text-slate-500">
-                                    Đơn từ {money(c.minimum_amount)} ·{" "}
-                                    {c.branch_id
-                                        ? data!.branches.find(
-                                              (b: Row) => b.id === c.branch_id,
-                                          )?.district
-                                        : "Toàn hệ thống"}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    Hết hạn {stamp(c.expires_at)}
-                                </p>
-                                <button
-                                    className="btn-outline mt-3"
-                                    onClick={() =>
-                                        run(async () => {
-                                            await navigator.clipboard.writeText(
-                                                c.code,
-                                            );
-                                            toast("Đã sao chép mã ưu đãi.");
-                                        })
-                                    }
-                                >
-                                    Sao chép mã
-                                </button>
-                            </Card>
-                        ))}
-                    </div>
-                    <h2 className="my-5 text-xl font-bold">Lịch sử ví</h2>
-                    <Table
-                        headers={["Thời gian", "Nội dung", "Số tiền", "Số dư"]}
-                    >
-                        {account?.wallet_entries.map((e: Row) => (
-                            <tr key={e.id}>
-                                <td className={cell}>{stamp(e.created_at)}</td>
-                                <td className={cell}>{e.description}</td>
-                                <td className={cell}>{money(e.amount)}</td>
-                                <td className={cell}>
-                                    {money(e.balance_after)}
-                                </td>
-                            </tr>
-                        ))}
-                    </Table>
-                </>
-            )}
-            {tab === "wallet" && account?.payment_attempts?.length > 0 && (
-                <>
-                    <h2 className="my-5 text-xl font-bold">
-                        Giao dịch thanh toán
-                    </h2>
-                    {account!.payment_attempts.map((p: Row) => (
-                        <Card key={p.id} className="mb-3">
-                            <div className="flex flex-wrap justify-between gap-2">
-                                <span>
-                                    {money(p.amount)} · {stamp(p.created_at)} ·{" "}
-                                    {statusText(p.status)}
-                                </span>
-                                <button
-                                    className="btn-outline text-xs"
-                                    onClick={() =>
-                                        run(async () => {
-                                            await api(
-                                                "payments/" +
-                                                    (p.partner_code === "PAYOS"
-                                                        ? "payos"
-                                                        : "momo") +
-                                                    "/" +
-                                                    p.id +
-                                                    "/sync",
-                                                "POST",
-                                            );
-                                            await load();
-                                            await refresh();
-                                            toast(
-                                                "Đã cập nhật trạng thái từ máy chủ.",
-                                            );
-                                        })
-                                    }
-                                >
-                                    Kiểm tra trạng thái
-                                </button>
-                            </div>
-                            {p.status === "pending" &&
-                                p.pay_url &&
-                                new Date(p.expires_at).getTime() >
-                                    Date.now() && (
-                                    <a
-                                        className="mt-3 inline-block text-sm font-bold text-[#16a34a]"
-                                        href={p.pay_url}
+                        {account?.coupons
+                            ?.slice(
+                                (currentCouponPage - 1) * 6,
+                                currentCouponPage * 6,
+                            )
+                            .map((c: Row) => (
+                                <Card key={c.code}>
+                                    <span className="badge badge-green">
+                                        {c.kind === "percent"
+                                            ? "Giảm " + c.value + "%"
+                                            : money(c.value)}
+                                    </span>
+                                    <b className="mt-3 block">{c.code}</b>
+                                    <p className="mt-2 text-sm text-slate-500">
+                                        Đơn từ {money(c.minimum_amount)} ·{" "}
+                                        {c.branch_id
+                                            ? data!.branches.find(
+                                                  (b: Row) =>
+                                                      b.id === c.branch_id,
+                                              )?.district
+                                            : "Toàn hệ thống"}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Hết hạn {stamp(c.expires_at)}
+                                    </p>
+                                    <button
+                                        className="btn-outline mt-3"
+                                        onClick={() =>
+                                            run(async () => {
+                                                await navigator.clipboard.writeText(
+                                                    c.code,
+                                                );
+                                                toast("Đã sao chép mã ưu đãi.");
+                                            })
+                                        }
                                     >
-                                        {p.partner_code?.startsWith("DEMO_")
-                                            ? "Tiếp tục thanh toán demo →"
-                                            : "Tiếp tục trên MoMo →"}
-                                    </a>
-                                )}
-                        </Card>
-                    ))}
+                                        Sao chép mã
+                                    </button>
+                                </Card>
+                            ))}
+                    </div>
+                    {(account?.coupons?.length ?? 0) > 6 && (
+                        <div
+                            className="mb-6 flex items-center justify-between gap-3 text-sm"
+                            aria-label="Phân trang voucher"
+                        >
+                            <button
+                                className="btn-outline"
+                                disabled={currentCouponPage <= 1}
+                                onClick={() =>
+                                    setCouponPage(currentCouponPage - 1)
+                                }
+                            >
+                                Trước
+                            </button>
+                            <span>
+                                Voucher · Trang {currentCouponPage}/
+                                {couponPages}
+                            </span>
+                            <button
+                                className="btn-outline"
+                                disabled={currentCouponPage >= couponPages}
+                                onClick={() =>
+                                    setCouponPage(currentCouponPage + 1)
+                                }
+                            >
+                                Sau
+                            </button>
+                        </div>
+                    )}
+                    <HistoryBrowser kind="wallet" />
+                    <HistoryBrowser
+                        kind="payments"
+                        version={paymentVersion}
+                        onSelect={(payment) => {
+                            if (payment.partner_code?.startsWith("DEMO_")) {
+                                location.hash = "demo-payment/" + payment.id;
+                                return;
+                            }
+                            run(async () => {
+                                await api(
+                                    "payments/" +
+                                        (payment.partner_code === "PAYOS"
+                                            ? "payos"
+                                            : "momo") +
+                                        "/" +
+                                        payment.id +
+                                        "/sync",
+                                    "POST",
+                                );
+                                await load();
+                                await refresh();
+                                setPaymentVersion((value) => value + 1);
+                                toast("Đã cập nhật trạng thái từ máy chủ.");
+                            });
+                        }}
+                    />
                 </>
             )}
             {tab === "membership" && (

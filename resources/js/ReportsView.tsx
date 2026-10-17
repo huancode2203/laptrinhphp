@@ -88,6 +88,13 @@ export default function ReportsView({ branch }: { branch: number | null }) {
             )}
             {report && (
                 <>
+                    {report.estimated_allocation_count > 0 && (
+                        <p className="mb-4 text-sm text-slate-500">
+                            Có {report.estimated_allocation_count} khoản
+                            thu/hoàn từ dữ liệu cũ sử dụng phân bổ ước tính.
+                            Khoản mới được lưu chi tiết tại thời điểm ghi nhận.
+                        </p>
+                    )}
                     <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         {[
                             ["Doanh thu ròng", money(report.net_revenue)],
@@ -163,8 +170,8 @@ export default function ReportsView({ branch }: { branch: number | null }) {
                             Công suất sân
                         </h2>
                         <p className="mb-4 text-sm text-slate-500">
-                            Thời gian đã đặt / tổng giờ mở cửa trong khoảng ngày
-                            chọn. Chỉ tính lịch còn hiệu lực.
+                            Thời gian đã đặt / thời gian có thể phục vụ, đã trừ
+                            bảo trì và khóa sân. Chỉ tính lịch còn hiệu lực.
                         </p>
                         <Table
                             headers={[

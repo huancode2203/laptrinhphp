@@ -211,7 +211,14 @@ class CommunityController extends Controller
     public function report(Request $request, CommunityPost $post): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
-        DB::table('content_reports')->insert(['community_post_id' => $post->id, 'user_id' => $request->user()->id, 'reason' => $data['reason'], 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
+        $this->assertNotBlocked($request->user(), $post->user_id);
+        DB::transaction(function () use ($request, $post, $data): void {
+            $post = CommunityPost::whereKey($post->id)->lockForUpdate()->firstOrFail();
+            abort_unless($post->moderation_status === 'approved' && $post->status !== 'hidden', 404);
+            if (! DB::table('content_reports')->where('community_post_id', $post->id)->where('user_id', $request->user()->id)->where('status', 'pending')->exists()) {
+                DB::table('content_reports')->insert(['community_post_id' => $post->id, 'user_id' => $request->user()->id, 'reason' => $data['reason'], 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
+            }
+        });
 
         return response()->json(['message' => 'Đã gửi báo cáo cho quản trị viên.'], 201);
     }
@@ -299,22 +306,29 @@ class CommunityController extends Controller
     public function messages(Request $request, Conversation $conversation): JsonResponse
     {
         $this->assertMember($request, $conversation);
-        $data = $request->validate(['after' => ['sometimes', 'integer', 'min:0']]);
+        $data = $request->validate(['after' => ['sometimes', 'integer', 'min:0'], 'before' => ['sometimes', 'integer', 'min:1']]);
+        abort_if(isset($data['after'], $data['before']), 422, 'Chỉ chọn tải tin mới hoặc tải lịch sử cũ trong một lần.');
         $cutoff = $conversation->members()->where('users.id', $request->user()->id)->firstOrFail()->pivot->cleared_through_id;
         $query = $conversation->messages()->where('id', '>', $cutoff)->with('user:id,name');
-        $messages = isset($data['after']) ? $query->where('id', '>', $data['after'])->orderBy('id')->limit(100)->get() : $query->latest('id')->limit(100)->get()->reverse()->values();
+        $hiddenUsers = $conversation->direct_key ? [] : app(AccessService::class)->blockedIds($request->user());
+        if (! $conversation->direct_key) {
+            $query->whereNotIn('user_id', $hiddenUsers);
+        }
+        $history = clone $query;
+        $messages = isset($data['after']) ? $query->where('id', '>', $data['after'])->orderBy('id')->limit(100)->get() : $query->when(isset($data['before']), fn ($q) => $q->where('id', '<', $data['before']))->latest('id')->limit(100)->get()->reverse()->values();
+        $hasMore = $messages->isNotEmpty() && $history->where('id', '<', $messages->first()->id)->exists();
         $conversation->members()->updateExistingPivot($request->user()->id, ['read_at' => now()]);
 
         $members = $conversation->members()->get(['users.id', 'name', 'last_seen_at']);
         $members->each(fn ($member) => $member->pivot->makeHidden(['hidden_at', 'cleared_through_id']));
 
-        return response()->json(['data' => $messages, 'members' => $members, 'attachments' => DB::table('media_uploads')->whereIn('id', $messages->flatMap(fn ($m) => $m->attachments ?? []))->get(['id', 'name', 'mime'])]);
+        return response()->json(['data' => $messages, 'has_more' => $hasMore, 'hidden_user_ids' => $hiddenUsers, 'members' => $members, 'attachments' => DB::table('media_uploads')->whereIn('id', $messages->flatMap(fn ($m) => $m->attachments ?? []))->get(['id', 'name', 'mime'])]);
     }
 
     public function send(Request $request, Conversation $conversation): JsonResponse
     {
         $this->assertMember($request, $conversation);
-        if (! $conversation->booking_id) {
+        if ($conversation->direct_key) {
             $peers = $conversation->members()->where('users.id', '!=', $request->user()->id)->pluck('users.id');
             abort_if(DB::table('blocked_users')->where(fn ($q) => $q->where('user_id', $request->user()->id)->whereIn('blocked_id', $peers))->orWhere(fn ($q) => $q->whereIn('user_id', $peers)->where('blocked_id', $request->user()->id))->exists(), 403, 'Không thể gửi tin nhắn cho tài khoản đã chặn.');
         }

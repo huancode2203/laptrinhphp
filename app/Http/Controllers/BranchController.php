@@ -38,13 +38,17 @@ class BranchController extends Controller
     public function availability(Request $request, Branch $branch, BookingService $engine): JsonResponse
     {
         abort_unless($branch->active, 404);
-        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'exclude_booking_id' => 'sometimes|integer|exists:bookings,id']);
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'exclude_booking_id' => 'sometimes|integer|exists:bookings,id', 'exclude_series' => 'sometimes|boolean']);
         $exclude = $data['exclude_booking_id'] ?? null;
+        $ignoreIds = [];
         if ($exclude) {
             $booking = Booking::findOrFail($exclude);
             abort_unless($request->user() && $booking->court->branch_id === $branch->id, 403);
             if ($booking->user_id !== $request->user()->id) {
                 $engine->assertManage($request->user(), $branch->id, 'bookings.write');
+            }
+            if ($request->boolean('exclude_series') && $booking->series_key) {
+                $ignoreIds = Booking::where('series_key', $booking->series_key)->where('user_id', $booking->user_id)->where('status', 'confirmed')->where('starts_at', '>', now())->pluck('id')->all();
             }
         }
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
@@ -54,7 +58,7 @@ class BranchController extends Controller
         }
         $courts = $branch->courts()->where('status', 'active')
             ->withCount([
-                'bookings as conflicts' => fn ($query) => $query->when($exclude, fn ($q) => $q->where('id', '!=', $exclude))->where('status', '!=', 'cancelled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
+                'bookings as conflicts' => fn ($query) => $query->whereNotIn('id', $ignoreIds)->when($exclude, fn ($q) => $q->where('id', '!=', $exclude))->where('status', '!=', 'cancelled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
                 'maintenances as maintenance_conflicts' => fn ($query) => $query->where('status', 'scheduled')->where('starts_at', '<', $end)->where('ends_at', '>', $start),
                 'holds as hold_conflicts' => fn ($query) => $query->where('released', false)->where('expires_at', '>', now())->where('user_id', '!=', $request->user()?->id ?? 0)->where('starts_at', '<', $end)->where('ends_at', '>', $start),
                 'blocks as event_conflicts' => fn ($query) => $query->where('active', true)->where('starts_at', '<', $end)->where('ends_at', '>', $start),

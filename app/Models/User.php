@@ -3,16 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\AccountIdentity;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'skill_level', 'public_profile', 'avatar_path'])]
-#[Hidden(['password', 'remember_token', 'google_sub', 'firebase_uid'])]
+#[Hidden(['password', 'remember_token', 'google_sub', 'firebase_uid', 'phone_normalized'])]
 class User extends Authenticatable
 {
     protected $appends = ['google_connected'];
@@ -26,6 +28,26 @@ class User extends Authenticatable
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected function phone(): Attribute
+    {
+        return Attribute::make(set: fn (?string $value) => AccountIdentity::phone($value));
+    }
+
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn (string $value) => mb_strtolower(trim($value)));
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            AccountIdentity::assertAvailable($user);
+            if ($user->isDirty('phone')) {
+                $user->phone_normalized = $user->phone;
+            }
+        });
+    }
 
     /**
      * Get the attributes that should be cast.

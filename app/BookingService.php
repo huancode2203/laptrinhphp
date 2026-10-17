@@ -18,6 +18,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Ramsey\Uuid\Uuid;
 
 class BookingService
 {
@@ -205,9 +206,9 @@ class BookingService
         }
     }
 
-    public function assertAvailable(Court $court, CarbonImmutable $start, CarbonImmutable $end, ?int $exceptBookingId = null, ?int $actorId = null): void
+    public function assertAvailable(Court $court, CarbonImmutable $start, CarbonImmutable $end, ?int $exceptBookingId = null, ?int $actorId = null, array $ignoreBookingIds = []): void
     {
-        $booking = $court->bookings()->where('status', '!=', 'cancelled')->when($exceptBookingId, fn ($query) => $query->where('id', '!=', $exceptBookingId))->where('starts_at', '<', $end)->where('ends_at', '>', $start)->lockForUpdate()->first();
+        $booking = $court->bookings()->where('status', '!=', 'cancelled')->whereNotIn('id', $ignoreBookingIds)->when($exceptBookingId, fn ($query) => $query->where('id', '!=', $exceptBookingId))->where('starts_at', '<', $end)->where('ends_at', '>', $start)->lockForUpdate()->first();
         $maintenance = $court->maintenances()->where('status', 'scheduled')->where('starts_at', '<', $end)->where('ends_at', '>', $start)->lockForUpdate()->first();
         $hold = CourtHold::where('court_id', $court->id)->where('released', false)->where('expires_at', '>', now())->when($actorId, fn ($query) => $query->where('user_id', '!=', $actorId))->where('starts_at', '<', $end)->where('ends_at', '>', $start)->exists();
         $event = DB::table('court_blocks')->where('court_id', $court->id)->where('active', true)->where('starts_at', '<', $end)->where('ends_at', '>', $start)->exists();
@@ -229,22 +230,26 @@ class BookingService
         }
     }
 
-    public function reschedule(User $actor, Booking $booking, array $data): Booking
+    public function reschedule(User $actor, Booking $booking, array $data, bool $preview = false): Booking
     {
         [$start, $end] = $this->window($data['starts_at'], $data['ends_at']);
 
-        return DB::transaction(function () use ($actor, $booking, $start, $end, $data): Booking {
+        return DB::transaction(function () use ($actor, $booking, $start, $end, $data, $preview): Booking {
             $targetId = (int) ($data['court_id'] ?? $booking->court_id);
             $locked = Court::whereIn('id', [$booking->court_id, $targetId])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $court = $locked[$targetId];
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
             if ($actor->role === 'customer') {
                 abort_unless($booking->user_id === $actor->id, 403);
+                if ($booking->paid_amount > 0) {
+                    $walletPaid = $booking->payments()->where('method', 'wallet')->get()->sum(fn ($payment) => $payment->kind === 'refund' ? -$payment->amount : $payment->amount);
+                    abort_unless($walletPaid === $booking->paid_amount && $booking->starts_at->gte(now()->addHours(4)), 422, 'Lịch đã trả bằng phương thức khác hoặc còn dưới 4 tiếng cần chi nhánh hỗ trợ đổi.');
+                }
             } else {
                 $this->assertManage($actor, $court->branch_id, 'bookings.write');
             }
-            if ($booking->status !== 'confirmed' || ($actor->role === 'customer' && $booking->paid_amount > 0) || $booking->starts_at->lte(now())) {
-                throw ValidationException::withMessages(['starts_at' => 'Chỉ đổi lịch chưa bắt đầu và đang xác nhận. Lịch đã thanh toán cần quản lý chi nhánh hỗ trợ đổi.']);
+            if ($booking->status !== 'confirmed' || $booking->starts_at->lte(now())) {
+                throw ValidationException::withMessages(['starts_at' => 'Chỉ đổi lịch đang xác nhận và chưa bắt đầu.']);
             }
             if ($court->status !== 'active' || ! $court->branch->active) {
                 throw ValidationException::withMessages(['court_id' => 'Sân hiện không nhận đổi lịch.']);
@@ -254,17 +259,44 @@ class BookingService
             }
             $this->assertManageMove($actor, $booking, $court);
             $this->assertOpen($court, $start, $end, $booking->user);
-            $this->assertAvailable($court, $start, $end, $booking->id, $actor->id);
-            $services = $booking->services->map(fn (Service $service) => ['id' => $service->id, 'quantity' => $service->pivot->quantity])->all();
-            $quote = $this->quote($court, $start, $end, $services, $booking->user, null, $booking->booking_type === 'fixed');
+            $this->assertAvailable($court, $start, $end, $booking->id, $actor->id, $data['_series_ids'] ?? []);
+            $quote = $this->quote($court, $start, $end, [], $booking->user, null, $booking->booking_type === 'fixed');
+            $quote['items'] = $booking->services->mapWithKeys(fn (Service $service) => [$service->id => ['name' => $service->pivot->name, 'quantity' => $service->pivot->quantity, 'unit_price' => $service->pivot->unit_price, 'amount' => $service->pivot->amount]])->all();
+            $quote['service_amount'] = array_sum(array_column($quote['items'], 'amount'));
+            $quote['total_amount'] += $quote['service_amount'];
             if ($booking->coupon_id) {
                 throw ValidationException::withMessages(['starts_at' => 'Lịch đã dùng ưu đãi cần hủy và đặt lại để tính đúng điều kiện mã.']);
             }
             abort_if(PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->where('expires_at', '>', now())->exists(), 409, 'Lịch đang có giao dịch chờ xác nhận. Hãy đối soát thanh toán trước khi đổi sân hoặc giờ.');
-            abort_if($booking->paid_amount > $quote['total_amount'] + $booking->product_amount, 422, 'Giá lịch mới thấp hơn số tiền đã thu. Cần xử lý hoàn tiền tại quầy trước khi đổi.');
+            $newTotal = $quote['total_amount'] + $booking->product_amount;
+            if (isset($data['expected_total'])) {
+                abort_if((int) $data['expected_total'] !== $newTotal, 409, 'Giá đã thay đổi. Vui lòng xem lại báo giá trước khi xác nhận.');
+            }
+            $refund = max(0, $booking->paid_amount - $newTotal);
+            abort_if(isset($data['expected_refund']) && (int) $data['expected_refund'] !== $refund, 409, 'Khoản hoàn đã thay đổi. Vui lòng xem lại báo giá.');
             $previousCourt = $locked[$booking->court_id];
             $previous = ['court_id' => $booking->court_id, 'starts_at' => $booking->starts_at->toIso8601String(), 'ends_at' => $booking->ends_at->toIso8601String(), 'total_amount' => $booking->total_amount];
-            $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $quote['total_amount'] + $booking->product_amount, 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at])->save();
+            if ($refund > 0 && ! $preview) {
+                $method = $actor->role === 'customer' ? 'wallet' : ($data['refund_method'] ?? null);
+                abort_unless(isset($data['request_key']) && in_array($method, ['wallet', 'cash', 'bank'], true), 422, 'Chọn cách hoàn chênh lệch và xác nhận lại yêu cầu đổi lịch.');
+                if ($actor->role !== 'customer') {
+                    $this->assertManage($actor, $court->branch_id, 'payments.write');
+                }
+                abort_if(DB::table('refund_requests')->where('booking_id', $booking->id)->where('status', 'pending')->exists(), 409, 'Có khoản hoàn đang chờ đối soát. Vui lòng xử lý trước khi đổi lịch.');
+                abort_if($method !== 'wallet' && empty($data['refund_confirmed']), 422, 'Chỉ xác nhận sau khi đã hoàn tiền mặt hoặc chuyển khoản cho khách.');
+                $key = (string) Uuid::uuid5($data['request_key'], 'reschedule-refund-'.$booking->id);
+                abort_if(Payment::where('request_key', $key)->exists(), 409, 'Yêu cầu này đã được sử dụng. Vui lòng tải lại lịch.');
+                if ($method === 'wallet') {
+                    app(CommerceService::class)->wallet($actor, $booking->user, $refund, 'refund', $key, 'Hoàn chênh lệch đổi lịch '.$booking->reference, $court->branch_id, 'booking', $booking->id);
+                }
+                Payment::create(['booking_id' => $booking->id, 'received_by' => $actor->id, 'request_key' => $key, 'kind' => 'refund', 'method' => $method, 'amount' => $refund, 'notes' => 'Hoàn chênh lệch khi đổi lịch']);
+                $booking->paid_amount -= $refund;
+            }
+            $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $newTotal, 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at]);
+            if ($preview) {
+                return $booking->setRelation('court', $court);
+            }
+            $booking->save();
             $booking->services()->sync($quote['items']);
             $this->audit($actor, 'booking.rescheduled', $booking->id, ['previous' => $previous, 'starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'total_amount' => $booking->total_amount]);
             $this->notifyBooking($booking, 'rescheduled', 'Đã đổi lịch sân', 'Lịch '.$booking->reference.' đã được cập nhật.');

@@ -10,6 +10,7 @@ use App\Http\Controllers\DemoController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\FirebaseAuthController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HubController;
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ManagementController;
@@ -60,6 +61,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::get('me', [AuthController::class, 'me']);
 
         Route::get('features/account', [FeatureController::class, 'account']);
+        Route::get('account/history/{kind}', [HistoryController::class, 'index']);
         Route::post('loyalty/redeem', [FeatureController::class, 'redeem'])->middleware('throttle:book');
         Route::put('courts/{court}/favorite', [FeatureController::class, 'favorite']);
         Route::put('community/posts/{post}/saved', [FeatureController::class, 'saved']);
@@ -88,6 +90,9 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::get('bookings/{booking}', [BookingController::class, 'show']);
         Route::get('bookings/{booking}/receipt', [BookingController::class, 'receipt']);
         Route::patch('bookings/{booking}/reschedule', [BookingController::class, 'reschedule'])->middleware('throttle:book');
+        Route::post('bookings/{booking}/reschedule-quote', [BookingController::class, 'rescheduleQuote'])->middleware('throttle:quote');
+        Route::post('bookings/{booking}/series-cancel-quote', [BookingController::class, 'cancelSeries'])->middleware('throttle:quote');
+        Route::post('bookings/{booking}/series-cancel', [BookingController::class, 'cancelSeries'])->middleware('throttle:book');
         Route::patch('bookings/{booking}/status', [BookingController::class, 'status']);
         Route::get('holds/active', [CommerceController::class, 'activeHold']);
         Route::post('holds', [CommerceController::class, 'hold'])->middleware('throttle:book');
@@ -173,6 +178,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             });
         });
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
+            Route::get('history/{kind}', [HistoryController::class, 'index']);
 
             Route::get('integrations', [IntegrationController::class, 'integrations']);
             Route::get('integrations/payos', [PayosController::class, 'settings']);

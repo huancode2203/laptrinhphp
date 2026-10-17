@@ -204,7 +204,7 @@ export default function AuthScreen({
                 const response = await api(mode, "POST", payload);
                 await refresh();
                 done(response.data?.role);
-            } else if (mode === "send") {
+            } else if (mode === "send" || mode === "claim") {
                 const response = await api("recovery/send", "POST", {
                     email: payload.email,
                 });
@@ -321,6 +321,7 @@ export default function AuthScreen({
                                 login: "Chào mừng trở lại",
                                 register: "Sẵn sàng ra sân?",
                                 send: "Lấy lại mật khẩu",
+                                claim: "Nhận tài khoản tại quầy",
                                 verify: "Kiểm tra hộp thư",
                                 reset: "Đặt mật khẩu mới",
                             }[mode]
@@ -333,6 +334,7 @@ export default function AuthScreen({
                                 register:
                                     "Tạo tài khoản để đặt sân, lưu lịch và tham gia cộng đồng.",
                                 send: "Nhập email của tài khoản. Chúng tôi sẽ gửi mã để bạn xác nhận.",
+                                claim: "Dùng email đã cung cấp tại quầy để xác nhận và đặt mật khẩu riêng. Nếu chưa cung cấp email, vui lòng liên hệ chi nhánh để được hỗ trợ.",
                                 verify:
                                     "Nhập mã 6 chữ số gửi tới " +
                                     values.email +
@@ -408,7 +410,9 @@ export default function AuthScreen({
                                 })}
                             </div>
                         )}
-                        {(mode === "login" || mode === "send") &&
+                        {(mode === "login" ||
+                            mode === "send" ||
+                            mode === "claim") &&
                             field(
                                 "email",
                                 mode === "login"
@@ -497,12 +501,22 @@ export default function AuthScreen({
                                       login: "Đăng nhập",
                                       register: "Tạo tài khoản",
                                       send: "Gửi mã xác nhận",
+                                      claim: "Gửi mã nhận tài khoản",
                                       verify: "Xác nhận mã",
                                       reset: "Lưu mật khẩu mới",
                                   }[mode]}
                             <Icon name="arrow" size={18} />
                         </button>
                     </form>
+                    {mode === "login" && (
+                        <button
+                            className="auth-text-button mt-4 w-full"
+                            disabled={locked || !data?.email_enabled}
+                            onClick={() => switchMode("claim")}
+                        >
+                            Đã được tạo hồ sơ tại quầy? Nhận tài khoản
+                        </button>
+                    )}
                     <p className="auth-bottom-note">
                         <Icon name="shield" size={15} />
                         Thông tin cá nhân được bảo vệ trong tài khoản của bạn.

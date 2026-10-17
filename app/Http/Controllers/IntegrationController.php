@@ -131,7 +131,7 @@ class IntegrationController extends Controller
         abort_if($previous && ($previous['sent_at'] ?? 0) > now()->subMinute()->timestamp, 429, 'Vui lòng chờ một phút trước khi gửi lại mã.');
         $d = $r->validate(['phone' => ['required', 'regex:/^(0[35789][0-9]{8}|[+]84[35789][0-9]{8})$/']]);
         $phone = str_starts_with($d['phone'], '0') ? '+84'.substr($d['phone'], 1) : $d['phone'];
-        abort_if(User::where('phone', $phone)->whereNotNull('phone_verified_at')->where('id', '!=', $r->user()->id)->exists(), 422, 'Số điện thoại đã được tài khoản khác xác thực.');
+        abort_if(User::whereIn('phone', [$phone, '0'.substr($phone, 3)])->where('id', '!=', $r->user()->id)->exists(), 422, 'Số điện thoại đã có hồ sơ khác. Vui lòng đăng nhập hoặc chọn tài khoản hiện có.');
         $code = $demo ? (string) random_int(100000, 999999) : null;
         if (! $demo) {
             app(PhoneVerificationService::class)->send($phone);

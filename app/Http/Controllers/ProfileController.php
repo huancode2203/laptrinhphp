@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AccountIdentity;
 use App\BookingService;
 use App\FeatureService;
 use App\Models\AuthCode;
@@ -43,7 +44,7 @@ class ProfileController extends Controller
                 $user->email_verified_at = null;
                 AuthCode::where('user_id', $user->id)->whereNull('used_at')->update(['used_at' => now()]);
             }
-            if (($data['phone'] ?? null) !== $user->phone) {
+            if (array_key_exists('phone', $data) && $data['phone'] !== AccountIdentity::phone($user->phone)) {
                 $user->phone_verified_at = null;
             }
             $user->fill(collect($data)->except('current_password')->all())->save();

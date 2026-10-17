@@ -13,6 +13,11 @@ class AccessService
 {
     public const PERMISSIONS = ['bookings.read', 'bookings.write', 'payments.write', 'pos.read', 'pos.write', 'courts.read', 'courts.write', 'customers.read', 'customers.write', 'reports.read', 'catalog.write', 'events.write', 'support.write'];
 
+    public function blockedIds(User $user): array
+    {
+        return DB::table('blocked_users')->where('user_id', $user->id)->pluck('blocked_id')->merge(DB::table('blocked_users')->where('blocked_id', $user->id)->pluck('user_id'))->unique()->all();
+    }
+
     public function branches(User $user): array
     {
         if ($user->role === 'admin') {

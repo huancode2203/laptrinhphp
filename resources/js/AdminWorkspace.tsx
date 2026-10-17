@@ -3,6 +3,7 @@ import { api, useHub } from "./hub";
 import { money, statusText, stamp, localDateTime, type Row } from "./data";
 import { Card, Editor, Empty, Table, cell, type Field } from "./ui";
 import ReportsView from "./ReportsView";
+import HistoryBrowser from "./HistoryBrowser";
 import AdvancedManagement from "./AdvancedManagement";
 import ManagedCourts from "./ManagedCourts";
 import WorkspaceAccount from "./WorkspaceAccount";
@@ -39,6 +40,37 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
         [editing, setEditing] = useState<Row | null>(null),
         [courts, setCourts] = useState<Row[]>([]),
         [state, setState] = useState("");
+    const [userPage, setUserPage] = useState<Row | null>(null),
+        [userError, setUserError] = useState("");
+    useEffect(() => {
+        if (tab !== "users") return;
+        let live = true;
+        setUserPage(null);
+        setUserError("");
+        const timer = setTimeout(
+            () =>
+                api(
+                    "admin/history/users?" +
+                        new URLSearchParams({
+                            page: String(page),
+                            per_page: "10",
+                            search,
+                            state,
+                        }),
+                )
+                    .then((response) => {
+                        if (live) setUserPage(response.data);
+                    })
+                    .catch((e) => {
+                        if (live) setUserError(e.message);
+                    }),
+            200,
+        );
+        return () => {
+            live = false;
+            clearTimeout(timer);
+        };
+    }, [tab, page, search, state, version]);
     const go = (next: string) => {
         setTab(next);
         setSearch("");
@@ -207,25 +239,34 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
         ],
     };
     const source = hub?.[tab] ?? [];
-    const filtered = source.filter(
-        (row: Row) =>
-            JSON.stringify([
-                row.name,
-                row.email,
-                row.ward,
-                row.address,
-                row.code,
-                row.role,
-            ])
-                .toLocaleLowerCase("vi")
-                .includes(search.toLocaleLowerCase("vi")) &&
-            (!state || String(!!row.active) === state),
-    );
-    const pages = Math.max(1, Math.ceil(filtered.length / 10));
-    const visible = filtered.slice(
-        (Math.min(page, pages) - 1) * 10,
-        Math.min(page, pages) * 10,
-    );
+    const filtered =
+        tab === "users"
+            ? (userPage?.data ?? [])
+            : source.filter(
+                  (row: Row) =>
+                      JSON.stringify([
+                          row.name,
+                          row.email,
+                          row.ward,
+                          row.address,
+                          row.code,
+                          row.role,
+                      ])
+                          .toLocaleLowerCase("vi")
+                          .includes(search.toLocaleLowerCase("vi")) &&
+                      (!state || String(!!row.active) === state),
+              );
+    const pages =
+        tab === "users"
+            ? (userPage?.last_page ?? 1)
+            : Math.max(1, Math.ceil(filtered.length / 10));
+    const visible =
+        tab === "users"
+            ? filtered
+            : filtered.slice(
+                  (Math.min(page, pages) - 1) * 10,
+                  Math.min(page, pages) * 10,
+              );
     return (
         <div className="admin-workspace">
             <aside className="admin-sidebar">
@@ -410,7 +451,35 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                                 setPage(1);
                                             }}
                                         />
-                                        {tab !== "users" && (
+                                        {tab === "users" ? (
+                                            <select
+                                                aria-label="Lọc vai trò tài khoản"
+                                                className="input"
+                                                value={state}
+                                                onChange={(e) => {
+                                                    setState(e.target.value);
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <option value="">
+                                                    Tất cả vai trò
+                                                </option>
+                                                {[
+                                                    "customer",
+                                                    "manager",
+                                                    "staff",
+                                                    "cashier",
+                                                    "admin",
+                                                ].map((role) => (
+                                                    <option
+                                                        key={role}
+                                                        value={role}
+                                                    >
+                                                        {statusText(role)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
                                             <select
                                                 aria-label="Lọc hoạt động"
                                                 className="input"
@@ -459,10 +528,39 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                         </button>
                                     </div>
                                     <p className="mb-3 text-sm">
-                                        {filtered.length} kết quả · Trang{" "}
-                                        {Math.min(page, pages)}/{pages}
+                                        {tab === "users"
+                                            ? (userPage?.total ?? 0)
+                                            : filtered.length}{" "}
+                                        kết quả · Trang {Math.min(page, pages)}/
+                                        {pages}
                                     </p>
+                                    {tab === "users" && userError && (
+                                        <p
+                                            role="alert"
+                                            className="mb-3 text-red-700"
+                                        >
+                                            {userError}{" "}
+                                            <button
+                                                className="btn-outline"
+                                                onClick={() =>
+                                                    setVersion(
+                                                        (value) => value + 1,
+                                                    )
+                                                }
+                                            >
+                                                Thử lại
+                                            </button>
+                                        </p>
+                                    )}
+                                    {tab === "users" &&
+                                        !userPage &&
+                                        !userError && (
+                                            <p role="status">
+                                                Đang tải danh sách tài khoản…
+                                            </p>
+                                        )}
                                     <Table
+                                        pageSize={null}
                                         headers={[
                                             "Tên / nội dung",
                                             "Chi tiết",
@@ -497,6 +595,12 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                                     {row.active
                                                         ? "Hoạt động"
                                                         : "Đã ngừng"}
+                                                    {row.phone_needs_review && (
+                                                        <p className="mt-2 text-xs text-amber-700">
+                                                            Số điện thoại cần
+                                                            kiểm tra
+                                                        </p>
+                                                    )}
                                                 </td>
                                                 <td className={cell}>
                                                     <div className="flex flex-wrap gap-2">
@@ -600,36 +704,11 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                 </>
                             )}
                             {tab === "audits" && (
-                                <Table
-                                    headers={[
-                                        "Thời gian",
-                                        "Hoạt động",
-                                        "Đối tượng",
-                                        "Chi tiết",
-                                    ]}
-                                >
-                                    {hub.audits.map((row: Row) => (
-                                        <tr key={row.id}>
-                                            <td className={cell}>
-                                                {stamp(row.created_at)}
-                                            </td>
-                                            <td className={cell}>
-                                                {row.action}
-                                            </td>
-                                            <td className={cell}>
-                                                {row.subject_type} #
-                                                {row.subject_id}
-                                            </td>
-                                            <td className={cell}>
-                                                {typeof row.details === "string"
-                                                    ? row.details
-                                                    : JSON.stringify(
-                                                          row.details,
-                                                      )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </Table>
+                                <HistoryBrowser
+                                    kind="audits"
+                                    admin
+                                    version={version}
+                                />
                             )}
                         </>
                     )}

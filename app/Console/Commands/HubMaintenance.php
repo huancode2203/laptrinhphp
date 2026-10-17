@@ -19,6 +19,16 @@ class HubMaintenance extends Command
     {
         app(EventWaitlistService::class)->maintain();
         $expired = $features->expireBookings();
+        foreach (Booking::where('status', 'checked_in')->where('ends_at', '<=', now())->whereNull('checkout_due_at')->pluck('id') as $id) {
+            DB::transaction(function () use ($id): void {
+                $booking = Booking::lockForUpdate()->findOrFail($id);
+                if ($booking->checkout_due_at || $booking->status !== 'checked_in') {
+                    return;
+                }
+                $booking->forceFill(['checkout_due_at' => now()])->save();
+                $booking->user->notify(new HubNotification(['type' => 'booking.checkout_due', 'title' => 'Buổi chơi đã hết giờ', 'body' => 'Vui lòng kiểm tra hóa đơn '.$booking->reference.' tại quầy. Tiền dịch vụ được tính riêng và không áp dụng giảm giá sân.', 'booking_id' => $booking->id]));
+            });
+        }
         $ids = Booking::where('status', 'confirmed')->whereNull('reminded_at')->whereBetween('starts_at', [now(), now()->addMinutes(30)])->pluck('id');
         foreach ($ids as $id) {
             DB::transaction(function () use ($id): void {

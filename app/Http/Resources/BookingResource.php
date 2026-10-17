@@ -19,6 +19,7 @@ class BookingResource extends JsonResource
             'starts_at' => $this->starts_at->toIso8601String(),
             'ends_at' => $this->ends_at->toIso8601String(),
             'status' => $this->status,
+            'needs_checkout' => $this->status === 'checked_in' && $this->ends_at->lte(now()),
             'court_amount' => $this->court_amount,
             'service_amount' => $this->service_amount,
             'product_amount' => $this->product_amount,

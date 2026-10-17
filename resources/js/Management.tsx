@@ -932,7 +932,14 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             "Đang chơi",
                                             hub.bookings.filter(
                                                 (b: Row) =>
-                                                    b.status === "checked_in",
+                                                    b.status === "checked_in" &&
+                                                    !b.needs_checkout,
+                                            ).length,
+                                        ],
+                                        [
+                                            "Chờ chốt hóa đơn",
+                                            hub.bookings.filter(
+                                                (b: Row) => b.needs_checkout,
                                             ).length,
                                         ],
                                         [
@@ -1214,7 +1221,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                 </p>
                                             </td>
                                             <td className={cell}>
-                                                {statusText(b.status)}
+                                                {b.needs_checkout
+                                                    ? "Chờ chốt hóa đơn"
+                                                    : statusText(b.status)}
                                                 {b.refund_pending
                                                     ? " · Chờ hoàn"
                                                     : ""}
@@ -1874,7 +1883,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 fallback={<Empty text="Đang tải báo cáo…" />}
                             >
                                 <>
-                                    {admin && (
+                                    {(admin ||
+                                        (data!.managed_branch_ids?.length ??
+                                            0) > 1) && (
                                         <label className="mb-5 block text-sm">
                                             <input
                                                 type="checkbox"
@@ -1885,7 +1896,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                     )
                                                 }
                                             />{" "}
-                                            Báo cáo toàn hệ thống
+                                            {admin
+                                                ? "Báo cáo toàn hệ thống"
+                                                : "Tất cả chi nhánh được giao"}
                                         </label>
                                     )}
                                     <ReportsView

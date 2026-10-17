@@ -1,6 +1,6 @@
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
     BRANCHES,
@@ -35,12 +35,30 @@ export default function CommunityApp({
         [page, setPage] = useState(1),
         [lastPage, setLastPage] = useState(1);
     const messageEnd = useRef<HTMLDivElement>(null);
+    const historyLoaded = useRef(false),
+        activeConversation = useRef<Row | null>(null),
+        scrollBeforeOlder = useRef<{ height: number; top: number } | null>(
+            null,
+        );
+    activeConversation.current = conversation;
+    const [hasOlder, setHasOlder] = useState(false),
+        [loadingOlder, setLoadingOlder] = useState(false);
     const commentInput = useRef<HTMLInputElement>(null);
     const [deletingChat, setDeletingChat] = useState(false);
     useEffect(() => {
         const list = messageEnd.current?.parentElement;
         if (list) list.scrollTo({ top: list.scrollHeight });
-    }, [messages.length]);
+    }, [messages.at(-1)?.id]);
+    useLayoutEffect(() => {
+        const list = messageEnd.current?.parentElement;
+        if (list && scrollBeforeOlder.current) {
+            list.scrollTop =
+                scrollBeforeOlder.current.top +
+                list.scrollHeight -
+                scrollBeforeOlder.current.height;
+            scrollBeforeOlder.current = null;
+        }
+    }, [messages[0]?.id]);
     const user = data!.user;
     const [attachments, setAttachments] = useState<number[]>([]),
         [members, setMembers] = useState<Row[]>([]),
@@ -110,6 +128,10 @@ export default function CommunityApp({
         setAttachments([]);
         setMembers([]);
         setFiles([]);
+        historyLoaded.current = false;
+        setHasOlder(false);
+        setLoadingOlder(false);
+        scrollBeforeOlder.current = null;
         if (conversation.id === "hub-ai") {
             let live = true;
             api("ai/chat")
@@ -127,9 +149,28 @@ export default function CommunityApp({
             api("conversations/" + conversation.id + "/messages")
                 .then((r) => {
                     if (live) {
-                        setMessages(r.data);
+                        if (!historyLoaded.current) {
+                            setHasOlder(r.has_more);
+                            historyLoaded.current = true;
+                        }
+                        setMessages((old) => [
+                            ...old.filter(
+                                (message) =>
+                                    message.id < (r.data[0]?.id ?? 0) &&
+                                    !(r.hidden_user_ids ?? []).includes(
+                                        message.user_id,
+                                    ),
+                            ),
+                            ...r.data,
+                        ]);
                         setMembers(r.members ?? []);
-                        setFiles(r.attachments ?? []);
+                        setFiles((old) => [
+                            ...new Map(
+                                [...old, ...(r.attachments ?? [])].map(
+                                    (file) => [file.id, file],
+                                ),
+                            ).values(),
+                        ]);
                     }
                 })
                 .catch((e) => {
@@ -152,6 +193,47 @@ export default function CommunityApp({
             stream.close();
         };
     }, [conversation?.id]);
+    async function loadOlderMessages() {
+        if (!conversation || !hasOlder || loadingOlder || !messages.length)
+            return;
+        const id = conversation.id;
+        setLoadingOlder(true);
+        try {
+            const response = await api(
+                "conversations/" + id + "/messages?before=" + messages[0].id,
+            );
+            if (activeConversation.current?.id !== id) return;
+            const list = messageEnd.current?.parentElement;
+            if (list && response.data.length)
+                scrollBeforeOlder.current = {
+                    height: list.scrollHeight,
+                    top: list.scrollTop,
+                };
+            setMessages((old) =>
+                [
+                    ...new Map(
+                        [...response.data, ...old].map((message) => [
+                            message.id,
+                            message,
+                        ]),
+                    ).values(),
+                ].sort((a, b) => a.id - b.id),
+            );
+            setFiles((old) => [
+                ...new Map(
+                    [...(response.attachments ?? []), ...old].map((file) => [
+                        file.id,
+                        file,
+                    ]),
+                ).values(),
+            ]);
+            setHasOlder(response.has_more);
+        } catch (e: any) {
+            if (activeConversation.current?.id === id) toast(e.message);
+        } finally {
+            if (activeConversation.current?.id === id) setLoadingOlder(false);
+        }
+    }
     function renderComments(parent: number | null, depth = 0): React.ReactNode {
         return post?.comments
             ?.filter(
@@ -671,6 +753,18 @@ export default function CommunityApp({
                                         tabIndex={0}
                                         className="chat-messages mb-4 max-h-[420px] space-y-3 overflow-y-auto"
                                     >
+                                        {hasOlder &&
+                                            conversation.id !== "hub-ai" && (
+                                                <button
+                                                    className="btn-outline mx-auto block"
+                                                    disabled={loadingOlder}
+                                                    onClick={loadOlderMessages}
+                                                >
+                                                    {loadingOlder
+                                                        ? "Đang tải tin cũ…"
+                                                        : "Xem tin nhắn cũ hơn"}
+                                                </button>
+                                            )}
                                         {messages.map((m) => (
                                             <div
                                                 className={

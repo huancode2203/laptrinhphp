@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\AccessService;
+use App\AccountIdentity;
 use App\BookingService;
 use App\CommerceService;
 use App\Http\Resources\BookingResource;
@@ -53,7 +54,7 @@ class FeatureController extends Controller
             'points' => DB::table('loyalty_entries')->where('user_id', $id)->latest('id')->limit(100)->get(),
             'rewards' => DB::table('loyalty_rewards')->where('active', true)->get(),
             'favorites' => Court::whereIn('id', DB::table('favorite_courts')->where('user_id', $id)->select('court_id'))->with('branch')->get(),
-            'saved_posts' => CommunityPost::whereIn('id', DB::table('saved_posts')->where('user_id', $id)->select('community_post_id'))->where('moderation_status', 'approved')->where('status', '!=', 'hidden')->with('user:id,name', 'branch:id,name')->get(),
+            'saved_posts' => CommunityPost::whereIn('id', DB::table('saved_posts')->where('user_id', $id)->select('community_post_id'))->whereNotIn('user_id', app(AccessService::class)->blockedIds($r->user()))->where('moderation_status', 'approved')->where('status', '!=', 'hidden')->with('user:id,name', 'branch:id,name')->get(),
             'blocked' => DB::table('blocked_users')->where('user_id', $id)->join('users', 'users.id', '=', 'blocked_users.blocked_id')->get(['users.id', 'users.name']),
             'tickets' => DB::table('support_tickets')->where('user_id', $id)->latest('id')->get(),
             'reviews' => Review::where('user_id', $id)->get(),
@@ -83,6 +84,7 @@ class FeatureController extends Controller
 
     public function saved(Request $r, CommunityPost $post): JsonResponse
     {
+        abort_if(in_array($post->user_id, app(AccessService::class)->blockedIds($r->user()), true), 403, 'Không thể tương tác với tài khoản đã chặn.');
         abort_unless($post->status !== 'hidden' && $post->moderation_status === 'approved', 404);
         $d = $r->validate(['active' => 'required|boolean']);
         $q = DB::table('saved_posts');
@@ -285,8 +287,8 @@ class FeatureController extends Controller
     {
         $d = $r->validate(['branch_id' => 'required|integer|exists:branches,id', 'name' => 'required|string|max:100', 'phone' => ['required', 'string', 'max:30', new VietnamesePhone], 'email' => 'nullable|email|max:255', 'skill_level' => 'sometimes|in:Mới chơi,Sơ cấp,Trung cấp,Nâng cao']);
         app(BookingService::class)->assertManage($r->user(), $d['branch_id']);
-        $phone = str_starts_with($d['phone'], '+84') ? '0'.substr($d['phone'], 3) : $d['phone'];
-        abort_if(User::whereIn('phone', [$phone, '+84'.substr($phone, 1)])->exists(), 422, 'Số điện thoại này đã có hồ sơ. Hãy tìm và chọn khách hiện có.');
+        $phone = AccountIdentity::phone($d['phone']);
+        abort_if(User::whereIn('phone', [$phone, '0'.substr($phone, 3)])->exists(), 422, 'Số điện thoại này đã có hồ sơ. Hãy tìm và chọn khách hiện có.');
         abort_if(! empty($d['email']) && User::whereRaw('LOWER(email) = ?', [strtolower($d['email'])])->exists(), 422, 'Email này đã có tài khoản. Hãy tìm và chọn khách hiện có.');
         $user = User::create(['name' => $d['name'], 'phone' => $phone, 'email' => ! empty($d['email']) ? strtolower($d['email']) : 'walkin-'.Str::uuid().'@walkin.invalid', 'password' => Str::random(50), 'skill_level' => $d['skill_level'] ?? 'Sơ cấp']);
         app(BookingService::class)->audit($r->user(), 'customer.created', $user->id, [], 'user');
@@ -371,6 +373,7 @@ class FeatureController extends Controller
         DB::transaction(function () use ($r, $post, $d): void {
             $post = CommunityPost::lockForUpdate()->findOrFail($post->id);
             $post->forceFill(['moderation_status' => $d['decision'], 'moderated_by' => $r->user()->id, 'moderated_at' => now(), 'moderation_result' => array_merge($post->moderation_result ?? [], ['human_reason' => $d['reason']])])->save();
+            DB::table('content_reports')->where('community_post_id', $post->id)->where('status', 'pending')->update(['status' => 'resolved', 'updated_at' => now()]);
             $post->user->notify(new HubNotification(['type' => 'community.moderated', 'title' => $d['decision'] === 'approved' ? 'Bài viết đã được duyệt' : 'Bài viết chưa được duyệt', 'body' => $post->title.': '.$d['reason'], 'post_id' => $post->id]));
         }, 5);
         app(BookingService::class)->audit($r->user(), 'ai.moderation_decided', $post->id, $d, 'post');

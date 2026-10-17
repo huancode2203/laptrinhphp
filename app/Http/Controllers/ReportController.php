@@ -18,9 +18,9 @@ class ReportController extends Controller
         $d = $r->validate(['from' => 'required|date_format:Y-m-d', 'to' => 'required|date_format:Y-m-d|after_or_equal:from', 'branch_id' => 'nullable|integer|exists:branches,id']);
         abort_if(CarbonImmutable::parse($d['from'])->diffInDays(CarbonImmutable::parse($d['to'])) > 366, 422);
         $allowed = app(AccessService::class)->branches($r->user());
-        $branch = $r->filled('branch_id') ? $r->integer('branch_id') : ($r->user()->role === 'admin' ? null : ($r->user()->branch_id ?? ($allowed[0] ?? null)));
-        abort_if($r->user()->role !== 'admin' && $branch === null, 403, 'Tài khoản chưa được phân công chi nhánh.');
-        if ($branch) {
+        $branch = $r->filled('branch_id') ? $r->integer('branch_id') : ($r->user()->role === 'admin' ? null : $allowed);
+        abort_if($r->user()->role !== 'admin' && $allowed === [], 403, 'Tài khoản chưa được phân công chi nhánh.');
+        if (is_int($branch)) {
             abort_unless(app(AccessService::class)->manages($r->user(), $branch), 403);
         }
 

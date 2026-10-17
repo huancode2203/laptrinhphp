@@ -1,5 +1,6 @@
 import Icon from "./Icon";
 import { useEffect, useState } from "react";
+import HistoryBrowser from "./HistoryBrowser";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, day, money, stamp, type Row } from "./data";
 import { Card, Confirm, Editor, Empty, Modal, Table, cell } from "./ui";
@@ -53,6 +54,7 @@ export function AccountExtras() {
                     </a>
                 </Card>
             </div>
+            <HistoryBrowser kind="points" />
             <h2 className="text-xl font-bold">Đổi điểm</h2>
             <div className="grid gap-4 md:grid-cols-2">
                 {extras.rewards.map((v: Row) => (

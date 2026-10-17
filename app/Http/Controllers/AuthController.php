@@ -45,7 +45,7 @@ class AuthController extends Controller
             if (str_starts_with($phone, '0')) {
                 $phone = '+84'.substr($phone, 1);
             }
-            $verified = User::where('phone', $phone)->whereNotNull('phone_verified_at')->first();
+            $verified = User::whereIn('phone', [$phone, str_starts_with($phone, '+84') ? '0'.substr($phone, 3) : $phone])->whereNotNull('phone_verified_at')->first();
             if (! $verified) {
                 throw ValidationException::withMessages(['email' => 'Email/SĐT hoặc mật khẩu không đúng.']);
             }

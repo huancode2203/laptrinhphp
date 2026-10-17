@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { stamp, type Row } from "./data";
 import { Card, Editor, Empty } from "./ui";
+import HistoryBrowser from "./HistoryBrowser";
 
 const states = [
     ["pending", "Chờ duyệt"],
@@ -281,6 +282,17 @@ export default function AdminModeration({
                     </div>
                 </div>
             )}
+            <HistoryBrowser
+                kind="reports"
+                admin
+                version={version}
+                onSelect={(report) => {
+                    setState("all");
+                    setSearch(report.title);
+                    setPage(1);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+            />
             {editing && (
                 <Editor
                     title={
