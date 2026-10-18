@@ -1,5 +1,11 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
+## Kết nối PayOS thật · 18/10/2026
+
+Đã tạo kênh **Badminton Hub** nhận tiền qua MB trên PayOS và lưu ba khóa tích hợp được mã hóa trong database của máy đang chạy. Đã kiểm chứng với API merchant thật: tạo link 1.000đ, truy vấn trạng thái, xác thực chữ ký và hủy link khi chưa có tiền vào. Ví không bị cộng tiền; chưa thực hiện chuyển khoản thật hoặc kiểm chứng một giao dịch đã thanh toán.
+
+Website đã bật phương thức PayOS. Khi chạy localhost, giữ website và `php artisan schedule:work` hoạt động để đối soát mỗi phút; có thể dùng nút kiểm tra giao dịch để cập nhật ngay. Webhook chưa đăng ký vì website chưa có HTTPS công khai. Bộ khóa và tài khoản nhận tiền riêng không được đưa vào GitHub, SQL mẫu hoặc ZIP; bản cài mới cần cấu hình kênh riêng.
+
 ## Bổ sung PayOS · 17/10/2026
 
 Nạp ví qua PayOS đã có trên giao diện khi đủ cấu hình; đặt cọc/trả đủ lịch sân dùng cùng luồng xác thực chữ ký và ghi tiền một lần. Mô tả chuyển khoản dùng 9 ký tự, tương thích giới hạn của ngân hàng. Link thanh toán cọc không vượt quá hạn thanh toán của lịch sân.
@@ -35,7 +41,7 @@ Mở **Admin → Thanh toán & kết nối → Kết nối PayOS**, nhập Clien
 
 Luồng tạo link, xác thực chữ ký phản hồi/webhook, kiểm tra trạng thái trực tiếp và chống ghi tiền trùng đã tích hợp theo [tài liệu PayOS](https://payos.vn/docs/api/) và [quy tắc chữ ký](https://payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/). URL nhận webhook: `/api/v1/payments/payos/webhook`; URL trở về: `/payments/payos/return`. Trang trở về không xác nhận tiền dựa trên tham số URL. Kết quả chỉ được ghi khi máy chủ PayOS xác nhận; tiền đến sau lịch hủy ghi vào ví khách để đối soát. Chưa tích hợp hoàn tiền PayOS tự động.
 
-Hồ sơ Casso đã xác thực; máy hiện chưa có bộ khóa kênh thanh toán. Chức năng thanh toán thật chỉ xuất hiện khi có cấu hình đầy đủ; không giả lập PayOS thành công. Webhook cần địa chỉ HTTPS công khai; khi chạy localhost có đối soát định kỳ trên máy chủ và nút kiểm tra giao dịch trực tiếp.
+Máy đang chạy đã có kênh PayOS thật qua MB và đủ bộ khóa; đã kiểm chứng tạo, truy vấn và hủy link chưa thanh toán vào ngày 18/10/2026. Chưa thực hiện chuyển khoản thật. Bản cài mới từ GitHub/ZIP không mang theo khóa của máy này. Webhook cần địa chỉ HTTPS công khai; khi chạy localhost có đối soát định kỳ trên máy chủ và nút kiểm tra giao dịch trực tiếp.
 
 Nâng cấp bản đang chạy bằng `php artisan migrate` (sao lưu MySQL trước); không dùng `migrate:fresh`. SQL đi kèm được xuất từ cơ sở dữ liệu demo riêng: 95 tài khoản, 30 chi nhánh, không có phiên đăng nhập hoặc cấu hình dịch vụ của máy người dùng. Migration giá chỉ sửa các giá mẫu cũ còn khớp, không tính lại hóa đơn lịch sử. Yonex AS-30 12 quả cập nhật 1.239.000đ theo [giá tham khảo VNB](https://shopvnb.com/ong-cau-long-yonex-as30.html); Pocari 20.000đ/chai và RSL 150.000đ/6 quả là giá bán mẫu cho sân, có thể sửa trong quản lý.
 

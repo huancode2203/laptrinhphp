@@ -1150,23 +1150,27 @@ export default function Account({
                         <h2 className="my-3 text-4xl font-bold text-[#16a34a]">
                             {money(user.wallet_balance)}
                         </h2>
-                        <button
-                            className="btn"
-                            disabled={!data!.momo_enabled}
-                            onClick={() => setForm("topup")}
-                        >
-                            {data?.demo?.momo
-                                ? "Nạp ví · Demo"
-                                : "Nạp qua MoMo"}
-                        </button>
-                        {data!.payos_enabled && (
+                        <div className="flex flex-wrap gap-3">
+                            {data!.payos_enabled && (
+                                <button
+                                    className="btn"
+                                    onClick={() => setForm("payos-topup")}
+                                >
+                                    Nạp qua PayOS
+                                </button>
+                            )}
                             <button
-                                className="btn-outline ml-3"
-                                onClick={() => setForm("payos-topup")}
+                                className={
+                                    data!.payos_enabled ? "btn-outline" : "btn"
+                                }
+                                disabled={!data!.momo_enabled}
+                                onClick={() => setForm("topup")}
                             >
-                                Nạp qua PayOS
+                                {data?.demo?.momo
+                                    ? "Nạp ví · Demo"
+                                    : "Nạp qua MoMo"}
                             </button>
-                        )}
+                        </div>
                         <p className="mt-3 text-sm text-[#6d8474]">
                             Bạn có thể nạp tiền tại quầy.{" "}
                         </p>
@@ -1555,6 +1559,16 @@ export default function Account({
             )}
             {["topup", "payos-topup"].includes(form) && (
                 <Editor
+                    label={
+                        form !== "payos-topup" && data!.demo?.momo
+                            ? "Nạp ví demo"
+                            : "Tiếp tục thanh toán"
+                    }
+                    description={
+                        form === "payos-topup"
+                            ? "Nhập số tiền muốn nạp. Bạn sẽ chuyển đến PayOS để thanh toán; số dư ví cập nhật sau khi giao dịch được xác nhận."
+                            : undefined
+                    }
                     title={
                         form === "payos-topup"
                             ? "Nạp ví qua PayOS"

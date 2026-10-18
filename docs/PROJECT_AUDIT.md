@@ -1,8 +1,10 @@
 # Rà soát toàn bộ Badminton Hub · 17/10/2026
 
-## Trạng thái PayOS mới nhất · 17/10/2026
+## Trạng thái PayOS mới nhất · 18/10/2026
 
-Đã kiểm tra trực tiếp trên Chrome: hồ sơ chủ dự án hiển thị **Đã xác thực** ở cả Casso và PayOS, đã vào được trang quản lý PayOS. PayOS hiện chưa có tài khoản ngân hàng liên kết và chưa có kênh thanh toán; website vẫn thiếu ba khóa kênh thu, chưa xác nhận một khoản chuyển tiền thật.
+Đã kiểm tra MB hiển thị **Đã liên kết**, tạo kênh **Badminton Hub** sau xác nhận của chủ dự án và lưu khóa mã hóa vào database vận hành trên máy. API merchant thật đã chấp nhận tạo link 1.000đ; truy vấn trạng thái và chữ ký phản hồi hợp lệ. Link kiểm tra đã hủy trên PayOS, đồng bộ về trạng thái không thành công trong ứng dụng, số tiền đã trả bằng 0 và ví không thay đổi. Chưa thực hiện chuyển khoản thật hoặc kiểm chứng thu tiền/cộng ví với giao dịch ngân hàng đã thanh toán.
+
+Webhook công khai vẫn chưa được triển khai. Localhost dùng scheduler mỗi phút và thao tác kiểm tra giao dịch; cần giữ máy chủ/scheduler hoạt động. GitHub, SQL mẫu và ZIP không chứa khóa hoặc tài khoản nhận tiền riêng. Những trạng thái chưa kết nối trong các mục ngày 16–17/10 bên dưới là lịch sử trước lần kết nối này.
 
 Mã nguồn đã thêm nạp ví PayOS, đối soát định kỳ trên máy chủ khi chưa có webhook công khai, mô tả ngân hàng 9 ký tự và hạn link cọc bám theo lịch sân. Kiểm thử provider vẫn dùng HTTP giả lập có chữ ký: toàn bộ SQLite **201 tests / 5.103 assertions**, nhóm PayOS/an toàn tích hợp trên MySQL **24 tests / 142 assertions**. Không coi xác thực danh tính hoặc kiểm thử giả lập là bằng chứng đã kết nối ngân hàng/nhận tiền. Chi tiết ở VALIDATION.
 

@@ -1,4 +1,13 @@
-# Kiểm tra bản Laravel / MySQL · cập nhật 17/10/2026
+# Kiểm tra bản Laravel / MySQL · cập nhật 18/10/2026
+
+## Kiểm chứng PayOS merchant thật · 18/10/2026
+
+- Trên Chrome, đã xác nhận MB ở trạng thái **Đã liên kết**, hồ sơ PayOS đã xác thực và chưa có kênh. Sau khi chủ dự án đồng ý tạo kênh/khóa, đã tạo kênh Website **Badminton Hub** và chọn MB làm ngân hàng chính.
+- Đã lưu Client ID, API Key và Checksum Key qua `PayosSettings::save`, mã hóa trong `integration_settings` của database vận hành. Không đưa khóa vào mã nguồn, `.env.example`, GitHub, SQL hoặc ZIP; tệp trung chuyển tạm đã xóa sau khi lưu. API trạng thái không trả khóa.
+- Đã gọi API merchant thật bằng luồng `PayosService::create` cho một link nạp ví 1.000đ, sau đó `sync`: URL thuộc `pay.payos.vn`, trạng thái chờ, số tiền khớp và chữ ký phản hồi hợp lệ. Không ghi thu tiền hoặc cộng ví khi mới tạo link.
+- Đã hủy chính link kiểm tra chưa thanh toán qua API PayOS, xác thực chữ ký phản hồi hủy và truy vấn lại bằng `sync`. PayOS trả `CANCELLED`, số tiền đã trả 0, ứng dụng lưu `failed`; không chuyển tiền thật và không thay đổi số dư ví.
+- `hub:sync-payos --json` xác nhận đủ cấu hình, không có lỗi; website hoạt động tại localhost. Webhook chưa đăng ký vì chưa có HTTPS công khai; đối soát định kỳ cần máy chủ và scheduler đang chạy. Chưa kiểm chứng luồng tiền đã thanh toán hoặc webhook từ PayOS tới môi trường công khai. Các mục ngày 16–17/10 bên dưới ghi nhận trạng thái tại thời điểm trước lần kết nối này.
+- Kiểm thử bổ sung nhóm PayOS/đối soát: **12/12 tests, 70 assertions** trên SQLite in-memory. TypeScript và Vite 906 modules đạt. Giao diện khách hàng đã hiển thị **Nạp qua PayOS**; phương thức thật được đặt trước nút nạp demo khi đã đủ cấu hình. HTTP bootstrap trả `payos_enabled=true`. Đã kiểm tra khóa không có trong các tệp Git theo dõi, dữ liệu cấu hình được mã hóa và tệp khóa trung chuyển không còn tồn tại.
 
 ## Tiếp tục PayOS sau xác thực Casso · 17/10/2026
 
