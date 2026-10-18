@@ -792,47 +792,6 @@ export default function AdvancedManagement({
                             </tr>
                         ))}
                     </Table>
-                    <h2 className="my-4 text-xl font-bold">
-                        Yêu cầu hoàn MoMo
-                    </h2>
-                    <Table headers={["Lịch", "Số tiền", "Trạng thái", ""]}>
-                        {ad?.refund_requests.map((v: Row) => (
-                            <tr key={v.id}>
-                                {td(v.booking_id)}
-                                {td(money(v.amount))}
-                                {td(v.message ?? "Đang chờ")}
-                                {td(
-                                    v.status === "pending" ? (
-                                        <button
-                                            className="btn-outline"
-                                            onClick={() =>
-                                                run(async () => {
-                                                    await api(
-                                                        "manage/bookings/" +
-                                                            v.booking_id +
-                                                            "/momo-refund",
-                                                        "POST",
-                                                        {
-                                                            request_key:
-                                                                v.request_key,
-                                                            attempt_id:
-                                                                v.payment_attempt_id,
-                                                            amount: v.amount,
-                                                        },
-                                                    );
-                                                    await load();
-                                                })
-                                            }
-                                        >
-                                            Kiểm tra kết quả
-                                        </button>
-                                    ) : (
-                                        "Đã hoàn"
-                                    ),
-                                )}
-                            </tr>
-                        ))}
-                    </Table>
                 </>
             )}
             {editing && (

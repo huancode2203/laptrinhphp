@@ -6,13 +6,14 @@ use App\Models\Branch;
 use App\Models\Court;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CourtSearchService
 {
-    public function search(string $message, ?User $user = null, ?array $filters = null, ?array $context = null): array
+    public function search(string $message, ?User $user = null, ?array $filters = null, ?array $context = null, int $page = 1, int $perPage = 24): array
     {
         $mode = 'filters';
         $modelIssue = null;
@@ -73,6 +74,7 @@ class CourtSearchService
         $district = app(LocationService::class)->normalize($filters['ward'] ?? $filters['district'] ?? '');
         $courts = Court::where('status', 'active')->whereHas('branch', fn ($q) => $q->where('active', true))->with('branch')->get();
         $found = [];
+        $favoriteIds = $user ? DB::table('favorite_courts')->where('user_id', $user->id)->pluck('court_id')->all() : [];
         foreach ($courts as $court) {
             if ($district && app(LocationService::class)->normalize($court->branch->ward ?: $court->branch->district) !== $district) {
                 continue;
@@ -88,14 +90,17 @@ class CourtSearchService
                 if (! empty($filters['max_budget']) && $quote['total_amount'] > $filters['max_budget']) {
                     continue;
                 }
-                $found[] = ['court_id' => $court->id, 'court_name' => $court->name, 'branch_id' => $court->branch_id, 'branch_name' => $court->branch->name, 'district' => $court->branch->ward ?: $court->branch->district, 'ward' => $court->branch->ward ?: $court->branch->district, 'directions_url' => app(LocationService::class)->directions($court->branch), 'address' => $court->branch->address, 'amenities' => $court->branch->amenities, 'starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'total_amount' => $quote['total_amount'], 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100)];
+                $found[] = ['is_favorite' => in_array($court->id, $favoriteIds, true), 'court_id' => $court->id, 'court_name' => $court->name, 'branch_id' => $court->branch_id, 'branch_name' => $court->branch->name, 'district' => $court->branch->ward ?: $court->branch->district, 'ward' => $court->branch->ward ?: $court->branch->district, 'directions_url' => app(LocationService::class)->directions($court->branch), 'address' => $court->branch->address, 'amenities' => $court->branch->amenities, 'starts_at' => $start->toIso8601String(), 'ends_at' => $end->toIso8601String(), 'total_amount' => $quote['total_amount'], 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100)];
             } catch (ValidationException) {
                 continue;
             }
         }
         usort($found, fn ($a, $b) => [$a['total_amount'], $a['branch_id'], $a['court_id']] <=> [$b['total_amount'], $b['branch_id'], $b['court_id']]);
+        $perPage = max(1, min(24, $perPage));
+        $lastPage = max(1, (int) ceil(count($found) / $perPage));
+        $page = max(1, min($lastPage, $page));
 
-        return ['needs_clarification' => false, 'message' => count($found) ? 'Có '.count($found).' sân phù hợp từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d/m/Y').'.' : 'Chưa có sân trống phù hợp. Bạn có thể đổi giờ, khu vực hoặc ngân sách.', 'filters' => $filters, 'courts' => array_slice($found, 0, 24), 'total_count' => count($found), 'checked_at' => now()->toIso8601String(), 'mode' => $mode, 'model_issue' => $modelIssue];
+        return ['needs_clarification' => false, 'message' => count($found) ? 'Có '.count($found).' sân phù hợp từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d/m/Y').'.' : 'Chưa có sân trống phù hợp. Bạn có thể đổi giờ, khu vực hoặc ngân sách.', 'filters' => $filters, 'courts' => array_slice($found, ($page - 1) * $perPage, $perPage), 'total_count' => count($found), 'current_page' => $page, 'last_page' => $lastPage, 'per_page' => $perPage, 'checked_at' => now()->toIso8601String(), 'mode' => $mode, 'model_issue' => $modelIssue];
     }
 
     private function normalize(string $value): string

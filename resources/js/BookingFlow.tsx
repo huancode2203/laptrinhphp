@@ -9,7 +9,7 @@ import {
     readBookingDraft,
     saveBookingDraft,
 } from "./bookingDraft";
-import { Card, Empty, Modal } from "./ui";
+import { Card, Confirm, Empty, Modal } from "./ui";
 export default function BookingFlow({
     initial = {},
     done,
@@ -60,20 +60,15 @@ export default function BookingFlow({
         [depositOnly, setDepositOnly] = useState(draft.deposit_only ?? true),
         [customer, setCustomer] = useState(draft.user_id ?? ""),
         [error, setError] = useState("");
+    const [waitlistCourt, setWaitlistCourt] = useState<Row | null>(null);
     const b = data!.branches.find((b: Row) => b.id === Number(branch));
     useEffect(() => {
         if (fixed || data!.user.role !== "customer")
-            setMethod((value) =>
-                ["momo", "payos"].includes(value) ? "cash" : value,
-            );
+            setMethod((value) => (value === "payos" ? "cash" : value));
     }, [fixed, data!.user.role]);
     useEffect(() => {
-        if (
-            (method === "payos" && !data!.payos_enabled) ||
-            (method === "momo" && !data!.momo_enabled)
-        )
-            setMethod("cash");
-    }, [data!.payos_enabled, data!.momo_enabled, method]);
+        if (method === "payos" && !data!.payos_enabled) setMethod("cash");
+    }, [data!.payos_enabled, method]);
     useEffect(() => {
         let live = true;
         api("holds/active")
@@ -350,7 +345,7 @@ export default function BookingFlow({
         const booked = fixed ? r.data : r.data ? [r.data] : [];
         clearBookingDraft(data!.user.id);
 
-        if (["momo", "payos"].includes(method)) {
+        if (method === "payos") {
             if (fixed) {
                 await refresh().catch(() => {});
                 toast(
@@ -700,18 +695,7 @@ export default function BookingFlow({
                                             "Sân vừa có lịch. Chọn sân khác.",
                                         );
                                 }}
-                                onBusy={(c) =>
-                                    run(async () => {
-                                        await api("waitlist", "POST", {
-                                            court_id: c.id,
-                                            starts_at: start,
-                                            ends_at: end,
-                                        });
-                                        toast(
-                                            "Đã đăng ký nhận thông báo khi sân trống.",
-                                        );
-                                    })
-                                }
+                                onBusy={(court) => setWaitlistCourt(court)}
                             />
                             {bookingTypeFields}
                             <h2 className="mb-4 mt-6 text-xl font-bold">
@@ -852,26 +836,15 @@ export default function BookingFlow({
                                             ? "Tạo lịch và thanh toán sau"
                                             : "Thanh toán tại quầy",
                                 },
-                                {
-                                    id: "wallet",
-                                    label:
-                                        data!.user.role === "customer"
-                                            ? "Ví HUB · " +
-                                              money(data!.user.wallet_balance)
-                                            : "Ví HUB của khách hàng",
-                                },
-                                ...(data!.momo_enabled &&
-                                !fixed &&
-                                data!.user.role === "customer"
-                                    ? [{ id: "momo", label: "Ví MoMo" }]
-                                    : []),
+
                                 ...(data!.payos_enabled &&
                                 !fixed &&
-                                data!.user.role === "customer"
+                                (data!.user.role === "customer" ||
+                                    data!.permissions?.["payments.write"])
                                     ? [
                                           {
                                               id: "payos",
-                                              label: "Chuyển khoản / QR qua PayOS",
+                                              label: "Chuyển khoản ngân hàng",
                                           },
                                       ]
                                     : []),
@@ -915,9 +888,7 @@ export default function BookingFlow({
                                             )}
                                         </p>
                                         {(method === "wallet" ||
-                                            ["momo", "payos"].includes(
-                                                method,
-                                            )) && (
+                                            method === "payos") && (
                                             <fieldset
                                                 className="mt-4 space-y-2"
                                                 aria-label="Mức thanh toán"
@@ -980,8 +951,8 @@ export default function BookingFlow({
                                             <p className="mt-3 text-sm">
                                                 Bạn có thể thanh toán sau trong
                                                 Lịch của tôi. Muốn trả ngay toàn
-                                                bộ 100%, chọn Ví HUB, PayOS hoặc
-                                                MoMo ở trên.
+                                                bộ 100%, chọn Ví HUB hoặc chuyển
+                                                khoản ngân hàng ở trên.
                                             </p>
                                         )}
                                     </>
@@ -1002,9 +973,9 @@ export default function BookingFlow({
                             )}
                             <p className="text-sm text-[#6d8474]">
                                 Lịch chưa thanh toán có thể hủy trước giờ chơi.
-                                Lịch trả bằng ví được hoàn ví khi hủy trước ít
-                                nhất 4 giờ. Các phương thức khác cần liên hệ
-                                quầy.
+                                Lịch đã có khoản thanh toán cần đổi lịch hoặc
+                                liên hệ chi nhánh; hệ thống không xử lý hoàn
+                                tiền.
                             </p>
                             <div className="mt-6 flex gap-3">
                                 <button
@@ -1181,6 +1152,29 @@ export default function BookingFlow({
                     )}
                 </Card>
             </div>
+            {waitlistCourt && (
+                <Confirm
+                    title="Sân đang bận trong khung giờ này"
+                    close={() => setWaitlistCourt(null)}
+                    label="Nhận thông báo nếu có chỗ"
+                    action={async () => {
+                        await api("waitlist", "POST", {
+                            court_id: waitlistCourt.id,
+                            starts_at: start,
+                            ends_at: end,
+                        });
+                        setWaitlistCourt(null);
+                        toast(
+                            "Đã đăng ký danh sách chờ cho đúng sân và khung giờ này.",
+                        );
+                    }}
+                >
+                    Bạn có thể chọn sân hoặc giờ khác ngay. Nếu muốn chờ{" "}
+                    {waitlistCourt.name}, hãy xác nhận để nhận thông báo khi
+                    lịch được giải phóng. Hệ thống không tự đặt sân hay thu tiền
+                    khi bạn vào danh sách chờ.
+                </Confirm>
+            )}
             {changingBranch && (
                 <Modal
                     title="Đổi cơ sở đặt sân"

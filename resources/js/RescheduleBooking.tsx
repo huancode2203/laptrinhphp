@@ -15,9 +15,7 @@ export default function RescheduleBooking({
     const [requestKey] = useState(key);
     const [wholeSeries, setWholeSeries] = useState(false);
     const [quote, setQuote] = useState<Row | null>(null),
-        [quoteError, setQuoteError] = useState(""),
-        [refundMethod, setRefundMethod] = useState("wallet"),
-        [refundConfirmed, setRefundConfirmed] = useState(false);
+        [quoteError, setQuoteError] = useState("");
     const [start, setStart] = useState(localDateTime(booking.starts_at)),
         [end, setEnd] = useState(localDateTime(booking.ends_at)),
         [court, setCourt] = useState(String(booking.court_id)),
@@ -63,7 +61,6 @@ export default function RescheduleBooking({
         let live = true;
         setQuote(null);
         setQuoteError("");
-        setRefundConfirmed(false);
         if (!selected) return;
         const timer = setTimeout(
             () =>
@@ -90,7 +87,7 @@ export default function RescheduleBooking({
         <Modal title="Đổi sân hoặc khung giờ" close={close}>
             <p className="mb-5 text-sm text-slate-500">
                 Chọn sân trống trong cùng chi nhánh. Giá sân được tính lại theo
-                khung giờ mới. Xem lại tiền cần thu thêm hoặc hoàn chênh lệch
+                khung giờ mới. Xem lại giá mới và khoản cần thanh toán thêm
                 trước khi xác nhận.
             </p>
             <form
@@ -108,8 +105,6 @@ export default function RescheduleBooking({
                                 request_key: requestKey,
                                 expected_total: quote!.booking.total_amount,
                                 expected_refund: quote!.refund_amount,
-                                refund_method: refundMethod,
-                                refund_confirmed: refundConfirmed,
                                 scope: wholeSeries ? "remaining" : "single",
                             },
                         );
@@ -246,61 +241,14 @@ export default function RescheduleBooking({
                             </details>
                         )}
                         {quote.refund_amount > 0 && (
-                            <>
-                                <p className="flex justify-between text-emerald-700">
-                                    <span>Hoàn chênh lệch</span>
-                                    <b>{money(quote.refund_amount)}</b>
-                                </p>
-                                {data!.user.role === "customer" ? (
-                                    <p>
-                                        Khoản chênh lệch được hoàn vào Ví HUB
-                                        khi đổi lịch thành công.
-                                    </p>
-                                ) : (
-                                    <>
-                                        <label className="block">
-                                            Cách hoàn chênh lệch
-                                            <select
-                                                className="input mt-2 w-full"
-                                                value={refundMethod}
-                                                onChange={(e) => {
-                                                    setRefundMethod(
-                                                        e.target.value,
-                                                    );
-                                                    setRefundConfirmed(false);
-                                                }}
-                                            >
-                                                <option value="wallet">
-                                                    Cộng vào Ví HUB của khách
-                                                </option>
-                                                <option value="cash">
-                                                    Đã hoàn tiền mặt
-                                                </option>
-                                                <option value="bank">
-                                                    Đã chuyển khoản hoàn tiền
-                                                </option>
-                                            </select>
-                                        </label>
-                                        {refundMethod !== "wallet" && (
-                                            <label className="flex items-start gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={refundConfirmed}
-                                                    onChange={(e) =>
-                                                        setRefundConfirmed(
-                                                            e.target.checked,
-                                                        )
-                                                    }
-                                                />
-                                                Tôi đã hoàn đủ khoản chênh lệch
-                                                cho khách. Thao tác này ghi nhận
-                                                khoản hoàn, không tự chuyển tiền
-                                                ngân hàng.
-                                            </label>
-                                        )}
-                                    </>
-                                )}
-                            </>
+                            <p
+                                role="alert"
+                                className="rounded-xl bg-amber-50 p-4 text-sm"
+                            >
+                                Lịch mới có giá thấp hơn số tiền đã trả. Chọn
+                                lịch có giá phù hợp hoặc liên hệ chi nhánh để
+                                được hỗ trợ; hệ thống không xử lý hoàn tiền.
+                            </p>
                         )}
                     </div>
                 )}
@@ -311,10 +259,7 @@ export default function RescheduleBooking({
                         !quote ||
                         checking ||
                         loading ||
-                        (quote.refund_amount > 0 &&
-                            data!.user.role !== "customer" &&
-                            refundMethod !== "wallet" &&
-                            !refundConfirmed)
+                        quote.refund_amount > 0
                     }
                 >
                     Xác nhận đổi lịch

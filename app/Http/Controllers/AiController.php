@@ -12,9 +12,9 @@ class AiController extends Controller
 {
     public function search(Request $r, CourtSearchService $service): JsonResponse
     {
-        $d = $r->validate(['message' => 'required|string|max:1000', 'filters' => 'sometimes|array']);
+        $d = $r->validate(['message' => 'required|string|max:1000', 'filters' => 'sometimes|array', 'page' => 'sometimes|integer|between:1,10000', 'per_page' => 'sometimes|integer|between:1,24']);
 
-        return response()->json(['data' => $service->search($d['message'], $r->user(), $d['filters'] ?? null)]);
+        return response()->json(['data' => $service->search($d['message'], $r->user(), $d['filters'] ?? null, null, $d['page'] ?? 1, $d['per_page'] ?? 24)]);
     }
 
     public function history(Request $r): JsonResponse

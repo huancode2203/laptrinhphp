@@ -1,4 +1,3 @@
-import DemoCheckout from "./DemoCheckout";
 import BookingResume from "./BookingResume";
 import CourtMatrix from "./CourtMatrix";
 import { ContentSupport, Coaching } from "./FeaturePages";
@@ -219,7 +218,6 @@ export default function App() {
             "account",
             "content",
             "coaching",
-            "demo-payment",
         ].includes(name)
             ? name
             : "home";
@@ -453,12 +451,6 @@ export default function App() {
                     />
                 ) : (
                     <AuthScreen done={() => go("booking")} />
-                )
-            ) : page === "demo-payment" ? (
-                user ? (
-                    <DemoCheckout />
-                ) : (
-                    <AuthScreen done={() => go("demo-payment")} />
                 )
             ) : page === "branch" ? (
                 <BranchDetail id={branch} book={book} />

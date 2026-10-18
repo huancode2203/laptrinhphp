@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Icon from "./Icon";
 import { api, useHub } from "./hub";
 import { BRANCHES, day, money, type Row } from "./data";
@@ -15,6 +15,9 @@ export default function SearchAssistant({
         [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
         [manual, setManual] = useState(false);
+    const [manualEdited, setManualEdited] = useState(false);
+    const filterVersion = useRef(0);
+    const [favoriteBusy, setFavoriteBusy] = useState<number[]>([]);
     const [filters, setFilters] = useState<Row>({
         date: day(),
         start_time: "13:00",
@@ -23,25 +26,35 @@ export default function SearchAssistant({
         max_budget: "",
         amenities: [],
     });
-    async function search(useFilters = false) {
+    async function search(useFilters = false, page = 0) {
+        const keepSelection = useFilters || manualEdited || page > 0;
+        const selectedFilters =
+            page > 0 ? (result?.filters ?? filters) : filters;
+        const version = filterVersion.current;
         setBusy(true);
         setError("");
         try {
             const r = await api("ai/courts", "POST", {
                 message: message || "Tìm sân theo lựa chọn",
-                ...(useFilters
+                page: page || 1,
+                per_page: 6,
+                ...(keepSelection
                     ? {
                           filters: {
-                              ...filters,
-                              max_budget: filters.max_budget
-                                  ? Number(filters.max_budget)
+                              ...selectedFilters,
+                              max_budget: selectedFilters.max_budget
+                                  ? Number(selectedFilters.max_budget)
                                   : null,
                           },
                       }
                     : {}),
             });
             setResult(r.data);
-            if (r.data.filters)
+            if (
+                r.data.filters &&
+                !keepSelection &&
+                version === filterVersion.current
+            )
                 setFilters({
                     ...filters,
                     ...r.data.filters,
@@ -53,6 +66,11 @@ export default function SearchAssistant({
         } finally {
             setBusy(false);
         }
+    }
+    function changeFilter(name: string, value: any) {
+        filterVersion.current++;
+        setManualEdited(true);
+        setFilters((previous) => ({ ...previous, [name]: value }));
     }
     return (
         <section
@@ -150,10 +168,7 @@ export default function SearchAssistant({
                                 min={type === "date" ? day() : undefined}
                                 value={filters[name] ?? ""}
                                 onChange={(e) =>
-                                    setFilters({
-                                        ...filters,
-                                        [name]: e.target.value,
-                                    })
+                                    changeFilter(name, e.target.value)
                                 }
                             />
                         </label>
@@ -164,10 +179,7 @@ export default function SearchAssistant({
                             className="input mt-1 w-full"
                             value={filters.district ?? ""}
                             onChange={(e) =>
-                                setFilters({
-                                    ...filters,
-                                    district: e.target.value,
-                                })
+                                changeFilter("district", e.target.value)
                             }
                         >
                             <option value="">Toàn TP.HCM</option>
@@ -190,10 +202,7 @@ export default function SearchAssistant({
                             placeholder="Không giới hạn"
                             value={filters.max_budget}
                             onChange={(e) =>
-                                setFilters({
-                                    ...filters,
-                                    max_budget: e.target.value,
-                                })
+                                changeFilter("max_budget", e.target.value)
                             }
                         />
                     </label>
@@ -285,35 +294,119 @@ export default function SearchAssistant({
                                     </a>
                                     {data?.user && (
                                         <button
-                                            className="btn-outline"
+                                            className={
+                                                "btn-outline text-xl " +
+                                                (c.is_favorite
+                                                    ? "text-rose-600 border-rose-200 bg-rose-50"
+                                                    : "")
+                                            }
+                                            aria-pressed={!!c.is_favorite}
+                                            style={
+                                                c.is_favorite
+                                                    ? { color: "#e11d48" }
+                                                    : undefined
+                                            }
+                                            disabled={favoriteBusy.includes(
+                                                c.court_id,
+                                            )}
                                             aria-label={
                                                 "Yêu thích " + c.court_name
                                             }
-                                            onClick={() =>
-                                                api(
-                                                    "courts/" +
-                                                        c.court_id +
-                                                        "/favorite",
-                                                    "PUT",
-                                                    { active: true },
-                                                )
-                                                    .then(() =>
-                                                        toast(
-                                                            "Đã lưu vào sân yêu thích.",
-                                                        ),
-                                                    )
-                                                    .catch((e) =>
-                                                        toast(e.message),
-                                                    )
-                                            }
+                                            onClick={async () => {
+                                                setFavoriteBusy((previous) => [
+                                                    ...previous,
+                                                    c.court_id,
+                                                ]);
+                                                try {
+                                                    await api(
+                                                        "courts/" +
+                                                            c.court_id +
+                                                            "/favorite",
+                                                        "PUT",
+                                                        {
+                                                            active: !c.is_favorite,
+                                                        },
+                                                    );
+                                                    setResult((previous) =>
+                                                        previous
+                                                            ? {
+                                                                  ...previous,
+                                                                  courts: previous.courts.map(
+                                                                      (
+                                                                          court: Row,
+                                                                      ) =>
+                                                                          court.court_id ===
+                                                                          c.court_id
+                                                                              ? {
+                                                                                    ...court,
+                                                                                    is_favorite:
+                                                                                        !c.is_favorite,
+                                                                                }
+                                                                              : court,
+                                                                  ),
+                                                              }
+                                                            : previous,
+                                                    );
+                                                    toast(
+                                                        c.is_favorite
+                                                            ? "Đã bỏ sân yêu thích."
+                                                            : "Đã lưu vào sân yêu thích.",
+                                                    );
+                                                } catch (failure) {
+                                                    toast(
+                                                        (failure as Error)
+                                                            .message,
+                                                    );
+                                                } finally {
+                                                    setFavoriteBusy(
+                                                        (previous) =>
+                                                            previous.filter(
+                                                                (id) =>
+                                                                    id !==
+                                                                    c.court_id,
+                                                            ),
+                                                    );
+                                                }
+                                            }}
                                         >
-                                            ♡
+                                            {c.is_favorite ? "♥" : "♡"}
                                         </button>
                                     )}
                                 </div>
                             </article>
                         ))}
                     </div>
+                    {result.last_page > 1 && (
+                        <nav
+                            className="mt-5 flex items-center justify-center gap-4"
+                            aria-label="Trang kết quả tìm sân"
+                        >
+                            <button
+                                className="btn-outline"
+                                disabled={busy || result.current_page <= 1}
+                                onClick={() =>
+                                    search(true, result.current_page - 1)
+                                }
+                            >
+                                Sân trước
+                            </button>
+                            <span className="text-sm">
+                                Trang {result.current_page} / {result.last_page}
+                            </span>
+                            <button
+                                className="btn-outline"
+                                disabled={
+                                    busy ||
+                                    result.current_page >= result.last_page
+                                }
+                                onClick={() =>
+                                    search(true, result.current_page + 1)
+                                }
+                            >
+                                Sân tiếp
+                            </button>
+                        </nav>
+                    )}
                 </div>
             )}
         </section>

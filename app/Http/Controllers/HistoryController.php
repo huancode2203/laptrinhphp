@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\AccountIdentity;
+use App\AuditPresenter;
 use App\Models\CommunityPost;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,9 @@ class HistoryController extends Controller
             'points' => ['loyalty_entries', ['description'], null],
         };
         $query = DB::table($table);
+        if ($kind === 'payments') {
+            $query->where('partner_code', 'PAYOS');
+        }
         if (! $admin) {
             $query->where('user_id', $request->user()->id);
         }
@@ -83,6 +87,9 @@ class HistoryController extends Controller
         if ($kind === 'reports') {
             $posts = CommunityPost::whereIn('id', $result->pluck('community_post_id'))->pluck('title', 'id');
             $result->through(fn ($row) => (object) [...(array) $row, 'title' => $posts[$row->community_post_id] ?? 'Bài viết đã gỡ']);
+        }
+        if ($kind === 'audits') {
+            $result->through(fn ($row) => app(AuditPresenter::class)->present($row));
         }
 
         return response()->json(['data' => $result]);

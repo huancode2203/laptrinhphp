@@ -18,8 +18,7 @@ export default function AuthScreen({
         [notice, setNotice] = useState(""),
         [busy, setBusy] = useState(false),
         [showPassword, setShowPassword] = useState(false),
-        [token, setToken] = useState(""),
-        [demoCode, setDemoCode] = useState("");
+        [token, setToken] = useState("");
     const accountMode = mode === "login" || mode === "register";
     const locked = busy || loading;
     function switchMode(next: string) {
@@ -208,7 +207,6 @@ export default function AuthScreen({
                 const response = await api("recovery/send", "POST", {
                     email: payload.email,
                 });
-                setDemoCode(response.demo_code ?? "");
                 setMode("verify");
                 setNotice(response.message);
             } else if (mode === "verify") {
@@ -357,29 +355,7 @@ export default function AuthScreen({
                             </div>
                         </>
                     )}
-                    {mode === "login" && data?.demo?.google && (
-                        <button
-                            className="btn-outline mb-4 w-full"
-                            disabled={locked}
-                            onClick={async () => {
-                                setBusy(true);
-                                try {
-                                    const response = await api(
-                                        "demo/google",
-                                        "POST",
-                                    );
-                                    await refresh();
-                                    done(response.data?.role);
-                                } catch (failure) {
-                                    setError((failure as Error).message);
-                                } finally {
-                                    setBusy(false);
-                                }
-                            }}
-                        >
-                            Thử đăng nhập Google · Demo
-                        </button>
-                    )}
+
                     <form
                         className="hub-form auth-form"
                         onSubmit={submit}
@@ -452,18 +428,6 @@ export default function AuthScreen({
                             )}
                         {mode === "verify" && (
                             <>
-                                {demoCode && (
-                                    <div
-                                        role="status"
-                                        className="form-demo-code"
-                                    >
-                                        Mã thử nghiệm: <b>{demoCode}</b>
-                                        <small>
-                                            Mã này dùng cho bản demo; chưa có
-                                            email được gửi.
-                                        </small>
-                                    </div>
-                                )}
                                 {field("code", "Mã xác nhận", {
                                     icon: "shield",
                                     placeholder: "6 chữ số",

@@ -108,6 +108,7 @@ export default function HistoryBrowser({
                 <div className="space-y-2">
                     <span>{statusText(row.status)}</span>
                     {row.status === "pending" &&
+                        row.partner_code === "PAYOS" &&
                         row.pay_url &&
                         Date.parse(row.expires_at) > Date.now() && (
                             <a
@@ -135,11 +136,9 @@ export default function HistoryBrowser({
             ];
         return [
             stamp(row.created_at),
-            row.action,
-            row.subject_type + " #" + row.subject_id,
-            typeof row.details === "string"
-                ? row.details
-                : JSON.stringify(row.details),
+            row.action_label || "Cập nhật hoạt động",
+            row.subject_label || "Nội dung hệ thống",
+            row.summary || "Thao tác đã được ghi nhận.",
         ];
     };
     return (
@@ -274,11 +273,9 @@ export default function HistoryBrowser({
                                             onClick={() => onSelect(row)}
                                         >
                                             {kind === "payments"
-                                                ? row.partner_code?.startsWith(
-                                                      "DEMO_",
-                                                  )
-                                                    ? "Xem giao dịch demo"
-                                                    : "Kiểm tra trạng thái"
+                                                ? row.partner_code === "PAYOS"
+                                                    ? "Kiểm tra trạng thái"
+                                                    : "Giao dịch lưu trữ"
                                                 : "Xem bài"}
                                         </button>
                                     </td>

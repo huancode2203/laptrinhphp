@@ -104,7 +104,7 @@ class EventController extends Controller
 
     public function register(Request $request, GameEvent $event, CommerceService $commerce): JsonResponse
     {
-        $data = $request->validate(['method' => ['required', Rule::in(['cash', 'wallet'])]]);
+        $data = $request->validate(['method' => ['required', Rule::in(['cash', 'bank'])]]);
         $reg = DB::transaction(function () use ($request, $event, $commerce, $data): EventRegistration {
             $event = GameEvent::query()->lockForUpdate()->findOrFail($event->id);
             abort_unless($event->status === 'published' && $event->starts_at->gt(now()) && ! $event->matches()->exists(), 422, 'Sự kiện đã đóng đăng ký.');
@@ -163,12 +163,8 @@ class EventController extends Controller
 
     private function cancelRegistration(Request $request, EventRegistration $reg, CommerceService $commerce): void
     {
+        abort_if($reg->paid_amount > 0, 422, 'Vé đã thanh toán không thể hủy trực tiếp. Vui lòng liên hệ ban tổ chức.');
         $reg->status = 'cancelled';
-        if ($reg->paid_amount > 0 && $reg->method === 'wallet') {
-            $commerce->wallet($request->user(), $reg->user, $reg->paid_amount, 'refund', (string) Str::uuid(), 'Hoàn vé '.$reg->event->title, $reg->event->branch_id, 'event_registration', $reg->id);
-            $commerce->payment($request->user(), $reg->user, 'event_registration', $reg->id, $reg->paid_amount, 'wallet', $reg->event->branch_id, 'refund');
-            $reg->paid_amount = 0;
-        }
         $reg->save();
     }
 
@@ -186,7 +182,7 @@ class EventController extends Controller
             app(EventWaitlistService::class)->advance($event);
         }, 5);
 
-        return response()->json(['message' => 'Đã hủy đăng ký. Khoản thu tại quầy cần quầy xử lý hoàn tiền.']);
+        return response()->json(['message' => 'Đã hủy đăng ký chưa thanh toán.']);
     }
 
     public function refund(Request $request, EventRegistration $registration, CommerceService $commerce, BookingService $engine): JsonResponse

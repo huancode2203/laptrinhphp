@@ -24,8 +24,12 @@ export const statusText = (s: string) =>
     (
         ({
             customer: "Khách hàng",
-            demo_bank: "Ngân hàng · Demo",
-            demo_momo: "MoMo · Demo",
+            demo_bank: "Chuyển khoản thử nghiệm trước đây",
+            demo_momo: "Giao dịch thử nghiệm trước đây",
+            cash: "Tiền mặt tại quầy",
+            bank: "Chuyển khoản tại quầy",
+            payos: "Chuyển khoản PayOS",
+            wallet: "Số dư Ví HUB",
             manager: "Quản lý",
             staff: "Nhân viên",
             cashier: "Thu ngân",

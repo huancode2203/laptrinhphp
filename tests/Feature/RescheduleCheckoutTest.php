@@ -21,7 +21,7 @@ class RescheduleCheckoutTest extends TestCase
         $this->travelTo(now()->setDate(2026, 10, 17)->setTime(9, 0));
     }
 
-    public function test_move_preview_does_not_mutate_and_refund_is_atomic_and_idempotent(): void
+    public function test_cheaper_move_preview_does_not_mutate_and_confirmation_does_not_refund(): void
     {
         $court = Court::factory()->create(['hourly_rate' => 100000, 'peak_rate' => 100000]);
         $target = Court::factory()->create(['branch_id' => $court->branch_id, 'hourly_rate' => 60000, 'peak_rate' => 60000, 'weekend_rate' => 60000]);
@@ -34,17 +34,17 @@ class RescheduleCheckoutTest extends TestCase
         $this->actingAs($manager)->postJson($base.'/reschedule-quote', $data)->assertOk()->assertJsonPath('data.refund_amount', 40000)->assertJsonPath('data.booking.total_amount', 60000);
         $this->assertEquals($court->id, $booking->fresh()->court_id);
         $this->assertDatabaseCount('payments', 1);
-        $data += ['request_key' => (string) Str::uuid(), 'expected_total' => 60000, 'refund_method' => 'wallet'];
+        $data += ['request_key' => (string) Str::uuid(), 'expected_total' => 60000];
         $this->patchJson($base.'/reschedule', [...$data, 'expected_total' => 1])->assertConflict();
-        $this->patchJson($base.'/reschedule', $data)->assertOk()->assertJsonPath('data.paid_amount', 60000);
-        $this->patchJson($base.'/reschedule', $data)->assertOk();
-        $this->assertSame(40000, $customer->fresh()->wallet_balance);
-        $this->assertDatabaseCount('payments', 2);
-        $this->assertDatabaseCount('wallet_entries', 1);
-        $this->assertSame(100000, array_sum(array_column($booking->payments()->first()->allocation['items'], 'amount')));
+        $this->patchJson($base.'/reschedule', $data)->assertUnprocessable();
+        $this->assertSame(0, $customer->fresh()->wallet_balance);
+        $this->assertSame($court->id, $booking->fresh()->court_id);
+        $this->assertSame(100000, $booking->fresh()->paid_amount);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('wallet_entries', 0);
     }
 
-    public function test_cash_refund_requires_actual_confirmation_and_payment_permission(): void
+    public function test_refund_fields_are_rejected_and_never_change_the_paid_bill(): void
     {
         $court = Court::factory()->create(['hourly_rate' => 50000, 'peak_rate' => 50000, 'weekend_rate' => 50000]);
         $booking = Booking::factory()->create(['court_id' => $court->id, 'starts_at' => '2026-10-18 13:00', 'ends_at' => '2026-10-18 15:00', 'court_amount' => 100000, 'total_amount' => 100000, 'paid_amount' => 100000]);
@@ -53,10 +53,11 @@ class RescheduleCheckoutTest extends TestCase
         $url = '/api/v1/bookings/'.$booking->id.'/reschedule';
         $this->actingAs($manager)->patchJson($url, $data)->assertUnprocessable();
         DB::table('role_permissions')->insert(['role' => 'manager', 'permission' => 'payments.write', 'allowed' => false]);
-        $this->patchJson($url, [...$data, 'refund_confirmed' => true])->assertForbidden();
+        $this->patchJson($url, [...$data, 'refund_confirmed' => true])->assertUnprocessable();
         DB::table('role_permissions')->where('role', 'manager')->update(['allowed' => true]);
-        $this->patchJson($url, [...$data, 'refund_confirmed' => true])->assertOk()->assertJsonPath('data.paid_amount', 50000);
-        $this->assertDatabaseHas('payments', ['booking_id' => $booking->id, 'kind' => 'refund', 'method' => 'cash', 'amount' => 50000]);
+        $this->patchJson($url, [...$data, 'refund_confirmed' => true])->assertUnprocessable();
+        $this->assertDatabaseMissing('payments', ['booking_id' => $booking->id, 'kind' => 'refund']);
+        $this->assertSame(100000, $booking->fresh()->paid_amount);
     }
 
     public function test_end_of_play_announces_checkout_once_without_closing_or_collecting_money(): void

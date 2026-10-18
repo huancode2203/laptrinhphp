@@ -1,3 +1,4 @@
+import UsageGuide from "./UsageGuide";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { money, statusText, stamp, localDateTime, type Row } from "./data";
@@ -23,6 +24,7 @@ const menu = [
     ["operations", "Cấu hình & phân quyền"],
     ["audits", "Nhật ký hoạt động"],
     ["profile", "Tài khoản quản trị"],
+    ["help", "Hướng dẫn sử dụng"],
 ];
 export default function AdminWorkspace({ logout }: { logout: () => void }) {
     const { data, refresh, toast, run, loading } = useHub();
@@ -440,19 +442,29 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                 />
                             )}
                             {tab === "profile" && <WorkspaceAccount />}
+                            {tab === "help" && <UsageGuide />}
                             {fields[tab] && (
                                 <>
                                     <div className="mb-5 flex flex-wrap gap-3">
-                                        <input
-                                            aria-label="Tìm danh mục quản trị"
-                                            className="input min-w-48 flex-1"
-                                            value={search}
-                                            placeholder="Tìm tên, phường/xã, email hoặc mã…"
-                                            onChange={(e) => {
-                                                setSearch(e.target.value);
-                                                setPage(1);
-                                            }}
-                                        />
+                                        {tab !== "plans" && (
+                                            <input
+                                                aria-label="Tìm danh mục quản trị"
+                                                className="input min-w-48 flex-1"
+                                                value={search}
+                                                placeholder={
+                                                    tab === "plans"
+                                                        ? "Tìm tên gói hội viên…"
+                                                        : tab === "branches" ||
+                                                            tab === "courts"
+                                                          ? "Tìm tên, phường/xã hoặc mã…"
+                                                          : "Tìm tên hoặc mã…"
+                                                }
+                                                onChange={(e) => {
+                                                    setSearch(e.target.value);
+                                                    setPage(1);
+                                                }}
+                                            />
+                                        )}
                                         {tab === "users" ? (
                                             <select
                                                 aria-label="Lọc vai trò tài khoản"

@@ -19,6 +19,11 @@ class BookingResource extends JsonResource
             'starts_at' => $this->starts_at->toIso8601String(),
             'ends_at' => $this->ends_at->toIso8601String(),
             'status' => $this->status,
+            'status_label' => $this->status === 'confirmed'
+                ? ($this->paid_amount === 0 && $this->total_amount > 0 ? 'Chờ thanh toán' : ($this->paid_amount < $this->deposit_amount ? 'Đã trả một phần · Chưa đủ cọc' : ($this->paid_amount < $this->total_amount ? 'Đã đặt cọc' : 'Đã thanh toán · Chờ nhận sân')))
+                : match ($this->status) {
+                    'cancelled' => 'Đã hủy', 'checked_in' => 'Đang chơi', 'completed' => 'Đã hoàn tất', default => 'Đang cập nhật'
+                },
             'needs_checkout' => $this->status === 'checked_in' && $this->ends_at->lte(now()),
             'court_amount' => $this->court_amount,
             'service_amount' => $this->service_amount,

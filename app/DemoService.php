@@ -11,6 +11,6 @@ class DemoService
 
     public function uses(string $service): bool
     {
-        return $this->active() && ! app(IntegrationStatus::class)->ready($service);
+        return ! in_array($service, ['momo', 'sepay', 'bank', 'payos'], true) && $this->active() && ! app(IntegrationStatus::class)->ready($service);
     }
 }

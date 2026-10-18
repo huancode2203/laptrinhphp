@@ -1,5 +1,15 @@
 # Rà soát toàn bộ Badminton Hub · 17/10/2026
 
+## Phạm vi hiện tại · 19/10/2026
+
+Bản đồ hiện hành: [44 nhóm chức năng theo ba không gian và cách dùng](BUSINESS_FLOWS.md), [test case thủ công](TEST_CASES.csv), [214 tests tự động đã đạt trên SQLite và MySQL](AUTOMATED_TEST_INDEX.csv). Người chơi, Admin, Quản lý có Hướng dẫn sử dụng ngay trong ứng dụng; nhân viên/thu ngân thuộc không gian quản lý với quyền được cấp.
+
+Thanh toán dùng PayOS và thu tại quầy; nạp HUB qua PayOS. MoMo, checkout giả, mã OTP thử và các thao tác hoàn tiền mới đã bị bỏ khỏi giao diện. Không xóa lịch sử tiền cũ. Lịch đã có tiền không hủy trực tiếp, đổi sang giá thấp hơn tiền đã thu bị chặn; liên hệ chi nhánh để đối chiếu. Hủy link PayOS chỉ hủy lịch online chưa trả sau khi xác thực kết quả, không xóa lịch tại quầy hoặc cọc.
+
+Đã sửa giữ ngày/giờ tìm sân, tim đỏ, phân trang kết quả đủ mọi sân, xác nhận danh sách chờ, quota hold chủ động hủy, trạng thái chờ thanh toán, tạo PayOS cho khách tại quầy, lọc hội viên và audit đọc được tiền/thời gian/giá trị trước đổi. Kiểm chứng mới nhất và giới hạn ở [VALIDATION](VALIDATION.md). Không chuyển tiền thật trong đợt rà soát này.
+
+Những mô tả hoàn tiền, MoMo hoặc demo trong các mục có ngày cũ bên dưới ghi nhận phiên bản trước và không phải cách dùng hiện tại. Phần chưa xây dựng đầy đủ: một QR cho toàn chuỗi, HTTPS webhook công khai, ca thu ngân/POS đổi trả, khóa học nhiều buổi và thi đấu đôi/đội; Gmail còn chờ nhập thông tin tại máy. Không có bằng chứng đã thử thủ công mọi tổ hợp quyền hoặc toàn bộ test case.
+
 ## Email và giao diện tài khoản làm việc · 18/10/2026
 
 Đã bổ sung form Gmail riêng cho Admin, lưu mật khẩu ứng dụng mã hóa và gửi thử về chính địa chỉ gửi. SMTP máy chủ có ưu tiên; API không trả mật khẩu. Thư xác nhận có HTML và text. Trang kết nối bỏ thẻ PayOS/Google lặp, tách cấu hình email, hướng dẫn chuyển khoản tại quầy đúng với cấu hình riêng của PayOS. Form Firebase dùng từng trường và không báo lưu cấu hình khác thành công khi máy chủ đang ưu tiên `.env`.

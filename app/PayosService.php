@@ -38,12 +38,13 @@ class PayosService
 
     public function create(User $user, array $data): PaymentAttempt
     {
-        abort_unless(app(PayosSettings::class)->ready(), 503, 'PayOS chưa được kết nối. Vui lòng chọn phương thức khác.');
+        abort_unless(app(PayosSettings::class)->ready(), 503, 'Thanh toán ngân hàng chưa khả dụng. Vui lòng liên hệ chi nhánh hoặc thử lại sau.');
         app(FeatureService::class)->expireBookings();
 
         return Cache::lock('payos:create:'.$user->id, 50)->block(3, function () use ($user, $data): PaymentAttempt {
             $attempt = DB::transaction(function () use ($user, $data): PaymentAttempt {
-                User::lockForUpdate()->findOrFail($user->id);
+                $owner = User::lockForUpdate()->findOrFail($user->id);
+                abort_unless($owner->active && $owner->role === 'customer', 422, 'Chỉ tạo thanh toán cho tài khoản khách hàng đang hoạt động.');
                 $existing = PaymentAttempt::where('request_key', $data['request_key'])->first();
                 if ($existing) {
                     $extra = json_decode(base64_decode($existing->extra_data), true);
@@ -58,7 +59,7 @@ class PayosService
                     abort_unless($booking->user_id === $user->id, 403);
                     abort_unless(in_array($booking->status, ['confirmed', 'checked_in'], true), 422, 'Lịch sân không còn chờ thanh toán.');
                     $amount = max(0, (! empty($data['deposit_only']) ? $booking->deposit_amount : $booking->total_amount) - $booking->paid_amount);
-                    abort_if(PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->where('expires_at', '>', now())->exists(), 409, 'Lịch này đang có giao dịch chờ xác nhận. Hãy kiểm tra giao dịch trước khi thanh toán tiếp.');
+                    abort_if(PaymentAttempt::where('booking_id', $booking->id)->where('partner_code', 'PAYOS')->where('status', 'pending')->where('expires_at', '>', now())->exists(), 409, 'Lịch này đang có giao dịch chờ xác nhận. Hãy kiểm tra giao dịch trước khi thanh toán tiếp.');
                 }
                 abort_unless($amount >= 1000 && $amount <= 50000000, 422, 'Số tiền thanh toán phải từ 1.000 đến 50.000.000đ.');
 
@@ -129,7 +130,16 @@ class PayosService
             abort_unless((int) ($data['amountPaid'] ?? -1) >= $attempt->amount && (int) ($data['amountRemaining'] ?? -1) === 0, 502, 'PayOS chưa xác nhận đủ số tiền.');
             app(PaymentSettlement::class)->receive($attempt, 0, 'PAYOS:'.$data['id']);
         } elseif (in_array($data['status'] ?? '', ['CANCELLED', 'EXPIRED'], true)) {
+            abort_unless(filter_var($data['amountPaid'] ?? null, FILTER_VALIDATE_INT) === 0, 409, 'Chưa thể đóng thanh toán vì ngân hàng có thể đã nhận một phần tiền. Vui lòng liên hệ chi nhánh để đối chiếu; lịch chưa bị hủy.');
             PaymentAttempt::whereKey($attempt->id)->whereNotIn('status', ['paid', 'credited'])->update(['status' => 'failed']);
+            if ($attempt->booking_id) {
+                DB::transaction(function () use ($attempt): void {
+                    $booking = Booking::lockForUpdate()->find($attempt->booking_id);
+                    if ($booking && $booking->source === 'online' && $booking->status === 'confirmed' && $booking->paid_amount === 0) {
+                        app(BookingService::class)->changeStatus($booking->user, $booking, 'cancelled');
+                    }
+                }, 5);
+            }
         }
 
         return $attempt->refresh();

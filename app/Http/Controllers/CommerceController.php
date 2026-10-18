@@ -53,7 +53,7 @@ class CommerceController extends Controller
             if (CourtHold::where('user_id', $actor->id)->where('released', false)->where('expires_at', '>', now())->exists()) {
                 throw ValidationException::withMessages(['court_id' => 'Bạn đang giữ một khung giờ khác. Hãy hoàn tất hoặc bỏ giữ chỗ trước.']);
             }
-            if (CourtHold::where('user_id', $actor->id)->where('created_at', '>', now()->subMinutes(30))->count() >= 2) {
+            if (CourtHold::where('user_id', $actor->id)->where('released', false)->where('created_at', '>', now()->subMinutes(30))->count() >= 2) {
                 throw ValidationException::withMessages(['court_id' => 'Bạn đã dùng hai lượt giữ chỗ trong 30 phút.']);
             }
             $engine->quote($court, $start, $end, [], $actor);
@@ -148,7 +148,7 @@ class CommerceController extends Controller
 
     public function sale(Request $request, CommerceService $commerce): JsonResponse
     {
-        $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'user_id' => ['nullable', 'integer', 'exists:users,id'], 'method' => ['required', Rule::in(['cash', 'bank', 'wallet', 'booking'])], 'items' => ['required', 'array', 'list', 'min:1', 'max:20'], 'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'user_id' => ['nullable', 'integer', 'exists:users,id'], 'method' => ['required', Rule::in(['cash', 'bank', 'booking'])], 'items' => ['required', 'array', 'list', 'min:1', 'max:20'], 'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100']]);
 
         $extra = $request->validate(['booking_id' => 'nullable|integer|exists:bookings,id']);
 

@@ -661,11 +661,13 @@ export function Confirm({
     children,
     action,
     close,
+    label = "Xác nhận",
 }: {
     title: string;
     children: ReactNode;
     action: (requestKey: string) => Promise<void>;
     close: () => void;
+    label?: string;
 }) {
     const { run, loading } = useHub();
     const [transactionKey] = useState(key);
@@ -682,7 +684,7 @@ export function Confirm({
                     })
                 }
             >
-                Xác nhận
+                {label}
             </button>
         </Modal>
     );

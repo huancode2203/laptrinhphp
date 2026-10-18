@@ -14,7 +14,7 @@ class FeatureService
     public function expireBookings(): int
     {
         $expired = 0;
-        $ids = Booking::where('status', 'confirmed')->whereNotNull('payment_expires_at')->where('payment_expires_at', '<=', now())->whereColumn('paid_amount', '<', 'deposit_amount')->limit(200)->pluck('id');
+        $ids = Booking::where('status', 'confirmed')->whereNotNull('payment_expires_at')->where('payment_expires_at', '<=', now())->where('paid_amount', 0)->whereColumn('paid_amount', '<', 'deposit_amount')->limit(200)->pluck('id');
         foreach ($ids as $id) {
             DB::transaction(function () use ($id, &$expired): void {
                 $booking = Booking::find($id);
@@ -25,10 +25,6 @@ class FeatureService
                 $booking = Booking::lockForUpdate()->findOrFail($id);
                 if ($booking->status !== 'confirmed' || $booking->paid_amount >= $booking->deposit_amount || $booking->payment_expires_at->gt(now())) {
                     return;
-                }
-                $walletNet = $booking->payments()->where('method', 'wallet')->get()->sum(fn ($p) => $p->kind === 'refund' ? -$p->amount : $p->amount);
-                if ($booking->paid_amount > 0 && $walletNet === $booking->paid_amount) {
-                    app(CommerceService::class)->refundWalletBooking($booking->user, $booking);
                 }
                 $booking->status = 'cancelled';
                 $booking->save();

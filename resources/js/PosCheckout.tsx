@@ -241,8 +241,9 @@ export default function PosCheckout({
                                     {booking.customer?.name}
                                 </b>
                                 <p className="mt-2">
-                                    {statusText(booking.status)} ·{" "}
-                                    {booking.reference}
+                                    {booking.status_label ||
+                                        statusText(booking.status)}{" "}
+                                    · {booking.reference}
                                 </p>
                                 <p className="mt-2">
                                     {stamp(booking.starts_at)}

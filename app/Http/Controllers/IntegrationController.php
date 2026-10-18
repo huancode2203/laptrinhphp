@@ -10,9 +10,7 @@ use App\FeatureService;
 use App\IntegrationStatus;
 use App\Models\Booking;
 use App\Models\Payment;
-use App\Models\PaymentAttempt;
 use App\Models\User;
-use App\MomoService;
 use App\Notifications\HubNotification;
 use App\PhoneVerificationService;
 use Illuminate\Http\Client\ConnectionException;
@@ -96,7 +94,7 @@ class IntegrationController extends Controller
     {
         $demo = app(DemoService::class);
 
-        return response()->json(['data' => collect(app(IntegrationStatus::class)->all())->map(fn ($item) => [...$item, 'demo' => ($item['id'] !== 'sepay' || (app(BankSettings::class)->details()['mode'] ?? null) === 'demo') && $demo->uses($item['id']) && in_array($item['id'], ['momo', 'google', 'sms', 'email', 'sepay'], true)])->all(), 'bank' => app(BankSettings::class)->details(), 'demo_enabled' => $demo->active()]);
+        return response()->json(['data' => collect(app(IntegrationStatus::class)->all())->map(fn ($item) => [...$item, 'demo' => ($item['id'] !== 'sepay' || (app(BankSettings::class)->details()['mode'] ?? null) === 'demo') && $demo->uses($item['id']) && in_array($item['id'], ['google', 'sms', 'email'], true)])->all(), 'bank' => app(BankSettings::class)->details(), 'demo_enabled' => $demo->active()]);
     }
 
     public function saveBank(Request $r): JsonResponse
@@ -235,71 +233,5 @@ class IntegrationController extends Controller
         }, 5);
 
         return response()->json(['message' => 'Đã đối soát và ghi nhận tiền.']);
-    }
-
-    public function momoRefund(Request $r, Booking $booking, MomoService $m): JsonResponse
-    {
-        app(BookingService::class)->assertManage($r->user(), $booking->court->branch_id);
-        abort_unless(app(IntegrationStatus::class)->ready('momo'), 503, 'Hoàn MoMo thật cần cấu hình merchant; giao dịch demo dùng hoàn tại quầy.');
-        $d = $r->validate(['request_key' => 'required|uuid', 'attempt_id' => 'required|integer|exists:payment_attempts,id', 'amount' => 'required|integer|between:1000,50000000']);
-        $refund = DB::transaction(function () use ($booking, $d): object {
-            $b = Booking::lockForUpdate()->findOrFail($booking->id);
-            abort_unless($b->status === 'cancelled', 422, 'Chỉ hoàn lịch đã hủy.');
-            $existing = DB::table('refund_requests')->where('request_key', $d['request_key'])->first();
-            if ($existing) {
-                abort_unless($existing->booking_id === $b->id && $existing->payment_attempt_id === $d['attempt_id'] && $existing->amount === $d['amount'], 409);
-
-                return $existing;
-            }
-            $a = PaymentAttempt::lockForUpdate()->findOrFail($d['attempt_id']);
-            abort_unless($a->booking_id === $b->id && $a->status === 'paid' && $a->trans_id && $a->partner_code === config('momo.partner_code'), 422);
-            $reserved = DB::table('refund_requests')->where('payment_attempt_id', $a->id)->whereIn('status', ['pending', 'paid'])->sum('amount');
-            abort_if($reserved + $d['amount'] > $a->amount || $d['amount'] > $b->paid_amount, 422, 'Số tiền vượt phần có thể hoàn.');
-            $id = DB::table('refund_requests')->insertGetId(['booking_id' => $b->id, 'payment_attempt_id' => $a->id, 'request_key' => $d['request_key'], 'order_id' => 'REF-'.str_replace('-', '', $d['request_key']), 'amount' => $d['amount'], 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
-
-            return DB::table('refund_requests')->find($id);
-        }, 5);
-        if ($refund->status === 'paid') {
-            return response()->json(['data' => $refund]);
-        }
-        $a = PaymentAttempt::findOrFail($refund->payment_attempt_id);
-        $payload = ['partnerCode' => config('momo.partner_code'), 'orderId' => $refund->order_id, 'requestId' => $refund->request_key, 'amount' => $refund->amount, 'transId' => (int) $a->trans_id, 'description' => 'Hoan lich '.$booking->reference];
-        $payload['signature'] = $m->sign(['accessKey' => config('momo.access_key'), ...$payload]);
-        $payload['lang'] = 'vi';
-        $endpoint = str_replace('/create', '/refund', config('momo.endpoint'));
-        abort_unless(in_array($endpoint, ['https://test-payment.momo.vn/v2/gateway/api/refund', 'https://payment.momo.vn/v2/gateway/api/refund'], true), 503);
-        $claimed = DB::table('refund_requests')->where('id', $refund->id)->whereNull('message')->update(['message' => 'Đã gửi yêu cầu, chờ đối soát', 'updated_at' => now()]);
-        if ($claimed) {
-            $body = Http::timeout(35)->post($endpoint, $payload)->throw()->json();
-        } else {
-            $query = ['partnerCode' => config('momo.partner_code'), 'orderId' => $refund->order_id, 'requestId' => (string) Str::uuid()];
-            $query['signature'] = $m->sign(['accessKey' => config('momo.access_key'), ...$query]);
-            $query['lang'] = 'vi';
-            $reply = Http::timeout(35)->post($endpoint.'/query', $query)->throw()->json();
-            abort_unless(($reply['partnerCode'] ?? null) === config('momo.partner_code') && ($reply['orderId'] ?? null) === $refund->order_id && ($reply['requestId'] ?? null) === $query['requestId'], 502);
-            $item = collect($reply['refundTrans'] ?? [])->first(fn ($row) => ($row['orderId'] ?? null) === $refund->order_id);
-            $body = ['orderId' => $refund->order_id, 'requestId' => $refund->request_key, 'partnerCode' => config('momo.partner_code'), 'resultCode' => $item['resultCode'] ?? -1, 'amount' => $item['amount'] ?? 0, 'message' => $reply['message'] ?? 'Chưa có kết quả hoàn tiền'];
-        }
-        abort_unless(($body['orderId'] ?? null) === $refund->order_id && ($body['requestId'] ?? null) === $refund->request_key && ($body['partnerCode'] ?? null) === config('momo.partner_code'), 502);
-        if (($body['resultCode'] ?? -1) !== 0) {
-            DB::table('refund_requests')->where('id', $refund->id)->update(['message' => Str::limit((string) ($body['message'] ?? 'Đang xử lý'), 250, ''), 'updated_at' => now()]);
-
-            return response()->json(['data' => DB::table('refund_requests')->find($refund->id), 'message' => 'Yêu cầu đã gửi. Cần kiểm tra lại kết quả MoMo trước khi hoàn tại quầy.']);
-        }
-        abort_unless((int) ($body['amount'] ?? 0) === $refund->amount, 502);
-        DB::transaction(function () use ($r, $booking, $refund): void {
-            $row = DB::table('refund_requests')->lockForUpdate()->find($refund->id);
-            if ($row->status === 'paid') {
-                return;
-            }
-            $b = Booking::lockForUpdate()->findOrFail($booking->id);
-            abort_if($b->paid_amount < $row->amount, 409, 'Sổ giao dịch cần được đối soát.');
-            Payment::create(['request_key' => $row->request_key, 'booking_id' => $b->id, 'received_by' => $r->user()->id, 'kind' => 'refund', 'method' => 'momo', 'amount' => $row->amount]);
-            $b->decrement('paid_amount', $row->amount);
-            DB::table('refund_requests')->where('id', $row->id)->update(['status' => 'paid', 'message' => 'Đã hoàn', 'updated_at' => now()]);
-            app(BookingService::class)->audit($r->user(), 'momo.refunded', $b->id, ['amount' => $row->amount]);
-        }, 5);
-
-        return response()->json(['data' => DB::table('refund_requests')->find($refund->id)]);
     }
 }

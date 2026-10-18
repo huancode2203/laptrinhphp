@@ -148,23 +148,25 @@ class WorkflowAlignmentTest extends TestCase
         $this->getJson('/api/v1/notifications')->assertOk()->assertJsonPath('unread_count', 0);
     }
 
-    public function test_full_event_queues_without_charge_then_promotes_and_confirms_wallet_once(): void
+    public function test_full_event_queues_without_charge_then_promotes_and_confirms_at_counter_once(): void
     {
         $a = User::factory()->create(['wallet_balance' => 200000]);
         $b = User::factory()->create(['wallet_balance' => 200000]);
         $c = User::factory()->create(['wallet_balance' => 200000]);
         $event = GameEvent::factory()->create(['capacity' => 2, 'fee' => 50000, 'starts_at' => '2026-10-15 09:00', 'ends_at' => '2026-10-15 12:00']);
         foreach ([$a, $b] as $u) {
-            $this->actingAs($u)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'wallet'])->assertOk()->assertJsonPath('data.status', 'confirmed');
+            $this->actingAs($u)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk()->assertJsonPath('data.status', 'pending');
         }
-        $this->actingAs($c)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'wallet'])->assertOk()->assertJsonPath('data.status', 'waiting');
-        $this->assertSame(200000, $c->fresh()->wallet_balance);
+        $this->actingAs($c)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk()->assertJsonPath('data.status', 'waiting');
         $this->actingAs($a)->deleteJson('/api/v1/events/'.$event->id.'/register')->assertOk();
-        $this->assertDatabaseHas('event_registrations', ['game_event_id' => $event->id, 'user_id' => $c->id, 'status' => 'pending']);
-        $this->actingAs($c)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'wallet'])->assertOk()->assertJsonPath('data.status', 'confirmed');
-        $this->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'wallet'])->assertOk();
-        $this->assertSame(150000, $c->fresh()->wallet_balance);
-        $this->assertSame(2, $event->registrations()->where('status', 'confirmed')->count());
+        $reg = $event->registrations()->where('user_id', $c->id)->firstOrFail();
+        $this->assertSame('pending', $reg->status);
+        $manager = User::factory()->create(['role' => 'manager', 'branch_id' => $event->branch_id]);
+        $url = '/api/v1/manage/registrations/'.$reg->id.'/confirm';
+        $this->actingAs($manager)->postJson($url, ['method' => 'bank'])->assertOk();
+        $this->postJson($url, ['method' => 'bank'])->assertOk();
+        $this->assertSame(200000, $c->fresh()->wallet_balance);
+        $this->assertSame(1, $event->registrations()->where('status', 'confirmed')->count());
     }
 
     public function test_maintenance_promotes_waitlist_after_pending_ticket_expiry(): void

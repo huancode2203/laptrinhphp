@@ -41,7 +41,7 @@ class LiveIntegrationSafetyTest extends TestCase
         config(['momo.secret_key' => 'private-momo-secret', 'ai.openai_key' => 'private-ai-secret', 'integrations.bank.key' => 'private-bank-secret']);
         $this->getJson('/api/v1/admin/integrations')->assertUnauthorized();
         $this->actingAs(User::factory()->create())->getJson('/api/v1/admin/integrations')->assertForbidden();
-        $response = $this->actingAs(User::factory()->create(['role' => 'admin']))->getJson('/api/v1/admin/integrations')->assertOk()->assertJsonCount(8, 'data');
+        $response = $this->actingAs(User::factory()->create(['role' => 'admin']))->getJson('/api/v1/admin/integrations')->assertOk()->assertJsonCount(7, 'data');
         foreach (['private-google-secret', 'private-sms-token', 'private-momo-secret', 'private-ai-secret', 'private-bank-secret'] as $secret) {
             $this->assertStringNotContainsString($secret, $response->getContent());
         }

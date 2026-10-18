@@ -103,7 +103,7 @@ class BookingController extends Controller
 
     public function reschedule(Request $request, Booking $booking, BookingService $engine): BookingResource|JsonResponse
     {
-        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id', 'request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'sometimes|in:wallet,cash,bank', 'refund_confirmed' => 'sometimes|boolean', 'scope' => 'sometimes|in:single,remaining']);
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id', 'request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'prohibited', 'refund_confirmed' => 'sometimes|boolean', 'scope' => 'sometimes|in:single,remaining']);
         if (($data['scope'] ?? '') === 'remaining') {
             return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'move')]);
         }
@@ -124,7 +124,7 @@ class BookingController extends Controller
 
     public function cancelSeries(Request $request, Booking $booking): JsonResponse
     {
-        $data = $request->validate(['request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'sometimes|nullable|in:wallet,cash,bank', 'refund_confirmed' => 'sometimes|boolean']);
+        $data = $request->validate(['request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'prohibited', 'refund_confirmed' => 'sometimes|boolean']);
 
         return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'cancel', $request->is('*/series-cancel-quote'))]);
     }
@@ -136,7 +136,7 @@ class BookingController extends Controller
 
         return response()->json(['data' => [
             'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->whereNotIn('partner_code', ['DEMO_MOMO', 'DEMO_BANK'])->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
-            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at', 'partner_code', 'pay_url']),
+            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('partner_code', 'PAYOS')->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at', 'partner_code', 'pay_url']),
             'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',
             'customer' => ['name' => $booking->user->name, 'phone' => $booking->user->phone],
             'branch' => ['name' => $booking->court->branch->name, 'address' => $booking->court->branch->address],
@@ -150,7 +150,7 @@ class BookingController extends Controller
     {
         $data = $request->validate([
             'request_key' => ['required', 'uuid'],
-            'kind' => ['sometimes', Rule::in(['payment', 'refund'])],
+            'kind' => ['sometimes', Rule::in(['payment'])],
             'amount' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'method' => ['required', Rule::in(['cash', 'bank'])],
             'notes' => ['nullable', 'string', 'max:1000'],

@@ -15,7 +15,6 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HubController;
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ManagementController;
-use App\Http\Controllers\MomoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PayosController;
 use App\Http\Controllers\ProfileController;
@@ -54,16 +53,12 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('coaches', [FeatureController::class, 'coaches']);
     Route::get('media/{media}', [FeatureController::class, 'media'])->whereNumber('media');
     Route::post('payments/bank/webhook', [IntegrationController::class, 'bank']);
-    Route::post('payments/momo/ipn', [MomoController::class, 'ipn']);
     Route::post('payments/payos/webhook', [PayosController::class, 'webhook']);
     Route::middleware('auth')->group(function (): void {
-        Route::post('demo/payments/{attempt}', [DemoController::class, 'payment'])->middleware('throttle:book');
-        Route::post('demo/bookings/{booking}/bank', [DemoController::class, 'bank'])->middleware('throttle:book');
         Route::get('me', [AuthController::class, 'me']);
 
         Route::get('features/account', [FeatureController::class, 'account']);
         Route::get('account/history/{kind}', [HistoryController::class, 'index']);
-        Route::post('loyalty/redeem', [FeatureController::class, 'redeem'])->middleware('throttle:book');
         Route::put('courts/{court}/favorite', [FeatureController::class, 'favorite']);
         Route::put('community/posts/{post}/saved', [FeatureController::class, 'saved']);
         Route::put('users/{user}/block', [FeatureController::class, 'block']);
@@ -98,17 +93,15 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::get('holds/active', [CommerceController::class, 'activeHold']);
         Route::post('holds', [CommerceController::class, 'hold'])->middleware('throttle:book');
         Route::delete('holds/{hold}', [CommerceController::class, 'releaseHold']);
-        Route::post('bookings/{booking}/wallet-payment', [CommerceController::class, 'walletPay'])->middleware('throttle:book');
         Route::get('bookings/{booking}/checkin-token', [CommerceController::class, 'checkinToken']);
-        Route::post('bookings/{booking}/review', [CommerceController::class, 'review']);
+        Route::post('bookings/{booking}/wallet-payment', [CommerceController::class, 'walletPay'])->middleware('throttle:book');
         Route::post('memberships/{plan}/buy', [CommerceController::class, 'buyMembership'])->middleware('throttle:book');
+        Route::post('loyalty/redeem', [FeatureController::class, 'redeem'])->middleware('throttle:book');
+        Route::post('bookings/{booking}/review', [CommerceController::class, 'review']);
         Route::post('waitlist', [CommerceController::class, 'waitlist']);
         Route::delete('waitlist/{entry}', [CommerceController::class, 'cancelWaitlist']);
-        Route::post('payments/momo', [MomoController::class, 'create'])->middleware('throttle:book');
         Route::post('payments/payos', [PayosController::class, 'create'])->middleware('throttle:book');
         Route::post('payments/payos/{attempt}/sync', [PayosController::class, 'sync'])->middleware('throttle:sensitive');
-        Route::get('payments/momo/{attempt}', [MomoController::class, 'status']);
-        Route::post('payments/momo/{attempt}/sync', [MomoController::class, 'sync'])->middleware('throttle:sensitive');
         Route::post('community/posts', [CommunityController::class, 'save'])->middleware('throttle:book');
         Route::put('community/posts/{post}', [CommunityController::class, 'save']);
         Route::post('community/posts/{post}/join', [CommunityController::class, 'join']);
@@ -140,7 +133,6 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::get('features', [FeatureController::class, 'manage']);
             Route::post('customers', [FeatureController::class, 'customer']);
             Route::patch('support/{ticket}', [FeatureController::class, 'ticketReply']);
-            Route::post('bookings/{booking}/momo-refund', [IntegrationController::class, 'momoRefund']);
             Route::get('reports.csv', [HubController::class, 'csv']);
             Route::get('courts', [ManagementController::class, 'courts']);
             Route::get('services', [ManagementController::class, 'services']);
@@ -154,7 +146,6 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::get('sales/open-bookings', [ManagementController::class, 'posBookings']);
             Route::get('sales/{sale}/receipt', [CommerceController::class, 'saleReceipt']);
             Route::post('registrations/{registration}/confirm', [EventController::class, 'confirm']);
-            Route::post('registrations/{registration}/refund', [EventController::class, 'refund']);
             Route::middleware('role:admin,manager')->group(function (): void {
                 Route::post('courts', [ManagementController::class, 'saveCourt']);
                 Route::put('courts/{court}', [ManagementController::class, 'saveCourt']);

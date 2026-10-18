@@ -20,18 +20,6 @@ const guides: Record<string, string[]> = {
         "AI duyệt bài có provider và model riêng, có thể dùng Ollama hoặc OpenAI.",
         "Bài có dấu hiệu vi phạm, độ tin cậy thấp hoặc lỗi model sẽ vào hàng chờ quản trị duyệt.",
     ],
-    momo: [
-        "Bản demo đã có màn hình mô phỏng thanh toán và nạp ví, không cần đăng ký doanh nghiệp.",
-        "Nếu muốn dùng MoMo thật, cần Partner Code, Access Key và Secret Key do MoMo cấp; điền trong .env trên máy chủ.",
-        "Điền bộ khóa vào máy chủ, chọn môi trường thử nghiệm trước. Môi trường chính thức cần MoMo xác thực merchant.",
-        "Đăng ký URL nhận kết quả /api/v1/payments/momo/ipn và URL quay lại website. MoMo cần truy cập được hai URL HTTPS này.",
-    ],
-    sepay: [
-        "Có thể dùng tài khoản ngân hàng cá nhân: điền tài khoản ở phía trên để tạo VietQR và xác nhận tại quầy.",
-        "Tự động đối soát: đăng ký SePay, chọn kết nối ngân hàng có hỗ trợ tài khoản cá nhân (ví dụ MB) theo yêu cầu của dịch vụ.",
-        "Thêm webhook Có tiền vào, chọn tài khoản nhận tiền, chọn xác thực API Key và điền cùng khóa ở máy chủ.",
-        "URL webhook là /api/v1/payments/bank/webhook. Điền số tài khoản, tên chủ tài khoản và mã BIN ngân hàng để hiển thị thanh toán.",
-    ],
     google: [
         "Firebase Console → Authentication → Sign-in method → Google: bật đăng nhập Google và chọn email hỗ trợ.",
         "Trong Authentication → Settings → Authorized domains, thêm tên miền đang chạy website, gồm localhost hoặc 127.0.0.1 khi thử trên máy.",
@@ -54,14 +42,12 @@ export default function IntegrationPanel() {
     const { run, toast, loading, refresh } = useHub();
     const [bank, setBank] = useState<Row | null>(null);
     const [bankForm, setBankForm] = useState(false);
-    const [demoEnabled, setDemoEnabled] = useState(false);
     const [items, setItems] = useState<Row[] | null>(null);
     const [checks, setChecks] = useState<Record<string, Row>>({});
     const load = async () => {
         const response = await api("admin/integrations");
         setItems(response.data);
         setBank(response.bank);
-        setDemoEnabled(response.demo_enabled);
     };
     useEffect(() => {
         load().catch((e) => toast(e.message));
@@ -73,16 +59,7 @@ export default function IntegrationPanel() {
                 Quản lý thanh toán, email xác nhận và đăng nhập Google. Kiểm tra
                 kết nối trước khi đưa dịch vụ vào sử dụng.
             </p>
-            {demoEnabled && (
-                <p
-                    role="status"
-                    className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6"
-                >
-                    Chế độ demo đang bật trên máy này. Dịch vụ đã đủ cấu hình
-                    dùng kết nối thật; dịch vụ còn thiếu dùng luồng thử có nhãn
-                    Demo. OTP demo không xác thực email hay điện thoại thật.
-                </p>
-            )}
+
             <PayosSetup />
             <EmailSetup
                 after={async () => {
@@ -115,7 +92,7 @@ export default function IntegrationPanel() {
                     <p className="my-4 rounded-xl bg-emerald-50 p-4 text-sm">
                         {bank.name} · {bank.account} ·{" "}
                         {bank.mode === "automatic"
-                            ? "SePay tự đối soát"
+                            ? "Ngân hàng xác nhận tự động"
                             : "Nhân viên xác nhận sau khi kiểm tra tiền vào tài khoản"}
                     </p>
                 ) : (
@@ -125,9 +102,9 @@ export default function IntegrationPanel() {
                     </p>
                 )}
                 <p className="mt-3 text-xs text-slate-500">
-                    Tài khoản đã điền trong .env được ưu tiên. SePay có thể kết
-                    nối tài khoản cá nhân với ngân hàng hỗ trợ; tự đối soát cần
-                    khóa webhook và địa chỉ nhận kết quả truy cập được.
+                    Kiểm tra đúng tài khoản nhận tiền và số tiền thực nhận trước
+                    khi ghi thanh toán cho khách. Kết nối PayOS được quản lý
+                    riêng phía trên.
                 </p>
                 {bank?.mode === "manual" && (
                     <button
@@ -199,7 +176,9 @@ export default function IntegrationPanel() {
                 {items
                     .filter(
                         (item) =>
-                            !["payos", "google", "email"].includes(item.id),
+                            !["payos", "google", "email", "sepay"].includes(
+                                item.id,
+                            ),
                     )
                     .map((item) => (
                         <Card key={item.id}>
@@ -228,13 +207,11 @@ export default function IntegrationPanel() {
                                             : "bg-amber-50 text-amber-800")
                                     }
                                 >
-                                    {item.demo
-                                        ? "Đang dùng demo"
-                                        : !item.enabled
-                                          ? "Đang tắt"
-                                          : item.configured
-                                            ? "Đã điền cấu hình"
-                                            : "Còn thiếu cấu hình"}
+                                    {!item.enabled
+                                        ? "Đang tắt"
+                                        : item.configured
+                                          ? "Đã điền cấu hình"
+                                          : "Còn thiếu cấu hình"}
                                 </span>
                             </div>
                             <details className="mt-4 text-sm">

@@ -1,12 +1,22 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
+## Cập nhật chức năng và kiểm thử · 19/10/2026
+
+- Thanh toán PayOS và thu trực tiếp tại quầy; nạp Ví HUB qua PayOS. Bỏ MoMo, checkout giả, nút hoàn tiền và mã OTP thử trên giao diện. `DEMO_ENABLED=false`.
+- Giữ nguyên ngày/từ giờ/đến giờ khách đã chỉnh khi tìm lại; tim yêu thích đỏ và có trạng thái lưu. Kết quả tìm sân có phân trang 6 sân/trang, kiểm tra lại dữ liệu thật khi chuyển trang; không chỉ giới hạn ở 24 sân đầu.
+- Bấm sân bận cần xác nhận riêng mới đăng ký nhận thông báo. Chủ động hủy giữ chỗ không tính vào giới hạn hai lượt/30 phút; lượt để tự hết hạn vẫn tính để chống chiếm chỗ.
+- Lịch chưa trả ghi rõ Chờ thanh toán; chỉ hủy lịch online chưa trả khi kết quả hủy PayOS đã xác thực. Quầy tạo QR cho đúng khách theo quyền và chi nhánh; hủy link không xóa lịch tại quầy hoặc tiền cọc.
+- Gói hội viên Admin bỏ ô tìm phường/xã. Nhật ký hiển thị thao tác, tiền, thời gian và giá trị trước thay đổi bằng câu đọc được, không trình bày JSON.
+- Hướng dẫn sử dụng trong cả ba không gian có **44 nhóm chức năng** với công dụng, cách dùng và nút mở phù hợp vai trò. Xem [BUSINESS_FLOWS](docs/BUSINESS_FLOWS.md).
+- **214/214 kiểm thử, 5.223 assertions trên từng SQLite và MySQL test riêng**, TypeScript, Vite 907 modules và Pint đạt. [117 tình huống thủ công](docs/TEST_CASES.csv) và [214 kiểm thử tự động](docs/AUTOMATED_TEST_INDEX.csv) ghi riêng; không coi toàn bộ ca thủ công đã chạy. Không chuyển tiền thật trong đợt này.
+
 ## Gmail và hồ sơ làm việc · 18/10/2026
 
 Admin mở **Thanh toán & kết nối → Gửi thư bằng Gmail → Kết nối Gmail**, nhập địa chỉ gửi, tên hiển thị và mật khẩu ứng dụng Google 16 ký tự. Mật khẩu lưu mã hóa trong `integration_settings`, không trả về API hay đưa vào SQL/ZIP. Để trống mật khẩu khi cập nhật tên sẽ giữ kết nối cũ; đổi địa chỉ gửi cần mật khẩu ứng dụng mới. Chọn **Gửi thư thử về địa chỉ gửi**, rồi kiểm tra Inbox/Spam. Trạng thái đã lưu cấu hình hoặc SMTP chấp nhận thư không thay thế việc kiểm tra thư thực nhận. Nếu `MAIL_MAILER=smtp` đã được đặt trong `.env`, cấu hình máy chủ có ưu tiên và biểu mẫu không ghi đè.
 
 Trang kết nối chia riêng PayOS, Gmail và Google, bỏ các thẻ trùng; form Firebase có từng trường thay cho nhập JSON và hiển thị đúng nguồn cấu hình đang dùng. Hồ sơ Admin và nhân sự chi nhánh có thông tin liên hệ, vai trò và mục liên kết Google; Google không thay đổi quyền được phân công. Email xác nhận có mẫu HTML theo nhận diện website và bản chữ dự phòng. Đăng nhập Google chỉ cấp quyền xác thực, không cấp quyền gửi Gmail.
 
-Đã kiểm thử toàn bộ **211 tests / 5.193 assertions** trên SQLite. Kết nối Gmail và một lượt đăng nhập Google thật vẫn cần hoàn tất trên trình duyệt của chủ tài khoản; xem [VALIDATION](docs/VALIDATION.md) để biết bằng chứng cập nhật.
+Kết quả kiểm thử mới nhất nằm ở mục đầu tài liệu và VALIDATION; các số liệu ngày trước là lịch sử. Kết nối Gmail và một lượt đăng nhập Google thật vẫn cần hoàn tất trên trình duyệt của chủ tài khoản; xem [VALIDATION](docs/VALIDATION.md) để biết bằng chứng cập nhật.
 
 ## Kết nối PayOS thật · 18/10/2026
 
@@ -14,36 +24,7 @@ Trang kết nối chia riêng PayOS, Gmail và Google, bỏ các thẻ trùng; f
 
 Website đã bật phương thức PayOS. Khi chạy localhost, giữ website và `php artisan schedule:work` hoạt động để đối soát mỗi phút; có thể dùng nút kiểm tra giao dịch để cập nhật ngay. Webhook chưa đăng ký vì website chưa có HTTPS công khai. Bộ khóa và tài khoản nhận tiền riêng không được đưa vào GitHub, SQL mẫu hoặc ZIP; bản cài mới cần cấu hình kênh riêng.
 
-## Bổ sung PayOS · 17/10/2026
-
-Nạp ví qua PayOS đã có trên giao diện khi đủ cấu hình; đặt cọc/trả đủ lịch sân dùng cùng luồng xác thực chữ ký và ghi tiền một lần. Mô tả chuyển khoản dùng 9 ký tự, tương thích giới hạn của ngân hàng. Link thanh toán cọc không vượt quá hạn thanh toán của lịch sân.
-
-Scheduler đối soát các giao dịch PayOS đang chờ mỗi phút, tối đa 10 giao dịch/lượt và luân phiên theo lần kiểm tra gần nhất. Cả giao dịch vừa hết hạn trong 24 giờ qua vẫn được kiểm tra để nhận khoản tới muộn; lịch đã hủy nhận tiền vào ví. Giao dịch hủy/đã trả và quá cửa sổ đối soát tự động vẫn có thể kiểm tra thủ công. Chạy `php artisan schedule:work` trên Laragon; kiểm tra riêng bằng `php artisan hub:sync-payos --json`. Thiếu khóa thì lệnh không gọi PayOS. Nếu máy mất mạng, kết quả không bị giả thành thành công. Webhook HTTPS được ưu tiên để nhận kết quả ngay khi triển khai công khai.
-
-Hồ sơ Casso của chủ dự án đã được kiểm tra trực tiếp và hiển thị **Đã xác thực**. Việc này chưa đồng nghĩa website đã có cấu hình kênh thu hoặc đã nhận chuyển khoản thật. Xem trạng thái kết nối và giới hạn kiểm chứng hiện tại trong [VALIDATION](docs/VALIDATION.md).
-
-## Cập nhật vận hành · 17/10/2026
-
-- Chuẩn hóa điện thoại tài khoản về `+84`, kiểm tra trùng khi đăng ký, sửa hồ sơ, tạo khách tại quầy và xác thực SMS. Dữ liệu cũ không hợp lệ/trùng không bị tự gộp; Admin thấy nhãn cần kiểm tra. Khách đã có hồ sơ tại quầy có nút **Nhận tài khoản**, xác minh email qua luồng khôi phục hiện có; email thật cần SMTP.
-- Đổi lịch có bảng xem trước giá mới, tiền đã thu, còn thiếu và khoản cần hoàn; xác nhận lại số tiền trên máy chủ trước khi ghi. Khách được đổi lịch trả hoàn toàn bằng ví trước ít nhất 4 giờ; nhân sự xử lý khoản khác theo quyền. Có thể đổi/hủy toàn bộ các buổi chưa bắt đầu của chuỗi cố định, kiểm tra trống nguyên chuỗi và không ghi một phần khi có xung đột. Hoàn tiền mặt/ngân hàng chỉ ghi nhận sau xác nhận của quầy, không tự chuyển khoản ra ngoài.
-- Hết giờ chơi hiện **Chờ chốt hóa đơn** và gửi thông báo trong tài khoản; chỉ hoàn tất sau khi quầy kiểm tra, thu đủ. Không tự trừ tiền hay cộng điểm khi chỉ hết giờ.
-- Khoản thu/hoàn mới giữ phân bổ sân/dịch vụ/hàng hóa tại thời điểm ghi nhận, tránh thay đổi báo cáo cũ khi mua thêm. Phân bổ của khoản thu cũ được gắn nhãn ước tính. Báo cáo quản lý có lựa chọn gộp các chi nhánh được giao và trừ thời gian bảo trì/khóa sân khỏi công suất có thể bán.
-- Lịch sử ví, thanh toán, điểm, tài khoản, báo cáo vi phạm và audit có phân trang phía máy chủ, tìm kiếm/lọc ngày; audit xuất CSV. Chat tải thêm tin cũ, tôn trọng mốc xóa cá nhân và tài khoản bị chặn. Chặn một người trong nhóm chỉ ẩn người đó, không khóa gửi cho cả nhóm; duyệt bài đóng các báo cáo đang chờ.
-- Kiểm chứng nhóm vận hành: **196 kiểm thử / 5.069 assertions** trên SQLite và MySQL riêng. Chi tiết và phạm vi còn thiếu ở [PROJECT_AUDIT](docs/PROJECT_AUDIT.md) và [VALIDATION](docs/VALIDATION.md). Phần PayOS được tiếp tục sau khi chủ dự án hoàn tất xác thực Casso.
-
-## Admin, đặt sân và PayOS · 16–17/10/2026
-
-- Ba không gian độc lập: khách hàng, điều hành chi nhánh (manager/staff/cashier theo quyền), quản trị toàn hệ thống. Admin vào `#admin/dashboard`, quản lý vào `#manage/dashboard`; tài khoản làm việc không dùng trang khách hàng để đặt sân cá nhân.
-- Admin có tổng quan/doanh thu dùng chung thành phần báo cáo với quản lý, thẻ thống kê mở danh sách, tìm kiếm/lọc/phân trang chi nhánh và sân, trang kiểm duyệt đủ trạng thái, cùng mục **Thanh toán & kết nối**.
-- Đặt sân: thời lượng giới hạn theo giờ bắt đầu/đóng cửa; có xác nhận khung giờ; phân trang lịch sân; lưu lựa chọn và bước đang làm trong phiên trình duyệt trong 24 giờ. **Lưu và thoát** giữ lượt giữ chỗ theo thời hạn gốc, không gia hạn; khi trở lại máy chủ kiểm tra sân trống. Có chọn trả cọc hoặc toàn bộ 100% bằng ví, MoMo hoặc PayOS đã cấu hình. PayOS/MoMo cho lịch cố định thực hiện từng buổi trong chi tiết lịch; ví hỗ trợ trả cả chuỗi.
-- Dịch vụ phát sinh: mở chi tiết lịch tại quầy → **Thêm dịch vụ vào hóa đơn sân**. Nước/hàng tồn kho vẫn bán ở POS → **Gộp vào sân**. Tiền dịch vụ/hàng thêm cộng nguyên giá, không tăng giảm giá tiền sân; hóa đơn chưa chốt tiếp tục ghi nợ cho tới lúc thu đủ và hoàn tất. Không thêm vào lịch đã hoàn tất/hủy. Giá đơn vị dịch vụ đã có trong hóa đơn được giữ theo giá đã ghi nhận.
-- Đổi lịch trong cùng chi nhánh, loại trừ các lịch đang đổi khi xem trống. Lịch có giao dịch chờ, coupon hoặc huấn luyện viên vẫn cần xử lý riêng theo thông báo; lịch khác có xem trước chênh lệch/hoàn tiền và xác nhận rõ trước ghi.
-- Cộng đồng: chi tiết bài có thông tin người đăng/lịch/địa điểm; trả lời bình luận có chọn người nhận và đưa tới ô nhập. Bài đã duyệt khóa sửa nội dung. Admin quản lý bài chờ/đã duyệt/từ chối/đã gỡ, lọc bài có lịch đã qua 30/90/180 ngày để gỡ, gửi lý do tới người đăng. Gỡ là ẩn nội dung có lưu dấu vết, không xóa vật lý ảnh và lịch sử.
-- Đánh giá: chủ lịch đã hoàn tất viết đánh giá trong chi tiết lịch, chấm sao/ảnh; trang chi nhánh hiển thị sân được đánh giá và phân trang. Học cầu lông mở biểu mẫu ngay trong cửa sổ, lọc/phân trang huấn luyện viên, kiểm tra sân trống và hiển thị phí sân + học.
-- Địa chỉ dùng phường/xã; dữ liệu địa chỉ mẫu được chuyển cho 30 cơ sở theo danh mục mới, không tự suy đoán địa chỉ tùy chỉnh. AI đối chiếu đúng tên phường/xã, không ghép Tân Phú với Tân Phú Trung. Google Maps dùng Maps URLs chỉ đường, hỗ trợ tọa độ/Place ID do Admin nhập; không cần khóa API bản đồ. Cơ sở trong dữ liệu môn học chưa được xác minh vị trí thực địa.
-- Xóa hội thoại chỉ xóa lịch sử hiển thị của người thao tác; không xóa tin nhắn của thành viên khác. Tin mới làm hội thoại xuất hiện lại, phần cũ vẫn ẩn.
-
-### Kết nối PayOS
+## Cấu hình PayOS
 
 Mở **Admin → Thanh toán & kết nối → Kết nối PayOS**, nhập Client ID, API Key, Checksum Key từ kênh thanh toán tại [PayOS](https://my.payos.vn/). Khóa lưu mã hóa trong `integration_settings`, không được trả về trình duyệt khi đọc trạng thái. Có thể cấu hình `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` trong `.env`; cấu hình môi trường có ưu tiên.
 
@@ -159,24 +140,24 @@ HUB AI ghim đầu danh sách chat, lưu lịch sử riêng và nhớ tiêu chí
 - Giờ mở, thời hạn đặt trước, cao điểm, giá theo ngày/thứ/sân, giảm lịch cố định cấu hình theo chi nhánh. PHP tính lại phí, hội viên, coupon và dịch vụ.
 - Giữ chỗ 5 phút, chống trùng lịch/giữ chỗ/bảo trì/sự kiện. Đặt 30 phút–6 giờ trong một ngày; chuỗi cố định 2–12 tuần được tạo trong transaction.
 - Có thể chọn lịch cố định sau khi chọn sân. PHP kiểm tra và tính giá từng tuần theo ngày chơi, cộng phí sân/dịch vụ của tất cả các buổi rồi trừ ưu đãi. Tổng cọc bằng tổng cọc làm tròn của từng booking; tại quầy vẫn theo chính sách không bắt buộc cọc. Nếu tuần sau bị trùng hoặc vượt thời hạn đặt trước, báo rõ buổi/ngày và không tạo một phần chuỗi. Dịch vụ được tính cho mỗi buổi, ưu đãi chỉ giảm phí sân.
-- Cọc/thu đủ, hạn thanh toán, hủy quá hạn; ví/MoMo/ngân hàng khi đã cấu hình. Đổi lịch chưa trả sang sân cùng chi nhánh, tính lại giá/hạn cọc.
-- Lịch cá nhân, hóa đơn PDF, QR nhận sân, hủy/hoàn, đánh giá ảnh và phản hồi chi nhánh, danh sách chờ, chat theo lịch đặt.
-- Ví có sổ giao dịch; nạp tại quầy/MoMo, trả sân/POS/hội viên/vé. UUID chống thu, hoàn và cộng điểm lặp.
+- Cọc/thu đủ, hạn thanh toán, hủy quá hạn; PayOS hoặc thu trực tiếp tại quầy. Đổi lịch chưa trả sang sân cùng chi nhánh, tính lại giá/hạn cọc.
+- Lịch cá nhân, hóa đơn PDF, QR nhận sân, hủy lịch chưa trả, đánh giá ảnh và phản hồi chi nhánh, danh sách chờ, chat theo lịch đặt.
+- Ví có sổ giao dịch; nạp qua PayOS hoặc tại quầy, dùng số dư cho lịch sân/hội viên ở thao tác được hỗ trợ. UUID chống thu và cộng điểm lặp.
 - Tích 1 điểm/10.000đ đủ điều kiện khi hoàn tất lịch sân hoặc POS; xét hạng theo tổng điểm, đổi quà bằng số dư điểm. Không mua hạng điểm để bỏ qua điều kiện.
 - Hồ sơ, avatar, đăng nhập email/điện thoại đã xác thực/Google, OTP email, quên/đổi mật khẩu, xử lý phiên hết hạn.
 - Sân yêu thích, bài đã lưu, chặn người dùng, bài ảnh, thích/chia sẻ, bình luận trả lời, tìm đồng đội và duyệt thành viên theo sức chứa.
 - Kiểm duyệt model/bộ lọc: bài nghi vi phạm chờ quản trị, lưu lý do/nhãn/độ tin cậy; sửa bài phải kiểm tra lại; bình luận không phù hợp bị từ chối.
 - Chat riêng/đội/theo lịch, ảnh/PDF, đang nhập/đã xem/trạng thái hoạt động, thu hồi. SSE cập nhật/kết nối lại; máy chủ kiểm tra thành viên, chi nhánh và chặn.
 - Huấn luyện viên có hồ sơ, giá, lịch; đặt buổi tập kiểm tra trùng người dạy/sân. Quản lý cần tạo hồ sơ thật trước khi khách đặt.
-- Sự kiện/lớp/giao lưu/giải: vé, sức chứa, khóa sân, hủy/hoàn, bốc thăm/tỷ số. Loại trực tiếp, vòng tròn và Swiss có xếp hạng, tránh lặp cặp Swiss.
+- Sự kiện/lớp/giao lưu/giải: vé thu tại quầy, sức chứa, khóa sân, hủy đăng ký chưa trả, bốc thăm/tỷ số. Loại trực tiếp, vòng tròn và Swiss có xếp hạng, tránh lặp cặp Swiss.
 - Ma trận sân 30 phút, lịch tuần/tháng, kéo lịch chưa trả sang ngày/sân và xác nhận lại; nhận sân bằng QR nhập/dán hoặc camera khi người dùng cho phép.
-- Nhiều chi nhánh, sân, dịch vụ, bảo trì, SKU, nhập/xuất kho, POS, khách nhanh tại quầy, thu/hoàn, quyền theo vai trò.
-- Khách đang chơi mua thêm nước: **Bán hàng / POS → thêm sản phẩm → Thanh toán / Gộp vào sân → Gộp vào hóa đơn sân · thu sau → chọn sân/khách → Thêm vào hóa đơn sân**. Danh sách ưu tiên khách đã nhận sân, gồm lịch xác nhận hôm nay và không phụ thuộc ngày xem ở trang quản lý; có thể tìm bằng mã lịch. Sân đã trả đủ vẫn mua thêm được. Hệ thống trừ kho và cộng tiền hàng vào hóa đơn, giữ nguyên tiền đã trả, sau đó thu khoản còn thiếu trong chi tiết lịch. Bước gộp chưa thu tiền; nếu khách trả riêng ngay tại quầy thì chọn tiền mặt/chuyển khoản/ví.
+- Nhiều chi nhánh, sân, dịch vụ, bảo trì, SKU, nhập/xuất kho, POS, khách nhanh tại quầy, ghi thu tiền, quyền theo vai trò.
+- Khách đang chơi mua thêm nước: **Bán hàng / POS → thêm sản phẩm → Thanh toán / Gộp vào sân → Gộp vào hóa đơn sân · thu sau → chọn sân/khách → Thêm vào hóa đơn sân**. Danh sách ưu tiên khách đã nhận sân, gồm lịch xác nhận hôm nay và không phụ thuộc ngày xem ở trang quản lý; có thể tìm bằng mã lịch. Sân đã trả đủ vẫn mua thêm được. Hệ thống trừ kho và cộng tiền hàng vào hóa đơn, giữ nguyên tiền đã trả, sau đó thu khoản còn thiếu trong chi tiết lịch. Bước gộp chưa thu tiền; nếu khách trả riêng ngay tại quầy thì chọn tiền mặt/chuyển khoản.
 - Phiếu hỗ trợ/trả lời, FAQ/giới thiệu; blog/tuyển dụng/nhượng quyền do quản trị xuất bản. Chưa có nội dung thì hiển thị trạng thái trống.
 - Báo cáo thu/hoàn/doanh thu ròng/công nợ, theo sân/chi nhánh/dịch vụ/sản phẩm, công suất, nguồn đặt, giờ phổ biến; biểu đồ/PDF/XLSX/CSV. Nạp ví không tính là doanh thu bán hàng.
-- Nhật ký quản trị, đối soát chuyển khoản sai nội dung, xem và kiểm tra lại yêu cầu hoàn MoMo.
+- Nhật ký quản trị với mô tả dễ đọc, theo dõi giao dịch ngân hàng và công nợ theo chi nhánh.
 
-Lịch trả hoàn toàn bằng ví được tự hoàn phần còn lại khi đủ điều kiện hủy. Tiền mặt/ngân hàng do quầy xử lý; MoMo có API hoàn. Không tự chuyển tiền ra ngân hàng.
+Lịch đã trả tiền cần đổi lịch hoặc liên hệ chi nhánh; không có thao tác tự hoàn tiền.
 
 ## OpenAI và Ollama
 
@@ -215,55 +196,17 @@ Tìm sân gửi câu hỏi và khu vực cho model trích xuất tiêu chí. Mod
 
 Kiểm duyệt gửi nội dung bài/bình luận cho provider đã chọn. `AI_AUTO_APPROVE=false` giữ mọi bài chờ người duyệt; `true` cho đăng bài được đánh giá phù hợp. Không bảo đảm phát hiện mọi cách viết xúc phạm/spam.
 
-## MoMo và chuyển khoản
+## Thanh toán ngân hàng và tại quầy
 
-### Demo môn học và ngân hàng cá nhân
+Chỉ cung cấp PayOS và thu trực tiếp tại quầy (tiền mặt hoặc chuyển khoản đã thực nhận). Nạp Ví HUB bằng PayOS; số dư nội bộ được dùng tại những thao tác có hỗ trợ. POS trả riêng chỉ nhận tiền mặt/chuyển khoản; có thể gộp hàng vào hóa đơn sân để thu cuối buổi. Không có MoMo, trang thanh toán giả hoặc thao tác hoàn tiền mới.
 
-`.env.example` bật `DEMO_ENABLED=true`. Demo chỉ hoạt động trong `APP_ENV=local/testing`; dịch vụ đủ cấu hình thật được ưu tiên. Khi thiếu merchant, MoMo có màn hình mô phỏng thu cọc/thu đủ/nạp ví; thiếu ngân hàng có mô phỏng chuyển khoản. Mỗi giao dịch ghi nhãn demo, chống ghi lặp, không chuyển tiền thật. Google có tài khoản khách mẫu; email/SMS có mã thử hiển thị trên màn hình, không đánh dấu email/số điện thoại đã xác thực thật. Khôi phục demo khi chưa đăng nhập chỉ dành cho tài khoản email `.test` và cùng phiên trình duyệt.
+`DEMO_ENABLED=false` trong cấu hình mặc định. Thiếu cấu hình thật thì không hiện lựa chọn giả để thay thế. Email/SMS cần dịch vụ gửi thật; không hiện mã OTP thử trên giao diện.
 
-Để nhận chuyển khoản cá nhân: đăng nhập admin → **Quản lý → Vận hành & nội dung → Kết nối dịch vụ → Tài khoản nhận chuyển khoản**, chọn ngân hàng, nhập số tài khoản và tên chủ tài khoản thật. Khách nhận VietQR/nội dung riêng của lịch; quầy đối chiếu sao kê rồi ghi khoản ngân hàng thực nhận. Luồng thủ công không cần merchant MoMo hoặc SePay. Chưa nhập tài khoản thì không tạo QR ngân hàng giả.
+Tạo PayOS không đồng nghĩa đã thanh toán. Máy chủ kiểm tra chữ ký và kết quả PayOS, ghi tiền đúng một lần. Khi PayOS xác nhận hủy/hết hạn, chỉ lịch online chưa trả đồng nào được hủy theo link đó; lịch tại quầy hoặc có cọc vẫn giữ để chi nhánh xử lý. URL trở về có `cancel=true` không đủ để tự đổi trạng thái.
 
-Thông tin ngân hàng ở trang quản trị lưu trong database; bộ `BANK_*` đầy đủ trong `.env` có ưu tiên. Muốn xác nhận tự động bằng SePay, điền bộ `BANK_*`, `SEPAY_ENABLED` và khóa webhook trong `.env`. [Kết nối MB API của SePay](https://docs.sepay.vn/ket-noi-mb-api.html) hỗ trợ cá nhân; điều kiện ngân hàng khác cần kiểm tra riêng.
+Lịch đã trả tiền không hủy trực tiếp. Có thể đổi lịch đủ điều kiện, giữ tiền đã thu; giá mới thấp hơn tiền đã trả bị chặn và cần liên hệ chi nhánh. Lịch cố định thanh toán PayOS theo từng lịch, chưa có một QR cho cả chuỗi. Các khoản hoàn cũ chỉ đọc trong báo cáo. Khoản tiền đến muộn hoặc ngoài dư nợ giữ dấu vết trong số dư để đối chiếu; không tự chuyển tiền hoàn ra ngân hàng.
 
-Email thật dùng SMTP ở mục dưới. Thiếu SMTP có OTP demo; đã cấu hình SMTP mà gửi lỗi sẽ báo lỗi và thu hồi mã, không giả vờ đã gửi. Số dư và báo cáo trong bản môn học là dữ liệu thử; dùng dữ liệu sạch, `DEMO_ENABLED=false` khi vận hành thật.
-
-Danh sách đầy đủ chức năng, lỗi đã sửa và phần còn thiếu theo từng vai trò: [Báo cáo rà soát project](docs/PROJECT_AUDIT.md).
-
-### Merchant MoMo tùy chọn
-
-`MOMO_ENABLED` mặc định tắt adapter thật. Nếu cần merchant, điền `.env` riêng:
-
-```dotenv
-MOMO_ENABLED=true
-MOMO_PARTNER_CODE=
-MOMO_ACCESS_KEY=
-MOMO_SECRET_KEY=
-MOMO_ENDPOINT=https://test-payment.momo.vn/v2/gateway/api/create
-MOMO_REDIRECT_URL=https://ten-mien-cua-ban/#account
-MOMO_IPN_URL=https://ten-mien-cua-ban/api/v1/payments/momo/ipn
-```
-
-Đăng ký [MoMo for Business](https://business.momo.vn/), hoàn thiện [hồ sơ merchant](https://developers.momo.vn/v3/vi/docs/payment/onboarding/merchant-profile/). Trong **Thông tin tích hợp**, lấy Partner Code, Access Key, Secret Key của môi trường thử nghiệm. Dùng đúng bộ khóa và endpoint cùng môi trường. Chuyển sang chính thức cần MoMo duyệt merchant/UAT theo quy trình của họ.
-
-Production dùng `https://payment.momo.vn/v2/gateway/api/create` và merchant production. IPN cần HTTPS công khai, localhost không nhận callback ngoài. Số tiền cọc do server tính; kiểm tra chữ ký/merchant/order/request/amount/extraData/transId. Redirect không tự ghi thanh toán; 9000 chưa coi là hoàn tất. Cọc được ghi nhận một phần vào lịch; chỉ tiền dư hoặc tiền đến khi lịch không còn hiệu lực mới vào ví. Nút **Kiểm tra thanh toán MoMo** gọi API truy vấn giao dịch từ máy chủ, không coi redirect hoặc thao tác khách là đã thanh toán. Query và IPN dùng cùng cơ chế ghi tiền một lần.
-
-API hoàn giới hạn theo khoản gốc và phần chưa hoàn. Retry chỉ truy vấn kết quả, không gửi khoản hoàn thứ hai. Timeout/từ chối/chưa rõ giữ trạng thái chờ và chặn hoàn trùng; cần đối soát merchant trước khi xử lý tiếp. Không coi lỗi mạng là đã hoàn.
-
-[MoMo thanh toán](https://developers.momo.vn/v3/vi/docs/payment/api/wallet/onetime/), [IPN](https://developers.momo.vn/v3/vi/docs/payment/api/result-handling/notification/), [hoàn tiền](https://developers.momo.vn/v3/docs/payment/api/payment-api/refund/).
-
-Chuyển khoản qua [SePay webhook](https://docs.sepay.vn/tich-hop-webhooks.html):
-
-```dotenv
-SEPAY_ENABLED=true
-SEPAY_WEBHOOK_KEY=
-BANK_ACCOUNT_NUMBER=
-BANK_ACCOUNT_NAME=
-BANK_BIN=
-```
-
-Đăng ký [SePay](https://my.sepay.vn/), thêm tài khoản ngân hàng của bạn, mở **Webhook** và tạo webhook giao dịch **Có tiền vào**. Chọn xác thực **API Key**, đặt khóa riêng và điền cùng giá trị vào `SEPAY_WEBHOOK_KEY`; đây là khóa webhook, không phải token API quản lý tài khoản. Điền số tài khoản, tên chủ tài khoản và mã BIN đúng ngân hàng. Có thể bắt đầu bằng [Test Mode](https://docs.sepay.vn/test-mode.html).
-
-SePay gửi tới `https://ten-mien/api/v1/payments/bank/webhook`, header `Authorization: Apikey <khóa riêng>`. Chỉ ghi tiền đến đúng tài khoản, dedupe mã giao dịch, khớp mã lịch `BH-...`, tiền dư/muộn vào ví. Sai nội dung nằm ở hàng đối soát cho quản trị ghép lịch một lần. Quầy vẫn có thể ghi khoản ngân hàng thực nhận bằng thao tác thu tiền. Chi tiết lịch có VietQR với tiền cọc/còn thiếu và nội dung riêng, tự kiểm tra trạng thái mỗi 15 giây khi còn chờ thanh toán. QR dùng [quick link VietQR](https://www.vietqr.io/en/danh-sach-api/link-tao-ma-nhanh/), cần mạng; thông tin chuyển khoản dạng chữ vẫn hiển thị nếu ảnh không tải. Mẫu compact2 dành cho thử nghiệm; khi dùng quick link ở production cần mẫu riêng theo yêu cầu VietQR.
+Xem [toàn bộ chức năng và giới hạn](docs/BUSINESS_FLOWS.md), [bộ tình huống kiểm thử](docs/TEST_CASES.md) và [kết quả kiểm chứng](docs/VALIDATION.md).
 
 ## Google, SMS, email và camera
 
@@ -318,7 +261,7 @@ MAIL_TIMEOUT=15
 
 Các giá trị `dia-chi-...`/`mat-khau-...` chỉ là chỗ cần thay, không phải thông tin dùng được. [Google giải thích mật khẩu ứng dụng](https://support.google.com/accounts/answer/185833): cần xác minh 2 bước, một số tài khoản tổ chức/Advanced Protection không có lựa chọn này. [Cấu hình Gmail SMTP](https://support.google.com/a/answer/176600).
 
-`MAIL_MAILER=log` không gửi email thật và không ghi mã sống vào nhật ký. Khi bật demo local, mã thử hiện trên giao diện; khi tắt demo, cần SMTP để dùng luồng gửi thư. Mã hết hạn 10 phút, khóa sau 5 lần sai; gửi lỗi thu hồi mã, token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
+`MAIL_MAILER=log` không gửi email thật và không ghi mã sống vào nhật ký. Cần SMTP thật để dùng luồng gửi thư; giao diện không hiển thị mã thử. Mã hết hạn 10 phút, khóa sau 5 lần sai; gửi lỗi thu hồi mã, token đặt lại mật khẩu dùng một lần và xóa phiên cũ.
 
 **SMS OTP qua Twilio Verify**
 
@@ -334,7 +277,7 @@ TWILIO_AUTH_TOKEN=
 TWILIO_VERIFY_SERVICE_SID=
 ```
 
-[Twilio Verify](https://www.twilio.com/docs/verify/quickstarts/go) gửi/kiểm tra OTP thật, số Việt Nam được chuyển sang dạng `+84`. Có 60 giây chờ gửi lại, tối đa 5 lần kiểm tra trong 10 phút. Đổi số xóa xác thực cũ. Sau xác thực thật có thể đăng nhập điện thoại + mật khẩu. Thiếu cấu hình và bật demo local thì có mã thử trên màn hình; mã này không xác thực số thật.
+[Twilio Verify](https://www.twilio.com/docs/verify/quickstarts/go) gửi/kiểm tra OTP thật, số Việt Nam được chuyển sang dạng `+84`. Có 60 giây chờ gửi lại, tối đa 5 lần kiểm tra trong 10 phút. Đổi số xóa xác thực cũ. Sau xác thực thật có thể đăng nhập điện thoại + mật khẩu. Thiếu cấu hình thì không cung cấp gửi SMS trên giao diện.
 
 **Kiểm tra sau khi điền cấu hình**
 
@@ -347,11 +290,11 @@ php artisan hub:integrations --email-to=email-nhan-thu-cua-ban
 
 Lệnh mặc định chỉ đọc trạng thái, không lộ khóa và không gọi dịch vụ. `--probe` gọi thật hai model và chỉ báo đạt khi dùng kết quả model đúng; `--email-to` gửi một thư SMTP tới địa chỉ bạn chỉ định. SMTP chấp nhận thư chưa chứng minh hộp thư nhận được; kiểm tra Inbox/Spam. Lệnh trả mã lỗi khi kiểm tra không đạt.
 
-Quản trị mở **Quản lý → Vận hành & nội dung → Kết nối dịch vụ** để xem biến còn thiếu, hướng dẫn lấy thông tin và kiểm tra model. **Đã điền cấu hình** chỉ là đủ trường cần thiết, không phải bằng chứng dịch vụ đã kết nối thành công. MoMo/SePay cần endpoint HTTPS mà dịch vụ truy cập được để thử IPN/webhook; `127.0.0.1` của bạn không nhận thông báo từ máy chủ bên ngoài. Bản này chưa xuất bản công khai.
+Quản trị mở **Quản lý → Vận hành & nội dung → Kết nối dịch vụ** để xem biến còn thiếu, hướng dẫn lấy thông tin và kiểm tra model. **Đã điền cấu hình** chỉ là đủ trường cần thiết, không phải bằng chứng dịch vụ đã kết nối thành công. PayOS cần endpoint HTTPS truy cập được để nhận webhook; `127.0.0.1` của bạn không nhận thông báo từ máy chủ bên ngoài. Bản này chưa xuất bản công khai.
 
 Camera QR chỉ bật sau thao tác quét và cho phép, cần HTTPS hoặc localhost. Vẫn có ô nhập/dán QR. Một số ảnh/font nguồn cần mạng; hình sân ở trang chủ dựng SVG/CSS.
 
-**Firebase Google đã bật trên project thật, đã xác nhận provider/miền và kết nối HTTPS từ PHP; chưa thử thủ công một lượt Google sign-in tới phiên Laravel hoàn chỉnh.** Ollama đã có kết quả suy luận thật cho hai tác vụ trên một số câu thử. SMS, SMTP, SePay, merchant MoMo và OAuth Google trực tiếp chưa được xác minh với tài khoản/dịch vụ thật do chưa có bộ cấu hình riêng. Kiểm thử dùng phản hồi giả lập không chứng minh SMS, email hoặc giao dịch thật đã chạy. Chưa xuất bản hosting công khai.
+**Firebase Google đã bật trên project thật, đã xác nhận provider/miền và kết nối HTTPS từ PHP; chưa thử thủ công một lượt Google sign-in tới phiên Laravel hoàn chỉnh.** Ollama đã có kết quả suy luận thật cho hai tác vụ trên một số câu thử. Trong đợt kiểm tra này không gửi SMS/email thật hoặc thực hiện lại Google sign-in của chủ tài khoản. Kiểm thử dùng phản hồi giả lập không chứng minh SMS, email hoặc giao dịch thật đã chạy. Chưa xuất bản hosting công khai.
 
 ## Phát triển và kiểm thử
 

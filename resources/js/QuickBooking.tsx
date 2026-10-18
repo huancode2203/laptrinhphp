@@ -19,6 +19,7 @@ export default function QuickBooking({
         [error, setError] = useState(""),
         [notes, setNotes] = useState(""),
         [requestKey] = useState(key);
+    const [paymentMethod, setPaymentMethod] = useState("counter");
     const start = range.date + "T" + range.time + ":00+07:00";
     const endDate = new Date(
         new Date(start).getTime() + range.duration * 3600000,
@@ -67,6 +68,29 @@ export default function QuickBooking({
                             ends_at: end,
                             notes,
                         });
+                        if (paymentMethod === "payos") {
+                            try {
+                                const payment = await api(
+                                    "payments/payos",
+                                    "POST",
+                                    {
+                                        request_key: key(),
+                                        purpose: "booking",
+                                        booking_id: r.data.id,
+                                    },
+                                );
+                                location.assign(payment.data.pay_url);
+                                return;
+                            } catch (failure) {
+                                toast(
+                                    "Lịch đã tạo. " +
+                                        (failure as Error).message +
+                                        " Mở chi tiết lịch để tiếp tục thanh toán.",
+                                );
+                                done(r.data);
+                                return;
+                            }
+                        }
                         toast(
                             "Đã đặt sân. Có thể thu tiền và nhận sân trong chi tiết lịch.",
                         );
@@ -114,6 +138,32 @@ export default function QuickBooking({
                         Ưu đãi khách hàng {money(quote.discount_amount)}
                     </p>
                 )}
+                {data!.payos_enabled &&
+                    data!.permissions?.["payments.write"] && (
+                        <fieldset className="rounded-xl border border-slate-200 p-4">
+                            <legend className="px-2 text-sm font-bold">
+                                Thanh toán của khách
+                            </legend>
+                            {[
+                                ["counter", "Thanh toán trực tiếp tại quầy"],
+                                ["payos", "Tạo mã chuyển khoản PayOS"],
+                            ].map(([value, label]) => (
+                                <label
+                                    key={value}
+                                    className="my-3 flex items-center gap-3 text-sm"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="counter-payment"
+                                        value={value}
+                                        checked={paymentMethod === value}
+                                        onChange={() => setPaymentMethod(value)}
+                                    />
+                                    {label}
+                                </label>
+                            ))}
+                        </fieldset>
+                    )}
                 {error && (
                     <p role="alert" className="text-sm text-red-600">
                         {error}

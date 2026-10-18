@@ -28,9 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', EnsureActiveAccount::class);
         $middleware->appendToGroup('web', ValidateApiInput::class);
         $middleware->appendToGroup('web', NormalizeAccountInput::class);
-        $middleware->validateCsrfTokens(except: ['api/v1/payments/momo/ipn', 'api/v1/payments/bank/webhook', 'api/v1/payments/payos/webhook']);
-        $middleware->trimStrings(except: [fn (Request $r) => $r->is('api/v1/payments/momo/ipn', 'api/v1/payments/payos/webhook')]);
-        $middleware->convertEmptyStringsToNull(except: [fn (Request $r) => $r->is('api/v1/payments/momo/ipn', 'api/v1/payments/payos/webhook')]);
+        $middleware->validateCsrfTokens(except: ['api/v1/payments/bank/webhook', 'api/v1/payments/payos/webhook']);
+        $middleware->trimStrings(except: [fn (Request $r) => $r->is('api/v1/payments/payos/webhook')]);
+        $middleware->convertEmptyStringsToNull(except: [fn (Request $r) => $r->is('api/v1/payments/payos/webhook')]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {

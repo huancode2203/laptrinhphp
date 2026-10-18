@@ -26,8 +26,7 @@ export default function Profile({
     const [phone, setPhone] = useState(user.phone ?? ""),
         [code, setCode] = useState("");
     const [phoneOpen, setPhoneOpen] = useState(false),
-        [sent, setSent] = useState(false),
-        [demoCode, setDemoCode] = useState("");
+        [sent, setSent] = useState(false);
     const stats = account?.profile_stats;
     const initial = user.name
         .split(" ")
@@ -249,9 +248,7 @@ export default function Profile({
                                 className="profile-text-button"
                                 onClick={verifyEmail}
                             >
-                                {data!.demo?.email
-                                    ? "Thử OTP · Demo"
-                                    : "Xác thực"}
+                                Xác thực
                             </button>
                         )}
                         {user.email_verified_at && (
@@ -275,9 +272,7 @@ export default function Profile({
                                 className="profile-text-button"
                                 onClick={() => setPhoneOpen(true)}
                             >
-                                {data!.demo?.sms
-                                    ? "Thử OTP · Demo"
-                                    : "Xác thực"}
+                                Xác thực
                             </button>
                         )}
                         {user.phone_verified_at && (
@@ -397,7 +392,6 @@ export default function Profile({
                                         { phone },
                                     );
                                     setSent(true);
-                                    setDemoCode(r.demo_code ?? "");
                                     toast(r.message);
                                 } else {
                                     await changed(async () => {
@@ -426,11 +420,6 @@ export default function Profile({
                                 onChange={(e) => setPhone(e.target.value)}
                             />
                         </label>
-                        {demoCode && (
-                            <p className="rounded-xl bg-amber-50 p-3 text-sm">
-                                Mã demo: <b>{demoCode}</b> · Không gửi SMS thật.
-                            </p>
-                        )}
                         {sent && (
                             <label className="block text-sm font-bold">
                                 Mã 6 chữ số
@@ -446,11 +435,7 @@ export default function Profile({
                             </label>
                         )}
                         <button className="btn" disabled={loading}>
-                            {sent
-                                ? "Xác nhận mã"
-                                : data!.demo?.sms
-                                  ? "Thử mã điện thoại · Demo"
-                                  : "Gửi mã xác thực"}
+                            {sent ? "Xác nhận mã" : "Gửi mã xác thực"}
                         </button>
                         {sent && (
                             <button
@@ -459,7 +444,6 @@ export default function Profile({
                                 onClick={() => {
                                     setSent(false);
                                     setCode("");
-                                    setDemoCode("");
                                 }}
                             >
                                 Đổi số điện thoại

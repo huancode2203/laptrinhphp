@@ -1,3 +1,4 @@
+import UsageGuide from "./UsageGuide";
 import RescheduleBooking from "./RescheduleBooking";
 import HistoryBrowser from "./HistoryBrowser";
 import SeriesCancel from "./SeriesCancel";
@@ -22,10 +23,6 @@ export function BookingDetail({
         [form, setForm] = useState(""),
         [receipt, setReceipt] = useState<Row | null>(null);
     const booking = receipt?.booking ?? initialBooking;
-    const momoAttempts =
-        receipt?.payment_attempts?.filter(
-            (attempt: Row) => attempt.partner_code !== "PAYOS",
-        ) ?? [];
     useEffect(() => {
         let live = true;
         api("bookings/" + booking.id + "/receipt")
@@ -112,8 +109,10 @@ export function BookingDetail({
                 </Card>
             </div>
             <p className="mt-3 text-sm">
-                Trạng thái: {statusText(booking.status)}{" "}
-                {booking.refund_pending ? "· Chờ quầy hoàn tiền" : ""}
+                Trạng thái: {booking.status_label || statusText(booking.status)}{" "}
+                {booking.refund_pending
+                    ? "· Cần quầy đối chiếu giao dịch cũ"
+                    : ""}
             </p>
             {booking.deposit_remaining > 0 && booking.payment_expires_at && (
                 <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm">
@@ -192,58 +191,17 @@ export function BookingDetail({
                         </button>
                         <p className="mt-3 text-xs text-slate-500">
                             {data!.bank.mode === "automatic"
-                                ? "Chuyển đúng nội dung; trạng thái cập nhật khi nhận xác nhận từ SePay."
+                                ? "Chuyển đúng nội dung; trạng thái cập nhật khi ngân hàng xác nhận tiền vào."
                                 : "Sau khi chuyển khoản, liên hệ chi nhánh. Nhân viên kiểm tra tiền vào tài khoản và xác nhận thanh toán; lịch chưa được thanh toán chỉ vì bạn quét QR."}
                         </p>
                     </Card>
                 )}
-            {data!.bank?.mode === "demo" &&
-                data!.user.id === booking.user_id &&
-                ["confirmed", "checked_in"].includes(booking.status) &&
-                booking.remaining_amount > 0 && (
-                    <Card className="mt-4">
-                        <h3 className="font-bold">
-                            Chuyển khoản ngân hàng · Demo
-                        </h3>
-                        <p className="my-3 text-sm text-slate-500">
-                            Chưa có tài khoản nhận tiền. Thử luồng thanh toán mà
-                            không chuyển tiền thật.
-                        </p>
-                        <button
-                            className="btn-outline"
-                            disabled={loading}
-                            onClick={() =>
-                                run(async () => {
-                                    const response = await api(
-                                        "demo/bookings/" + booking.id + "/bank",
-                                        "POST",
-                                        {
-                                            request_key: key(),
-                                            deposit_only:
-                                                booking.deposit_remaining > 0,
-                                        },
-                                    );
-                                    location.assign(response.data.pay_url);
-                                    close();
-                                })
-                            }
-                        >
-                            Thử chuyển khoản
-                        </button>
-                    </Card>
-                )}
-            {data!.user.id === booking.user_id &&
-                receipt?.pending_payment_attempts?.map((attempt: Row) =>
-                    attempt.partner_code?.startsWith("DEMO_") ? (
-                        <a
-                            key={attempt.id}
-                            className="btn-outline mt-3 inline-block"
-                            href={"#demo-payment/" + attempt.id}
-                            onClick={close}
-                        >
-                            Tiếp tục thanh toán demo · {money(attempt.amount)}
-                        </a>
-                    ) : (
+
+            {(data!.user.id === booking.user_id ||
+                data!.permissions?.["payments.write"]) &&
+                receipt?.pending_payment_attempts
+                    ?.filter((attempt: Row) => attempt.partner_code === "PAYOS")
+                    .map((attempt: Row) => (
                         <div
                             key={attempt.id}
                             className="mt-4 flex flex-wrap gap-3"
@@ -254,11 +212,8 @@ export function BookingDetail({
                                         className="btn-outline"
                                         href={attempt.pay_url}
                                     >
-                                        Tiếp tục thanh toán{" "}
-                                        {attempt.partner_code === "PAYOS"
-                                            ? "PayOS"
-                                            : "MoMo"}{" "}
-                                        · {money(attempt.amount)}
+                                        Tiếp tục chuyển khoản ·{" "}
+                                        {money(attempt.amount)}
                                     </a>
                                 )}
                             <button
@@ -267,12 +222,7 @@ export function BookingDetail({
                                 onClick={() =>
                                     run(async () => {
                                         await api(
-                                            "payments/" +
-                                                (attempt.partner_code ===
-                                                "PAYOS"
-                                                    ? "payos"
-                                                    : "momo") +
-                                                "/" +
+                                            "payments/payos/" +
                                                 attempt.id +
                                                 "/sync",
                                             "POST",
@@ -281,74 +231,30 @@ export function BookingDetail({
                                     })
                                 }
                             >
-                                Kiểm tra{" "}
-                                {attempt.partner_code === "PAYOS"
-                                    ? "PayOS"
-                                    : "MoMo"}{" "}
-                                · {money(attempt.amount)}
+                                Kiểm tra chuyển khoản · {money(attempt.amount)}
                             </button>
                         </div>
-                    ),
-                )}
-            {data!.user.role !== "customer" &&
-                data!.permissions?.["payments.write"] &&
-                booking.status === "cancelled" &&
-                booking.paid_amount > 0 &&
-                data!.momo_enabled &&
-                receipt?.payment_attempts?.some(
-                    (a: Row) => a.partner_code !== "PAYOS",
-                ) && (
-                    <div className="my-4">
-                        <button
-                            className="btn-outline"
-                            onClick={() => setForm("momo-refund")}
-                        >
-                            Hoàn qua MoMo
-                        </button>
-                        {receipt?.refund_requests
-                            ?.filter((v: Row) => v.status === "pending")
-                            .map((v: Row) => (
-                                <button
-                                    key={v.id}
-                                    className="btn-outline ml-2"
-                                    onClick={() =>
-                                        run(async () => {
-                                            await api(
-                                                "manage/bookings/" +
-                                                    booking.id +
-                                                    "/momo-refund",
-                                                "POST",
-                                                {
-                                                    request_key: v.request_key,
-                                                    attempt_id:
-                                                        v.payment_attempt_id,
-                                                    amount: v.amount,
-                                                },
-                                            );
-                                            await refreshBookings();
-                                            setReceipt(
-                                                (
-                                                    await api(
-                                                        "bookings/" +
-                                                            booking.id +
-                                                            "/receipt",
-                                                    )
-                                                ).data,
-                                            );
-                                            toast("Đã kiểm tra kết quả hoàn.");
-                                        })
-                                    }
-                                >
-                                    Kiểm tra hoàn {money(v.amount)}
-                                </button>
-                            ))}
-                    </div>
-                )}
-            {qr && (
-                <div className="my-4 text-center">
-                    <img src={qr} alt="Mã QR nhận sân" className="mx-auto" />
-                    <small>Đưa mã QR cho nhân viên khi đến sân.</small>
-                </div>
+                    ))}
+            {qr && ["confirmed", "checked_in"].includes(booking.status) && (
+                <details className="my-4 rounded-2xl border border-slate-200 p-4">
+                    <summary className="cursor-pointer font-bold">
+                        Mã nhận sân · dùng khi đến chi nhánh
+                    </summary>
+                    <p className="mt-3 text-sm leading-6 text-slate-500">
+                        Đưa mã này cho nhân viên để tìm đúng lịch và xác nhận
+                        bạn đã đến sân. Mã nhận sân không dùng để chuyển tiền;
+                        mã thanh toán được mở ở nút chuyển khoản PayOS.
+                    </p>
+                    <img
+                        src={qr}
+                        alt="Mã nhận sân cho nhân viên quét khi khách đến"
+                        className="mx-auto my-3 w-52"
+                    />
+                    <p className="text-center text-sm">
+                        Bạn cũng có thể đọc mã lịch <b>{booking.reference}</b>{" "}
+                        cho nhân viên.
+                    </p>
+                </details>
             )}
             <div className="my-4 flex flex-wrap gap-2">
                 {data!.user.role !== "customer" &&
@@ -362,7 +268,8 @@ export function BookingDetail({
                         </button>
                     )}
                 {data!.payos_enabled &&
-                    data!.user.id === booking.user_id &&
+                    (data!.user.id === booking.user_id ||
+                        data!.permissions?.["payments.write"]) &&
                     ["confirmed", "checked_in"].includes(booking.status) &&
                     booking.remaining_amount > 0 && (
                         <>
@@ -391,9 +298,9 @@ export function BookingDetail({
                                     }
                                 >
                                     {deposit
-                                        ? "Đặt cọc PayOS · " +
+                                        ? "Chuyển khoản đặt cọc · " +
                                           money(booking.deposit_remaining)
-                                        : "Thanh toán toàn bộ PayOS · " +
+                                        : "Chuyển khoản toàn bộ · " +
                                           money(booking.remaining_amount)}
                                 </button>
                             ))}
@@ -430,33 +337,7 @@ export function BookingDetail({
                             Đặt cọc bằng ví
                         </button>
                     )}
-                {booking.deposit_remaining > 0 &&
-                    booking.status === "confirmed" &&
-                    data!.momo_enabled &&
-                    data!.user.id === booking.user_id && (
-                        <button
-                            className="btn-outline"
-                            onClick={() =>
-                                run(async () => {
-                                    const r = await api(
-                                        "payments/momo",
-                                        "POST",
-                                        {
-                                            request_key: key(),
-                                            purpose: "booking",
-                                            booking_id: booking.id,
-                                            deposit_only: true,
-                                        },
-                                    );
-                                    location.assign(r.data.pay_url);
-                                })
-                            }
-                        >
-                            {data!.demo?.momo
-                                ? "Đặt cọc MoMo · Demo"
-                                : "Đặt cọc MoMo"}
-                        </button>
-                    )}
+
                 {["confirmed", "checked_in"].includes(booking.status) && (
                     <>
                         {booking.remaining_amount > 0 && (
@@ -467,29 +348,6 @@ export function BookingDetail({
                                 >
                                     Trả bằng ví
                                 </button>
-                                {data!.momo_enabled && (
-                                    <button
-                                        className="btn-outline"
-                                        onClick={() =>
-                                            run(async () => {
-                                                const p = await api(
-                                                    "payments/momo",
-                                                    "POST",
-                                                    {
-                                                        request_key: key(),
-                                                        purpose: "booking",
-                                                        booking_id: booking.id,
-                                                    },
-                                                );
-                                                location.assign(p.data.pay_url);
-                                            })
-                                        }
-                                    >
-                                        {data!.demo?.momo
-                                            ? "Thanh toán MoMo · Demo"
-                                            : "Thanh toán MoMo"}
-                                    </button>
-                                )}
                             </>
                         )}
                         {booking.status === "confirmed" && (
@@ -500,16 +358,18 @@ export function BookingDetail({
                                 Đổi lịch
                             </button>
                         )}
-                        {booking.status === "confirmed" && (
-                            <button
-                                className="btn-outline text-red-600"
-                                onClick={() => setForm("cancel")}
-                            >
-                                Hủy lịch
-                            </button>
-                        )}
                         {booking.status === "confirmed" &&
-                            booking.series_key && (
+                            booking.paid_amount === 0 && (
+                                <button
+                                    className="btn-outline text-red-600"
+                                    onClick={() => setForm("cancel")}
+                                >
+                                    Hủy lịch
+                                </button>
+                            )}
+                        {booking.status === "confirmed" &&
+                            booking.series_key &&
+                            booking.paid_amount === 0 && (
                                 <button
                                     className="btn-outline text-red-600"
                                     onClick={() => setForm("cancel-series")}
@@ -569,8 +429,10 @@ export function BookingDetail({
                         <span>{money(booking.discount_amount)}</span>
                     </p>
                     <p>
-                        Đã thu {money(receipt.collected)} · Đã hoàn{" "}
-                        {money(receipt.refunded)}
+                        Đã thu {money(receipt.collected)}
+                        {receipt.refunded > 0 && (
+                            <> · Đã hoàn trước đây {money(receipt.refunded)}</>
+                        )}
                     </p>
                     {booking.payments?.map((p: Row) => (
                         <p key={p.id} className="text-xs">
@@ -608,59 +470,7 @@ export function BookingDetail({
                     .
                 </Confirm>
             )}
-            {form === "momo-refund" && (
-                <Editor
-                    title="Hoàn tiền qua MoMo"
-                    initial={{
-                        attempt_id: momoAttempts[0]?.id,
-                        amount: Math.min(
-                            booking.paid_amount,
-                            momoAttempts[0]?.amount ?? 0,
-                        ),
-                    }}
-                    close={() => setForm("")}
-                    fields={[
-                        {
-                            name: "attempt_id",
-                            label: "Giao dịch gốc",
-                            required: true,
-                            options: momoAttempts.map((v: Row) => ({
-                                value: v.id,
-                                label: v.order_id + " · " + money(v.amount),
-                            })),
-                        },
-                        {
-                            name: "amount",
-                            label: "Số tiền hoàn",
-                            type: "number",
-                            min: 1000,
-                            max: booking.paid_amount,
-                            required: true,
-                        },
-                    ]}
-                    save={async (d) => {
-                        const r = await api(
-                            "manage/bookings/" + booking.id + "/momo-refund",
-                            "POST",
-                            {
-                                ...d,
-                                attempt_id: Number(d.attempt_id),
-                                amount: Number(d.amount),
-                            },
-                        );
-                        setReceipt(
-                            (await api("bookings/" + booking.id + "/receipt"))
-                                .data,
-                        );
-                        await refreshBookings();
-                        toast(
-                            r.data.status === "paid"
-                                ? "Đã hoàn tiền."
-                                : "Đang chờ kết quả từ MoMo.",
-                        );
-                    }}
-                />
-            )}
+
             {form === "cancel" && (
                 <Confirm
                     title="Hủy lịch sân"
@@ -673,9 +483,8 @@ export function BookingDetail({
                         )
                     }
                 >
-                    Bạn xác nhận hủy lịch này? Lịch trả bằng ví cần hủy trước 4
-                    giờ để hoàn ví; tiền mặt, ngân hàng hoặc MoMo cần liên hệ
-                    quầy.
+                    Bạn xác nhận hủy lịch chưa thanh toán này? Khung giờ sẽ được
+                    giải phóng sau khi hủy.
                 </Confirm>
             )}
             {form === "add-services" && (
@@ -813,7 +622,6 @@ export default function Account({
             location.hash.endsWith("/pending"),
         ),
         [emailSent, setEmailSent] = useState(false),
-        [emailDemoCode, setEmailDemoCode] = useState(""),
         [page, setPage] = useState(1),
         [couponPage, setCouponPage] = useState(1),
         [paymentVersion, setPaymentVersion] = useState(0),
@@ -837,6 +645,7 @@ export default function Account({
                     "profile",
                     "extras",
                     "activity",
+                    "guide",
                 ].includes(target)
             ) {
                 setTab(target);
@@ -930,6 +739,7 @@ export default function Account({
                     ["profile", "Hồ sơ cá nhân"],
                     ["extras", "Quyền lợi & đã lưu"],
                     ["activity", "Bài viết & trận của tôi"],
+                    ["guide", "Hướng dẫn sử dụng"],
                 ].map(([id, label]) => (
                     <button
                         key={id}
@@ -997,7 +807,8 @@ export default function Account({
                                         <span className="badge badge-green">
                                             {b.needs_checkout
                                                 ? "Chờ chốt hóa đơn"
-                                                : statusText(b.status)}
+                                                : b.status_label ||
+                                                  statusText(b.status)}
                                         </span>
                                     </div>
                                     <p className="my-3">
@@ -1143,6 +954,7 @@ export default function Account({
                     ))}
                 </div>
             )}
+            {tab === "guide" && <UsageGuide />}
             {tab === "wallet" && (
                 <>
                     <Card>
@@ -1156,23 +968,14 @@ export default function Account({
                                     className="btn"
                                     onClick={() => setForm("payos-topup")}
                                 >
-                                    Nạp qua PayOS
+                                    Nạp bằng chuyển khoản
                                 </button>
                             )}
-                            <button
-                                className={
-                                    data!.payos_enabled ? "btn-outline" : "btn"
-                                }
-                                disabled={!data!.momo_enabled}
-                                onClick={() => setForm("topup")}
-                            >
-                                {data?.demo?.momo
-                                    ? "Nạp ví · Demo"
-                                    : "Nạp qua MoMo"}
-                            </button>
                         </div>
                         <p className="mt-3 text-sm text-[#6d8474]">
-                            Bạn có thể nạp tiền tại quầy.{" "}
+                            {data!.payos_enabled
+                                ? "Nạp qua PayOS hoặc tại quầy. Số dư chỉ tăng sau khi khoản tiền được xác nhận."
+                                : "Bạn có thể nạp tiền trực tiếp tại quầy."}
                         </p>
                     </Card>
                     <h2 className="my-5 text-xl font-bold">Voucher của bạn</h2>
@@ -1252,16 +1055,15 @@ export default function Account({
                         kind="payments"
                         version={paymentVersion}
                         onSelect={(payment) => {
-                            if (payment.partner_code?.startsWith("DEMO_")) {
-                                location.hash = "demo-payment/" + payment.id;
+                            if (payment.partner_code !== "PAYOS") {
+                                toast(
+                                    "Giao dịch lịch sử được giữ để đối chiếu. Liên hệ chi nhánh nếu cần hỗ trợ.",
+                                );
                                 return;
                             }
                             run(async () => {
                                 await api(
-                                    "payments/" +
-                                        (payment.partner_code === "PAYOS"
-                                            ? "payos"
-                                            : "momo") +
+                                    "payments/payos" +
                                         "/" +
                                         payment.id +
                                         "/sync",
@@ -1473,13 +1275,7 @@ export default function Account({
             {form === "verifyEmail" &&
                 (emailSent ? (
                     <Editor
-                        title={
-                            emailDemoCode
-                                ? "Mã demo: " +
-                                  emailDemoCode +
-                                  " · Không gửi email thật"
-                                : "Xác nhận email"
-                        }
+                        title="Xác nhận email"
                         close={() => setForm("")}
                         fields={[
                             {
@@ -1505,11 +1301,7 @@ export default function Account({
                     />
                 ) : (
                     <Confirm
-                        title={
-                            data?.demo?.email
-                                ? "Thử mã email · Demo"
-                                : "Gửi mã xác nhận"
-                        }
+                        title="Gửi mã xác nhận"
                         close={() => setForm("")}
                         action={async () => {
                             const response = await api(
@@ -1519,15 +1311,12 @@ export default function Account({
                                     email: user.email,
                                 },
                             );
-                            setEmailDemoCode(response.demo_code ?? "");
                             toast(response.message);
                             setEmailSent(true);
                             setTimeout(() => setForm("verifyEmail"), 0);
                         }}
                     >
-                        {data?.demo?.email
-                            ? "Mã thử sẽ hiện trên màn hình. Không gửi email và không xác thực địa chỉ email thật."
-                            : `Gửi mã tới ${user.email}. Nếu chưa nhận được email, liên hệ quản trị để kiểm tra dịch vụ gửi thư.`}
+                        {`Gửi mã tới ${user.email}. Nếu chưa nhận được email, liên hệ quản trị để kiểm tra dịch vụ gửi thư.`}
                     </Confirm>
                 ))}
             {form === "password" && (
@@ -1557,25 +1346,11 @@ export default function Account({
                     save={(d) => changed(() => api("me/password", "PUT", d))}
                 />
             )}
-            {["topup", "payos-topup"].includes(form) && (
+            {form === "payos-topup" && (
                 <Editor
-                    label={
-                        form !== "payos-topup" && data!.demo?.momo
-                            ? "Nạp ví demo"
-                            : "Tiếp tục thanh toán"
-                    }
-                    description={
-                        form === "payos-topup"
-                            ? "Nhập số tiền muốn nạp. Bạn sẽ chuyển đến PayOS để thanh toán; số dư ví cập nhật sau khi giao dịch được xác nhận."
-                            : undefined
-                    }
-                    title={
-                        form === "payos-topup"
-                            ? "Nạp ví qua PayOS"
-                            : data!.demo?.momo
-                              ? "Nạp ví demo · Không chuyển tiền thật"
-                              : "Nạp ví qua MoMo"
-                    }
+                    title="Nạp ví bằng chuyển khoản"
+                    label="Tiếp tục chuyển khoản"
+                    description="Số dư cập nhật sau khi ngân hàng xác nhận giao dịch qua PayOS."
                     close={() => setForm("")}
                     initial={{ amount: 100000 }}
                     fields={[
@@ -1588,17 +1363,12 @@ export default function Account({
                             required: true,
                         },
                     ]}
-                    save={async (d) => {
-                        const p = await api(
-                            "payments/" +
-                                (form === "payos-topup" ? "payos" : "momo"),
-                            "POST",
-                            {
-                                ...d,
-                                purpose: "wallet",
-                            },
-                        );
-                        location.assign(p.data.pay_url);
+                    save={async (values) => {
+                        const response = await api("payments/payos", "POST", {
+                            ...values,
+                            purpose: "wallet",
+                        });
+                        location.assign(response.data.pay_url);
                     }}
                 />
             )}

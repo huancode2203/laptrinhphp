@@ -70,17 +70,17 @@ class ManagementTest extends TestCase
         $this->assertNotNull($this->booking->fresh()->checked_in_at);
     }
 
-    public function test_cancelled_paid_booking_is_refunded_in_ledger_and_report(): void
+    public function test_paid_booking_cannot_be_cancelled_or_refunded_and_revenue_is_preserved(): void
     {
         $url = '/api/v1/manage/bookings/'.$this->booking->id.'/payments';
         $this->actingAs($this->manager)->postJson($url, $this->pay())->assertOk();
         $this->postJson($url, $this->pay(['kind' => 'refund']))->assertUnprocessable();
-        $this->patchJson('/api/v1/bookings/'.$this->booking->id.'/status', ['status' => 'cancelled'])->assertOk()->assertJsonPath('data.refund_pending', true);
-        $this->postJson($url, $this->pay(['kind' => 'refund']))->assertOk();
+        $this->patchJson('/api/v1/bookings/'.$this->booking->id.'/status', ['status' => 'cancelled'])->assertUnprocessable();
+        $this->postJson($url, $this->pay(['kind' => 'refund']))->assertUnprocessable();
         $this->postJson($url, $this->pay(['kind' => 'refund', 'amount' => 1]))->assertUnprocessable();
-        $this->getJson('/api/v1/manage/reports?from=2026-10-12&to=2026-10-12')->assertOk()->assertJsonPath('data.collected', 100000)->assertJsonPath('data.refunded', 100000)->assertJsonPath('data.net_revenue', 0)->assertJsonPath('data.daily.0.revenue', 0);
-        $this->assertSame(0, $this->booking->fresh()->paid_amount);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'booking.refund', 'subject_id' => $this->booking->id]);
+        $this->getJson('/api/v1/manage/reports?from=2026-10-12&to=2026-10-12')->assertOk()->assertJsonPath('data.collected', 100000)->assertJsonPath('data.refunded', 0)->assertJsonPath('data.net_revenue', 100000)->assertJsonPath('data.daily.0.revenue', 100000);
+        $this->assertSame(100000, $this->booking->fresh()->paid_amount);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'booking.refund', 'subject_id' => $this->booking->id]);
     }
 
     public function test_manager_calendar_does_not_include_other_branch_bookings(): void

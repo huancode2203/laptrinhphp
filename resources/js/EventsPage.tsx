@@ -74,9 +74,9 @@ export function EventDetail({
                     {e.my_registration?.status === "pending" && (
                         <button
                             className="btn"
-                            onClick={() => setForm("register:wallet")}
+                            onClick={() => setForm("register:cash")}
                         >
-                            Thanh toán vé bằng ví
+                            Thanh toán vé tại quầy
                         </button>
                     )}
                     {e.my_registration &&
@@ -100,9 +100,9 @@ export function EventDetail({
                         <>
                             <button
                                 className="btn"
-                                onClick={() => setForm("register:wallet")}
+                                onClick={() => setForm("register:cash")}
                             >
-                                Đăng ký bằng ví
+                                Đăng ký · thanh toán tại quầy
                             </button>
                             <button
                                 className="btn-outline"
@@ -160,19 +160,6 @@ export function EventDetail({
                             Xác nhận thu tiền
                         </button>
                     )}
-                    {managed &&
-                        r.status === "cancelled" &&
-                        r.paid_amount > 0 && (
-                            <button
-                                className="text-sm text-red-600"
-                                onClick={() => {
-                                    setReg(r);
-                                    setForm("refund");
-                                }}
-                            >
-                                Hoàn tiền tại quầy
-                            </button>
-                        )}
                 </div>
             ))}
             {e.matches.length > 0 && (
@@ -294,7 +281,7 @@ export function EventDetail({
                     {form === "draw"
                         ? "Tạo lịch theo thể thức đã chọn từ các vé đã xác nhận. Danh sách vận động viên được chốt khi tạo."
                         : form === "cancel"
-                          ? "Hủy sự kiện và giải phóng sân; tiền ví tự hoàn, các phương thức khác chờ quầy xử lý."
+                          ? "Hủy sự kiện chưa có vé đã thanh toán và giải phóng sân. Nếu đã thu tiền vé, liên hệ người phụ trách để điều chỉnh lịch."
                           : form === "withdraw"
                             ? "Hủy vé? Vé trả ví cần hủy trước ít nhất 4 giờ."
                             : "Chỉ hoàn tất khi sự kiện và các trận đấu đã kết thúc."}
@@ -326,7 +313,7 @@ export function EventDetail({
                     )}
                 </Confirm>
             )}
-            {(form === "confirm" || form === "refund") && reg && (
+            {form === "confirm" && reg && (
                 <Editor
                     title={
                         form === "confirm"

@@ -17,6 +17,6 @@ class BankSettings
             return [...json_decode($record, true), 'mode' => 'manual'];
         }
 
-        return app(DemoService::class)->active() ? ['mode' => 'demo'] : null;
+        return null;
     }
 }

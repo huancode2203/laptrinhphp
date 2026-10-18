@@ -16,7 +16,7 @@ class NormalizeAccountInput
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('api/v1/payments/*/webhook', 'api/v1/payments/momo/ipn')) {
+        if (! $request->is('api/v1/payments/*/webhook')) {
             $values = [];
             if (is_string($request->input('phone'))) {
                 $values['phone'] = AccountIdentity::phone($request->input('phone'));

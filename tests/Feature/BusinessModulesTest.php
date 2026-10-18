@@ -55,7 +55,7 @@ class BusinessModulesTest extends TestCase
     public function test_bootstrap_and_management_data_contain_real_counts_and_scoped_courts(): void
     {
         Court::factory()->create();
-        $this->getJson('/api/v1/hub')->assertOk()->assertJsonPath('data.stats.bookings', 0)->assertJsonPath('data.momo_enabled', false);
+        $this->getJson('/api/v1/hub')->assertOk()->assertJsonPath('data.stats.bookings', 0)->assertJsonMissingPath('data.momo_enabled');
         $r = $this->actingAs($this->manager)->getJson('/api/v1/manage/hub?date=2026-10-13')->assertOk();
         $this->assertCount(1, $r->json('data.courts'));
         $staff = User::factory()->create(['role' => 'staff', 'branch_id' => $this->court->branch_id]);
@@ -81,7 +81,7 @@ class BusinessModulesTest extends TestCase
         $this->postJson('/api/v1/bookings', $this->payload())->assertCreated();
     }
 
-    public function test_wallet_topup_and_booking_payment_retry_only_charge_once_and_cancellation_refunds(): void
+    public function test_wallet_topup_and_payment_charge_once_and_paid_cancellation_is_blocked(): void
     {
         $b = $this->book();
         $d = ['request_key' => (string) Str::uuid(), 'branch_id' => $this->court->branch_id, 'amount' => 200000, 'method' => 'cash'];
@@ -91,10 +91,10 @@ class BusinessModulesTest extends TestCase
         $this->actingAs($this->customer)->postJson('/api/v1/bookings/'.$b->id.'/wallet-payment', $pay)->assertOk();
         $this->postJson('/api/v1/bookings/'.$b->id.'/wallet-payment', $pay)->assertOk();
         $this->assertEquals(100000, $this->customer->refresh()->wallet_balance);
-        $this->patchJson('/api/v1/bookings/'.$b->id.'/status', ['status' => 'cancelled'])->assertOk();
-        $this->patchJson('/api/v1/bookings/'.$b->id.'/status', ['status' => 'cancelled'])->assertOk();
-        $this->assertEquals(200000, $this->customer->refresh()->wallet_balance);
-        $this->assertDatabaseCount('wallet_entries', 3);
+        $this->patchJson('/api/v1/bookings/'.$b->id.'/status', ['status' => 'cancelled'])->assertUnprocessable();
+        $this->patchJson('/api/v1/bookings/'.$b->id.'/status', ['status' => 'cancelled'])->assertUnprocessable();
+        $this->assertEquals(100000, $this->customer->refresh()->wallet_balance);
+        $this->assertDatabaseCount('wallet_entries', 2);
     }
 
     public function test_wallet_insufficient_funds_roll_back_and_cross_branch_staff_cannot_topup(): void
@@ -188,15 +188,15 @@ class BusinessModulesTest extends TestCase
         $this->assertDatabaseHas('content_reports', ['status' => 'resolved']);
     }
 
-    public function test_event_blocks_courts_and_capacity_and_wallet_cancellation_refund(): void
+    public function test_event_blocks_courts_and_capacity_and_counter_payment_and_capacity(): void
     {
         $event = GameEvent::factory()->create(['branch_id' => $this->court->branch_id, 'capacity' => 2, 'fee' => 10000]);
         CourtBlock::factory()->create(['court_id' => $this->court->id, 'game_event_id' => $event->id, 'starts_at' => '2026-10-13 10:00', 'ends_at' => '2026-10-13 12:00']);
         $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload())->assertUnprocessable();
         $this->customer->forceFill(['wallet_balance' => 20000])->save();
-        $this->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'wallet'])->assertOk();
-        $this->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'wallet'])->assertOk();
-        $this->assertEquals(10000, $this->customer->refresh()->wallet_balance);
+        $this->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk();
+        $this->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk();
+        $this->assertEquals(20000, $this->customer->refresh()->wallet_balance);
         $other = User::factory()->create();
         $this->actingAs($other)->postJson('/api/v1/events/'.$event->id.'/register', ['method' => 'cash'])->assertOk();
         $third = User::factory()->create();

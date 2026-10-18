@@ -28,11 +28,6 @@ class IntegrationStatus
             }
             $items[] = $this->item('ai_'.$task, $label, true, $fields, $provider.' · '.config('ai.'.$task.'.model'), $provider === 'openai' ? 'https://platform.openai.com/api-keys' : 'https://ollama.com/download/windows');
         }
-        $items[] = $this->item('momo', 'Thanh toán MoMo', (bool) config('momo.enabled'), [
-            'MOMO_PARTNER_CODE' => config('momo.partner_code'), 'MOMO_ACCESS_KEY' => config('momo.access_key'), 'MOMO_SECRET_KEY' => config('momo.secret_key'),
-            'MOMO_IPN_URL' => $this->publicHttps(config('momo.ipn_url')), 'MOMO_REDIRECT_URL' => $this->publicHttps(config('momo.redirect_url')),
-            'MOMO_ENDPOINT' => in_array(config('momo.endpoint'), ['https://test-payment.momo.vn/v2/gateway/api/create', 'https://payment.momo.vn/v2/gateway/api/create'], true),
-        ], str_contains(config('momo.endpoint'), 'test-payment') ? 'Thử nghiệm' : 'Chính thức', 'https://business.momo.vn/');
         $items[] = $this->item('sepay', 'Chuyển khoản SePay', (bool) config('integrations.bank.enabled'), [
             'SEPAY_WEBHOOK_KEY' => config('integrations.bank.key'), 'BANK_ACCOUNT_NUMBER' => config('integrations.bank.account'), 'BANK_ACCOUNT_NAME' => config('integrations.bank.name'), 'BANK_BIN' => config('integrations.bank.bank_bin'),
         ], 'VietQR và xác nhận giao dịch', 'https://my.sepay.vn/');

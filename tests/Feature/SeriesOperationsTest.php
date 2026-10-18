@@ -58,36 +58,36 @@ class SeriesOperationsTest extends TestCase
         $this->actingAs(User::factory()->create())->postJson($base.'/reschedule-quote', $data)->assertForbidden();
     }
 
-    public function test_cancel_series_refunds_wallet_once_and_cannot_change_finished_sessions(): void
+    public function test_paid_series_cancellation_is_blocked_without_changing_finished_sessions(): void
     {
         [$court, $owner, $rows] = $this->series(true);
         $finished = Booking::factory()->create(['series_key' => $rows[0]->series_key, 'user_id' => $owner->id, 'court_id' => $court->id, 'status' => 'completed', 'starts_at' => now()->subWeek(), 'ends_at' => now()->subWeek()->addHour()]);
         $base = '/api/v1/bookings/'.$rows[0]->id;
         $this->actingAs($owner)->postJson($base.'/series-cancel-quote')->assertOk()->assertJsonPath('data.refund_amount', 300000)->assertJsonCount(3, 'data.sessions');
-        $data = ['request_key' => (string) Str::uuid(), 'expected_refund' => 300000, 'refund_method' => 'wallet'];
+        $data = ['request_key' => (string) Str::uuid(), 'expected_refund' => 300000];
         $this->postJson($base.'/series-cancel', [...$data, 'expected_refund' => 1])->assertConflict();
         $this->assertSame('confirmed', $rows[0]->fresh()->status);
-        $this->postJson($base.'/series-cancel', $data)->assertOk();
-        $this->postJson($base.'/series-cancel', $data)->assertOk();
-        $this->assertSame(300000, $owner->fresh()->wallet_balance);
-        $this->assertSame('cancelled', $rows[2]->fresh()->status);
+        $this->postJson($base.'/series-cancel', $data)->assertUnprocessable();
+        $this->postJson($base.'/series-cancel', $data)->assertUnprocessable();
+        $this->assertSame(0, $owner->fresh()->wallet_balance);
+        $this->assertSame('confirmed', $rows[2]->fresh()->status);
         $this->assertSame('completed', $finished->fresh()->status);
-        $this->assertDatabaseCount('wallet_entries', 3);
-        $this->assertDatabaseCount('payments', 6);
+        $this->assertDatabaseCount('wallet_entries', 0);
+        $this->assertDatabaseCount('payments', 3);
     }
 
-    public function test_moving_paid_series_to_cheaper_court_refunds_each_difference(): void
+    public function test_cheaper_paid_series_move_is_blocked_without_partial_changes(): void
     {
         [$court, $owner, $rows] = $this->series(true);
         $target = Court::factory()->create(['branch_id' => $court->branch_id, 'hourly_rate' => 60000, 'peak_rate' => 60000, 'weekend_rate' => 60000]);
         $data = ['scope' => 'remaining', 'court_id' => $target->id, 'starts_at' => '2026-10-18 13:00', 'ends_at' => '2026-10-18 14:00'];
         $base = '/api/v1/bookings/'.$rows[0]->id;
         $this->actingAs($owner)->postJson($base.'/reschedule-quote', $data)->assertOk()->assertJsonPath('data.refund_amount', 120000);
-        $this->patchJson($base.'/reschedule', [...$data, 'request_key' => (string) Str::uuid(), 'expected_refund' => 120000, 'expected_total' => 180000, 'refund_method' => 'wallet'])->assertOk();
-        $this->assertSame(120000, $owner->fresh()->wallet_balance);
+        $this->patchJson($base.'/reschedule', [...$data, 'request_key' => (string) Str::uuid(), 'expected_refund' => 120000, 'expected_total' => 180000])->assertUnprocessable();
+        $this->assertSame(0, $owner->fresh()->wallet_balance);
         foreach ($rows as $booking) {
-            $this->assertEquals(60000, $booking->fresh()->paid_amount);
-            $this->assertEquals($target->id, $booking->fresh()->court_id);
+            $this->assertEquals(100000, $booking->fresh()->paid_amount);
+            $this->assertEquals($court->id, $booking->fresh()->court_id);
         }
     }
 }

@@ -11,7 +11,6 @@ use App\Models\CommunityPost;
 use App\Models\Court;
 use App\Models\GameEvent;
 use App\Models\MembershipPlan;
-use App\Models\PaymentAttempt;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -143,13 +142,13 @@ class CompleteFeaturesTest extends TestCase
         $this->postJson('/api/v1/bookings/'.$u->id.'/wallet-payment', ['request_key' => (string) Str::uuid()])->assertUnprocessable();
     }
 
-    public function test_expired_cash_deposit_remains_pending_refund_without_automatic_wallet_credit(): void
+    public function test_partial_cash_deposit_is_kept_for_counter_handling_without_automatic_cancellation(): void
     {
         $b = $this->book();
         $this->actingAs($this->manager)->postJson('/api/v1/manage/bookings/'.$b->id.'/payments', ['request_key' => (string) Str::uuid(), 'amount' => 20000, 'kind' => 'payment', 'method' => 'cash'])->assertOk();
         $this->travel(31)->minutes();
         app(FeatureService::class)->expireBookings();
-        $this->assertSame('cancelled', $b->fresh()->status);
+        $this->assertSame('confirmed', $b->fresh()->status);
         $this->assertSame(20000, $b->fresh()->paid_amount);
         $this->assertSame(1000000, $this->customer->fresh()->wallet_balance);
     }
@@ -170,23 +169,6 @@ class CompleteFeaturesTest extends TestCase
         $b->update(['status' => 'cancelled']);
         $this->postJson('/api/v1/payments/bank/webhook', [...$d, 'id' => 402, 'transferAmount' => 10000])->assertOk();
         $this->assertSame(1010000, $this->customer->fresh()->wallet_balance);
-    }
-
-    public function test_momo_refund_queries_pending_result_and_never_resends_or_double_refunds(): void
-    {
-        config(['momo.enabled' => true, 'momo.partner_code' => 'TEST', 'momo.access_key' => 'access', 'momo.secret_key' => 'secret', 'momo.ipn_url' => 'https://hub.example/api/v1/payments/momo/ipn', 'momo.redirect_url' => 'https://hub.example/#account', 'momo.endpoint' => 'https://test-payment.momo.vn/v2/gateway/api/create']);
-        $b = $this->book();
-        $b->update(['status' => 'cancelled', 'paid_amount' => 100000]);
-        $a = PaymentAttempt::factory()->create(['booking_id' => $b->id, 'user_id' => $this->customer->id, 'amount' => 100000, 'status' => 'paid', 'trans_id' => '777']);
-        Http::fake(['*' => fn ($r) => Http::response(str_ends_with($r->url(), '/query') ? ['partnerCode' => 'TEST', 'requestId' => $r['requestId'], 'orderId' => $r['orderId'], 'resultCode' => 0, 'refundTrans' => [['orderId' => $r['orderId'], 'amount' => 100000, 'resultCode' => 0]]] : ['partnerCode' => 'TEST', 'requestId' => $r['requestId'], 'orderId' => $r['orderId'], 'amount' => 100000, 'resultCode' => 7002, 'message' => 'Processing'])]);
-        $d = ['request_key' => (string) Str::uuid(), 'attempt_id' => $a->id, 'amount' => 100000];
-        $this->actingAs($this->manager)->postJson('/api/v1/manage/bookings/'.$b->id.'/momo-refund', $d)->assertOk()->assertJsonPath('data.status', 'pending');
-        $this->postJson('/api/v1/manage/bookings/'.$b->id.'/payments', ['request_key' => (string) Str::uuid(), 'kind' => 'refund', 'method' => 'cash', 'amount' => 100000])->assertStatus(409);
-        $this->postJson('/api/v1/manage/bookings/'.$b->id.'/momo-refund', $d)->assertOk()->assertJsonPath('data.status', 'paid');
-        $this->postJson('/api/v1/manage/bookings/'.$b->id.'/momo-refund', $d)->assertOk();
-        $this->assertSame(0, $b->fresh()->paid_amount);
-        $this->assertDatabaseCount('payments', 1);
-        Http::assertSentCount(2);
     }
 
     public function test_loyalty_tiers_and_redemption_do_not_multiply_on_retry(): void

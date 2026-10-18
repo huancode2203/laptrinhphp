@@ -1,3 +1,4 @@
+import UsageGuide from "./UsageGuide";
 import PosCheckout from "./PosCheckout";
 import ManagedCourts from "./ManagedCourts";
 import CourtMatrix from "./CourtMatrix";
@@ -71,6 +72,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         ["events", "🏆", "Sự kiện"],
         ["reports", "📈", "Báo cáo"],
         ["advanced", "✦", "Vận hành & nội dung"],
+        ["help", "?", "Hướng dẫn sử dụng"],
         ...(admin
             ? [
                   ["branches", "📍", "Chi nhánh"],
@@ -500,7 +502,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
             num("amount", "Số tiền"),
             {
                 name: "method",
-                label: "Phương thức đã thu / hoàn",
+                label: "Phương thức đã thu",
                 required: true,
                 options: opts(["cash", "bank"]),
             },
@@ -508,10 +510,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 name: "kind",
                 label: "Loại giao dịch",
                 required: true,
-                options: [
-                    { value: "payment", label: "Thu tiền" },
-                    { value: "refund", label: "Hoàn tiền lịch đã hủy" },
-                ],
+                options: [{ value: "payment", label: "Thu tiền" }],
             },
             { name: "notes", label: "Ghi chú" },
         ],
@@ -853,6 +852,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 courts={hub.courts}
                             />
                         )}
+                        {tab === "help" && <UsageGuide />}
                         {tab === "dashboard" && admin && (
                             <>
                                 <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -1049,9 +1049,10 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                             </small>
                                                         </span>
                                                         <span className="badge badge-green">
-                                                            {statusText(
-                                                                b.status,
-                                                            )}
+                                                            {b.status_label ||
+                                                                statusText(
+                                                                    b.status,
+                                                                )}
                                                         </span>
                                                         <Icon
                                                             name="northeast"
@@ -1223,44 +1224,38 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                             <td className={cell}>
                                                 {b.needs_checkout
                                                     ? "Chờ chốt hóa đơn"
-                                                    : statusText(b.status)}
+                                                    : b.status_label ||
+                                                      statusText(b.status)}
                                                 {b.refund_pending
-                                                    ? " · Chờ hoàn"
+                                                    ? " · Cần đối chiếu"
                                                     : ""}
                                             </td>
                                             <td className={cell}>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {allows(
-                                                        "payments.write",
-                                                    ) && (
-                                                        <button
-                                                            className="btn-outline text-xs"
-                                                            onClick={() =>
-                                                                edit(
-                                                                    "payment",
-                                                                    {
-                                                                        ...b,
-                                                                        amount:
-                                                                            b.status ===
-                                                                            "cancelled"
-                                                                                ? b.paid_amount
-                                                                                : b.remaining_amount,
-                                                                        method: "cash",
-                                                                        kind:
-                                                                            b.status ===
-                                                                            "cancelled"
-                                                                                ? "refund"
-                                                                                : "payment",
-                                                                    },
-                                                                )
-                                                            }
-                                                        >
-                                                            {b.status ===
-                                                            "cancelled"
-                                                                ? "Hoàn"
-                                                                : "Thu tiền"}
-                                                        </button>
-                                                    )}
+                                                    {allows("payments.write") &&
+                                                        [
+                                                            "confirmed",
+                                                            "checked_in",
+                                                        ].includes(b.status) &&
+                                                        b.remaining_amount >
+                                                            0 && (
+                                                            <button
+                                                                className="btn-outline text-xs"
+                                                                onClick={() =>
+                                                                    edit(
+                                                                        "payment",
+                                                                        {
+                                                                            ...b,
+                                                                            amount: b.remaining_amount,
+                                                                            method: "cash",
+                                                                            kind: "payment",
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                Thu tiền
+                                                            </button>
+                                                        )}
                                                     {[
                                                         "confirmed",
                                                         "checked_in",

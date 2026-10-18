@@ -96,11 +96,11 @@ class AccountAndNotificationTest extends TestCase
         $this->actingAs($manager)->postJson('/api/v1/manage/bookings/'.$id.'/payments', $payment)->assertOk();
         $this->postJson('/api/v1/manage/bookings/'.$id.'/payments', $payment)->assertOk();
         $this->assertSame(2, $customer->notifications()->count());
-        $this->patchJson('/api/v1/bookings/'.$id.'/status', ['status' => 'cancelled'])->assertOk();
+        $this->patchJson('/api/v1/bookings/'.$id.'/status', ['status' => 'cancelled'])->assertUnprocessable();
         $payment['request_key'] = (string) Str::uuid();
         $payment['kind'] = 'refund';
-        $this->postJson('/api/v1/manage/bookings/'.$id.'/payments', $payment)->assertOk();
-        $this->assertSame(4, $customer->notifications()->count());
-        $this->assertSame(0, Booking::findOrFail($id)->paid_amount);
+        $this->postJson('/api/v1/manage/bookings/'.$id.'/payments', $payment)->assertUnprocessable();
+        $this->assertSame(2, $customer->notifications()->count());
+        $this->assertSame(100000, Booking::findOrFail($id)->paid_amount);
     }
 }
