@@ -429,7 +429,9 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                             {tab === "moderation" && (
                                 <AdminModeration after={changed} />
                             )}
-                            {tab === "payments" && <IntegrationPanel />}
+                            {tab === "payments" && (
+                                <IntegrationPanel key={version} />
+                            )}
                             {tab === "operations" && selectedBranch && (
                                 <AdvancedManagement
                                     key={tab + selectedBranch}

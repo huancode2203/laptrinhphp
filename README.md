@@ -1,5 +1,13 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
+## Gmail và hồ sơ làm việc · 18/10/2026
+
+Admin mở **Thanh toán & kết nối → Gửi thư bằng Gmail → Kết nối Gmail**, nhập địa chỉ gửi, tên hiển thị và mật khẩu ứng dụng Google 16 ký tự. Mật khẩu lưu mã hóa trong `integration_settings`, không trả về API hay đưa vào SQL/ZIP. Để trống mật khẩu khi cập nhật tên sẽ giữ kết nối cũ; đổi địa chỉ gửi cần mật khẩu ứng dụng mới. Chọn **Gửi thư thử về địa chỉ gửi**, rồi kiểm tra Inbox/Spam. Trạng thái đã lưu cấu hình hoặc SMTP chấp nhận thư không thay thế việc kiểm tra thư thực nhận. Nếu `MAIL_MAILER=smtp` đã được đặt trong `.env`, cấu hình máy chủ có ưu tiên và biểu mẫu không ghi đè.
+
+Trang kết nối chia riêng PayOS, Gmail và Google, bỏ các thẻ trùng; form Firebase có từng trường thay cho nhập JSON và hiển thị đúng nguồn cấu hình đang dùng. Hồ sơ Admin và nhân sự chi nhánh có thông tin liên hệ, vai trò và mục liên kết Google; Google không thay đổi quyền được phân công. Email xác nhận có mẫu HTML theo nhận diện website và bản chữ dự phòng. Đăng nhập Google chỉ cấp quyền xác thực, không cấp quyền gửi Gmail.
+
+Đã kiểm thử toàn bộ **211 tests / 5.193 assertions** trên SQLite. Kết nối Gmail và một lượt đăng nhập Google thật vẫn cần hoàn tất trên trình duyệt của chủ tài khoản; xem [VALIDATION](docs/VALIDATION.md) để biết bằng chứng cập nhật.
+
 ## Kết nối PayOS thật · 18/10/2026
 
 Đã tạo kênh **Badminton Hub** nhận tiền qua MB trên PayOS và lưu ba khóa tích hợp được mã hóa trong database của máy đang chạy. Đã kiểm chứng với API merchant thật: tạo link 1.000đ, truy vấn trạng thái, xác thực chữ ký và hủy link khi chưa có tiền vào. Ví không bị cộng tiền; chưa thực hiện chuyển khoản thật hoặc kiểm chứng một giao dịch đã thanh toán.
@@ -294,7 +302,7 @@ GOOGLE_REDIRECT_URI=http://127.0.0.1:8088/auth/google/callback
 
 1. Trong tài khoản Google, bật **Xác minh 2 bước**.
 2. Mở [Mật khẩu ứng dụng](https://myaccount.google.com/apppasswords), tạo mật khẩu dành riêng cho Badminton Hub.
-3. Điền SMTP như bên dưới; `MAIL_PASSWORD` là mật khẩu ứng dụng, không dùng mật khẩu đăng nhập Gmail. Nếu nhà cung cấp khác, dùng thông tin SMTP của họ.
+3. Nhập trực tiếp trong **Admin → Thanh toán & kết nối → Gửi thư bằng Gmail**, lưu rồi gửi thư thử. Hoặc cấu hình SMTP như bên dưới; `MAIL_PASSWORD` là mật khẩu ứng dụng, không dùng mật khẩu đăng nhập Gmail. Nếu nhà cung cấp khác, dùng thông tin SMTP của họ.
 
 ```dotenv
 MAIL_MAILER=smtp

@@ -1,5 +1,11 @@
 # Rà soát toàn bộ Badminton Hub · 17/10/2026
 
+## Email và giao diện tài khoản làm việc · 18/10/2026
+
+Đã bổ sung form Gmail riêng cho Admin, lưu mật khẩu ứng dụng mã hóa và gửi thử về chính địa chỉ gửi. SMTP máy chủ có ưu tiên; API không trả mật khẩu. Thư xác nhận có HTML và text. Trang kết nối bỏ thẻ PayOS/Google lặp, tách cấu hình email, hướng dẫn chuyển khoản tại quầy đúng với cấu hình riêng của PayOS. Form Firebase dùng từng trường và không báo lưu cấu hình khác thành công khi máy chủ đang ưu tiên `.env`.
+
+Hồ sơ làm việc được làm lại với phần nhận diện, liên hệ, vai trò và đăng nhập/bảo mật; Admin và nhân sự có thể liên kết Google với tài khoản đang dùng, không chuyển sang vai trò khách hàng. Toàn bộ **211 tests / 5.193 assertions** trên SQLite đạt. Kiểm chứng email thực nhận và Google sign-in thật còn chờ thao tác của chủ tài khoản; không đồng nhất kiểm thử giả lập hoặc trạng thái đủ cấu hình với kết nối thành công. Chi tiết cập nhật ở VALIDATION.
+
 ## Trạng thái PayOS mới nhất · 18/10/2026
 
 Đã kiểm tra MB hiển thị **Đã liên kết**, tạo kênh **Badminton Hub** sau xác nhận của chủ dự án và lưu khóa mã hóa vào database vận hành trên máy. API merchant thật đã chấp nhận tạo link 1.000đ; truy vấn trạng thái và chữ ký phản hồi hợp lệ. Link kiểm tra đã hủy trên PayOS, đồng bộ về trạng thái không thành công trong ứng dụng, số tiền đã trả bằng 0 và ví không thay đổi. Chưa thực hiện chuyển khoản thật hoặc kiểm chứng thu tiền/cộng ví với giao dịch ngân hàng đã thanh toán.

@@ -13,6 +13,7 @@ class IntegrationStatus
 
     public function all(): array
     {
+        app(EmailSettings::class)->apply();
         $items = [];
         $items[] = $this->item('payos', 'Thanh toán PayOS', true, collect(app(PayosSettings::class)->credentials())->mapWithKeys(fn ($value, $key) => ['PAYOS_'.strtoupper($key) => $value])->all(), 'Chuyển khoản ngân hàng qua PayOS', 'https://my.payos.vn/');
         foreach (['search' => 'AI tìm sân', 'moderation' => 'AI duyệt bài'] as $task => $label) {
@@ -50,6 +51,10 @@ class IntegrationStatus
         $mailer = config('mail.default');
         $mailFields = ['MAIL_MAILER' => $mailer === 'smtp', 'MAIL_HOST' => config('mail.mailers.smtp.host'), 'MAIL_PORT' => config('mail.mailers.smtp.port'),
             'MAIL_FROM_ADDRESS' => filter_var(config('mail.from.address'), FILTER_VALIDATE_EMAIL) && ! str_ends_with(config('mail.from.address'), '@example.com')];
+        if (config('mail.mailers.smtp.host') === 'smtp.gmail.com') {
+            $mailFields['MAIL_USERNAME'] = config('mail.mailers.smtp.username');
+            $mailFields['MAIL_PASSWORD'] = config('mail.mailers.smtp.password');
+        }
         $items[] = $this->item('email', 'Email xác thực và khôi phục', true, $mailFields, $mailer === 'smtp' ? 'SMTP' : 'Chưa gửi email ra hộp thư', 'https://support.google.com/accounts/answer/185833');
 
         return $items;

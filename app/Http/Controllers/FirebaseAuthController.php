@@ -55,17 +55,30 @@ class FirebaseAuthController extends Controller
         return response()->json(['data' => $user, 'message' => $link ? 'Đã liên kết Google với tài khoản của bạn.' : 'Đăng nhập Google thành công.']);
     }
 
-    public function settings(Request $request): JsonResponse
+    public function settings(Request $request, FirebaseAuthService $firebase): JsonResponse
     {
+        if ($request->isMethod('get')) {
+            return response()->json(['data' => $this->configurationStatus($firebase)]);
+        }
         $data = $request->validate([
             'apiKey' => 'required|string|regex:/^AIza[A-Za-z0-9_-]{30,100}$/',
             'authDomain' => 'required|string|max:253|regex:/^[a-zA-Z0-9.-]+$/',
             'projectId' => 'required|string|regex:/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/',
             'appId' => 'required|string|regex:/^1:[0-9]+:web:[a-f0-9]+$/',
         ]);
+        if ($firebase->usesEnvironmentConfiguration() && $data != $firebase->webConfig()) {
+            throw ValidationException::withMessages(['projectId' => 'Google đang sử dụng cấu hình máy chủ. Hãy cập nhật cấu hình máy chủ để đổi project Firebase.']);
+        }
         DB::table('integration_settings')->updateOrInsert(['key' => 'firebase_web'], ['value' => json_encode($data), 'created_at' => now(), 'updated_at' => now()]);
         app(BookingService::class)->audit($request->user(), 'firebase.settings_updated', 0, ['project_id' => $data['projectId']], 'integration');
 
-        return response()->json(['message' => 'Đã lưu Firebase. Đảm bảo Google đã bật và tên miền website được cho phép trong Firebase Authentication.']);
+        return response()->json(['data' => $this->configurationStatus($firebase), 'message' => 'Đã lưu Firebase. Đảm bảo Google đã bật và tên miền website được cho phép trong Firebase Authentication.']);
+    }
+
+    private function configurationStatus(FirebaseAuthService $firebase): array
+    {
+        $config = $firebase->webConfig();
+
+        return ['configured' => $config !== null, 'source' => $firebase->usesEnvironmentConfiguration() ? 'environment' : ($config ? 'database' : 'none'), 'config' => $config];
     }
 }

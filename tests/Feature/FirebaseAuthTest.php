@@ -8,6 +8,7 @@ use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -153,5 +154,30 @@ class FirebaseAuthTest extends TestCase
         config(['firebase' => array_fill_keys(array_keys($body), null)]);
         $this->assertSame('hub-test', app(FirebaseAuthService::class)->webConfig()['projectId']);
         $this->getJson('/api/v1/hub')->assertOk()->assertJsonPath('data.google_enabled', true)->assertJsonPath('data.firebase.projectId', 'hub-test');
+    }
+
+    public function test_configuration_status_is_admin_only_and_does_not_claim_an_ignored_update_succeeded(): void
+    {
+        $body = config('firebase');
+        $this->getJson('/api/v1/admin/integrations/firebase')->assertUnauthorized();
+        foreach (['customer', 'manager', 'staff', 'cashier'] as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]))->getJson('/api/v1/admin/integrations/firebase')->assertForbidden();
+        }
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->getJson('/api/v1/admin/integrations/firebase')->assertOk()->assertJsonPath('data.source', 'environment')->assertJsonPath('data.config.projectId', 'hub-test');
+        $this->putJson('/api/v1/admin/integrations/firebase', array_replace($body, ['projectId' => 'other-project']))->assertUnprocessable()->assertJsonValidationErrors('projectId');
+        $this->assertDatabaseMissing('integration_settings', ['key' => 'firebase_web']);
+        config(['firebase' => array_fill_keys(array_keys($body), null)]);
+        $this->getJson('/api/v1/admin/integrations/firebase')->assertJsonPath('data.configured', false)->assertJsonPath('data.source', 'none');
+        $this->putJson('/api/v1/admin/integrations/firebase', $body)->assertOk()->assertJsonPath('data.source', 'database')->assertJsonPath('data.config.projectId', 'hub-test');
+        $this->getJson('/api/v1/admin/integrations/firebase')->assertJsonPath('data.configured', true);
+    }
+
+    public function test_damaged_stored_firebase_configuration_is_reported_as_unconfigured(): void
+    {
+        config(['firebase' => array_fill_keys(['apiKey', 'projectId', 'authDomain', 'appId'], null)]);
+        foreach (['null', '"broken"', '{broken}', '{"apiKey":"value"}'] as $value) {
+            DB::table('integration_settings')->updateOrInsert(['key' => 'firebase_web'], ['value' => $value, 'created_at' => now(), 'updated_at' => now()]);
+            $this->assertNull(app(FirebaseAuthService::class)->webConfig());
+        }
     }
 }

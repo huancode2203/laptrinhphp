@@ -17,13 +17,32 @@ class FirebaseAuthService
 
     public function webConfig(): ?array
     {
-        $config = config('firebase');
-        if (count(array_filter($config)) !== 4) {
+        $config = config('firebase', []);
+        if (! $this->usesEnvironmentConfiguration()) {
             $saved = DB::table('integration_settings')->where('key', 'firebase_web')->value('value');
             $config = $saved ? json_decode($saved, true) : [];
         }
 
-        return count(array_filter($config ?? [])) === 4 ? $config : null;
+        return $this->completeWebConfig($config) ? array_intersect_key($config, array_flip(['apiKey', 'authDomain', 'projectId', 'appId'])) : null;
+    }
+
+    public function usesEnvironmentConfiguration(): bool
+    {
+        return $this->completeWebConfig(config('firebase', []));
+    }
+
+    private function completeWebConfig(mixed $values): bool
+    {
+        if (! is_array($values)) {
+            return false;
+        }
+        foreach (['apiKey', 'authDomain', 'projectId', 'appId'] as $key) {
+            if (! is_string($values[$key] ?? null) || trim($values[$key]) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @return array{uid: string, google_sub: string, email: string, name: string, auth_time: int} */

@@ -7,6 +7,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CommerceController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\DemoController;
+use App\Http\Controllers\EmailSettingsController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\FirebaseAuthController;
@@ -181,8 +182,12 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::get('history/{kind}', [HistoryController::class, 'index']);
 
             Route::get('integrations', [IntegrationController::class, 'integrations']);
+            Route::get('integrations/email', [EmailSettingsController::class, 'settings']);
+            Route::put('integrations/email', [EmailSettingsController::class, 'settings'])->middleware('throttle:sensitive');
+            Route::post('integrations/email/test', [EmailSettingsController::class, 'test'])->middleware('throttle:sensitive');
             Route::get('integrations/payos', [PayosController::class, 'settings']);
             Route::put('integrations/payos', [PayosController::class, 'settings'])->middleware('throttle:sensitive');
+            Route::get('integrations/firebase', [FirebaseAuthController::class, 'settings']);
             Route::put('integrations/firebase', [FirebaseAuthController::class, 'settings'])->middleware('throttle:sensitive');
             Route::put('integrations/bank', [IntegrationController::class, 'saveBank']);
             Route::delete('integrations/bank', [IntegrationController::class, 'deleteBank']);

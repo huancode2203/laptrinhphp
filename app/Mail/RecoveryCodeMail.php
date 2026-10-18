@@ -10,6 +10,6 @@ class RecoveryCodeMail extends Mailable
 
     public function build(): static
     {
-        return $this->subject('Mã xác nhận Badminton Hub')->text('mail.recovery');
+        return $this->subject('Mã xác nhận Badminton Hub')->view('mail.recovery-html')->text('mail.recovery');
     }
 }

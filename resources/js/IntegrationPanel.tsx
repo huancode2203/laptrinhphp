@@ -4,6 +4,7 @@ import { api, useHub } from "./hub";
 import { Card, Empty, Editor } from "./ui";
 import type { Row } from "./data";
 import PayosSetup from "./PayosSetup";
+import EmailSetup from "./EmailSetup";
 
 const guides: Record<string, string[]> = {
     payos: [
@@ -68,24 +69,10 @@ export default function IntegrationPanel() {
     if (!items) return <Empty text="Đang tải kết nối dịch vụ…" />;
     return (
         <div className="space-y-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 className="font-display text-2xl font-bold">
-                        Kết nối dịch vụ
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-500">
-                        Chọn tài khoản ngân hàng cá nhân để nhận chuyển khoản.
-                        Theo dõi AI, email và các dịch vụ đang dùng.
-                    </p>
-                </div>
-                <button
-                    className="btn-outline"
-                    disabled={loading}
-                    onClick={() => run(load)}
-                >
-                    Làm mới trạng thái
-                </button>
-            </div>
+            <p className="max-w-2xl text-sm leading-6 text-slate-500">
+                Quản lý thanh toán, email xác nhận và đăng nhập Google. Kiểm tra
+                kết nối trước khi đưa dịch vụ vào sử dụng.
+            </p>
             {demoEnabled && (
                 <p
                     role="status"
@@ -97,6 +84,12 @@ export default function IntegrationPanel() {
                 </p>
             )}
             <PayosSetup />
+            <EmailSetup
+                after={async () => {
+                    await load();
+                    await refresh();
+                }}
+            />
             <FirebaseSetup
                 after={async () => {
                     await load();
@@ -106,10 +99,12 @@ export default function IntegrationPanel() {
             <Card>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h3 className="text-lg font-bold">Ngân hàng cá nhân</h3>
+                        <h3 className="text-lg font-bold">
+                            Chuyển khoản xác nhận tại quầy
+                        </h3>
                         <p className="mt-2 text-sm text-slate-500">
-                            Không cần merchant để nhận chuyển khoản và xác nhận
-                            tại quầy.
+                            Tài khoản nhận chuyển khoản trực tiếp để nhân viên
+                            kiểm tra và xác nhận khoản thực nhận.
                         </p>
                     </div>
                     <button className="btn" onClick={() => setBankForm(true)}>
@@ -125,8 +120,8 @@ export default function IntegrationPanel() {
                     </p>
                 ) : (
                     <p className="mt-4 text-sm text-slate-500">
-                        Chưa điền tài khoản. Khách có thể thử chuyển khoản demo,
-                        không có mã QR nhận tiền thật.
+                        Chưa thiết lập chuyển khoản trực tiếp tại quầy. Kết nối
+                        PayOS ở trên sử dụng cấu hình nhận tiền riêng.
                     </p>
                 )}
                 <p className="mt-3 text-xs text-slate-500">
@@ -201,206 +196,259 @@ export default function IntegrationPanel() {
                 />
             )}
             <div className="grid gap-4 xl:grid-cols-2">
-                {items.map((item) => (
-                    <Card key={item.id}>
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="flex items-center gap-2 font-bold">
-                                    <Icon
-                                        name={
-                                            item.id.startsWith("ai_")
-                                                ? "spark"
-                                                : "shield"
-                                        }
-                                        size={20}
-                                    />
-                                    {item.label}
-                                </h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {item.mode}
-                                </p>
-                            </div>
-                            <span
-                                className={
-                                    "rounded-full px-3 py-1 text-xs font-semibold " +
-                                    (item.enabled && item.configured
-                                        ? "bg-emerald-50 text-emerald-700"
-                                        : "bg-amber-50 text-amber-800")
-                                }
-                            >
-                                {item.demo
-                                    ? "Đang dùng demo"
-                                    : !item.enabled
-                                      ? "Đang tắt"
-                                      : item.configured
-                                        ? "Đã điền cấu hình"
-                                        : "Còn thiếu cấu hình"}
-                            </span>
-                        </div>
-                        {item.missing.length > 0 && (
-                            <p className="mt-4 break-words rounded-xl bg-slate-50 p-3 text-xs leading-6 text-slate-600">
-                                Cần điền: {item.missing.join(", ")}
-                            </p>
-                        )}
-                        <details className="mt-4 text-sm">
-                            <summary className="cursor-pointer font-semibold">
-                                Hướng dẫn lấy thông tin
-                            </summary>
-                            <ol className="ml-5 mt-3 list-decimal space-y-2 leading-6 text-slate-600">
-                                {(guides[item.id] ?? []).map((step) => (
-                                    <li key={step}>{step}</li>
-                                ))}
-                            </ol>
-                            {item.id === "google" && (
-                                <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-xs">
-                                    {window.location.origin}
-                                    /auth/google/callback
-                                </p>
-                            )}
-                        </details>
-                        <div className="mt-5 flex flex-wrap gap-2">
-                            <a
-                                className="btn-outline text-xs"
-                                href={item.setup_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Mở trang dịch vụ ↗
-                            </a>
-                            {item.id.startsWith("ai_") && item.configured && (
-                                <button
-                                    className="btn text-xs"
-                                    disabled={loading}
-                                    onClick={() =>
-                                        run(async () => {
-                                            const response = await api(
-                                                "admin/integrations/ai-check",
-                                                "POST",
-                                                {
-                                                    task: item.id.replace(
-                                                        "ai_",
-                                                        "",
-                                                    ),
-                                                },
-                                            );
-                                            setChecks((current) => ({
-                                                ...current,
-                                                [item.id]: response.data,
-                                            }));
-                                        })
+                {items
+                    .filter(
+                        (item) =>
+                            !["payos", "google", "email"].includes(item.id),
+                    )
+                    .map((item) => (
+                        <Card key={item.id}>
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 className="flex items-center gap-2 font-bold">
+                                        <Icon
+                                            name={
+                                                item.id.startsWith("ai_")
+                                                    ? "spark"
+                                                    : "shield"
+                                            }
+                                            size={20}
+                                        />
+                                        {item.label}
+                                    </h3>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        {item.mode}
+                                    </p>
+                                </div>
+                                <span
+                                    className={
+                                        "rounded-full px-3 py-1 text-xs font-semibold " +
+                                        (item.enabled && item.configured
+                                            ? "bg-emerald-50 text-emerald-700"
+                                            : "bg-amber-50 text-amber-800")
                                     }
                                 >
-                                    Kiểm tra model
-                                </button>
+                                    {item.demo
+                                        ? "Đang dùng demo"
+                                        : !item.enabled
+                                          ? "Đang tắt"
+                                          : item.configured
+                                            ? "Đã điền cấu hình"
+                                            : "Còn thiếu cấu hình"}
+                                </span>
+                            </div>
+                            <details className="mt-4 text-sm">
+                                <summary className="cursor-pointer font-semibold">
+                                    Hướng dẫn lấy thông tin
+                                </summary>
+                                <ol className="ml-5 mt-3 list-decimal space-y-2 leading-6 text-slate-600">
+                                    {(guides[item.id] ?? []).map((step) => (
+                                        <li key={step}>{step}</li>
+                                    ))}
+                                </ol>
+                                {item.missing.length > 0 && (
+                                    <p className="mt-4 break-words rounded-xl bg-slate-50 p-3 text-xs leading-6 text-slate-600">
+                                        Thông tin cần cấu hình trên máy chủ:{" "}
+                                        {item.missing.join(", ")}
+                                    </p>
+                                )}
+                                {item.id === "google" && (
+                                    <p className="mt-3 break-all rounded-lg bg-slate-50 p-3 text-xs">
+                                        {window.location.origin}
+                                        /auth/google/callback
+                                    </p>
+                                )}
+                            </details>
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <a
+                                    className="btn-outline text-xs"
+                                    href={item.setup_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Mở trang dịch vụ ↗
+                                </a>
+                                {item.id.startsWith("ai_") &&
+                                    item.configured && (
+                                        <button
+                                            className="btn text-xs"
+                                            disabled={loading}
+                                            onClick={() =>
+                                                run(async () => {
+                                                    const response = await api(
+                                                        "admin/integrations/ai-check",
+                                                        "POST",
+                                                        {
+                                                            task: item.id.replace(
+                                                                "ai_",
+                                                                "",
+                                                            ),
+                                                        },
+                                                    );
+                                                    setChecks((current) => ({
+                                                        ...current,
+                                                        [item.id]:
+                                                            response.data,
+                                                    }));
+                                                })
+                                            }
+                                        >
+                                            Kiểm tra model
+                                        </button>
+                                    )}
+                            </div>
+                            {checks[item.id] && (
+                                <p
+                                    role="status"
+                                    className={
+                                        "mt-4 rounded-xl p-3 text-sm " +
+                                        (checks[item.id].success
+                                            ? "bg-emerald-50 text-emerald-800"
+                                            : "bg-amber-50 text-amber-900")
+                                    }
+                                >
+                                    {checks[item.id].message} ·{" "}
+                                    {checks[item.id].seconds ?? 0}s
+                                </p>
                             )}
-                        </div>
-                        {checks[item.id] && (
-                            <p
-                                role="status"
-                                className={
-                                    "mt-4 rounded-xl p-3 text-sm " +
-                                    (checks[item.id].success
-                                        ? "bg-emerald-50 text-emerald-800"
-                                        : "bg-amber-50 text-amber-900")
-                                }
-                            >
-                                {checks[item.id].message} ·{" "}
-                                {checks[item.id].seconds ?? 0}s
-                            </p>
-                        )}
-                    </Card>
-                ))}
+                        </Card>
+                    ))}
             </div>
         </div>
     );
 }
 function FirebaseSetup({ after }: { after: () => Promise<void> }) {
-    const { data, run, loading, toast } = useHub();
-    const [open, setOpen] = useState(false);
-    const [json, setJson] = useState("");
+    const { toast, loading } = useHub();
+    const [status, setStatus] = useState<Row | null>(null);
+    const [editing, setEditing] = useState(false);
+    const [error, setError] = useState("");
+    useEffect(() => {
+        api("admin/integrations/firebase")
+            .then((response) => setStatus(response.data))
+            .catch((failure) => setError(failure.message));
+    }, []);
     return (
         <Card>
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-lg font-bold">Google qua Firebase</h3>
-                    <p className="mt-2 text-sm text-slate-500">
-                        {data?.firebase
-                            ? "Đã cấu hình project: " + data.firebase.projectId
-                            : "Kết nối tài khoản Google cho người chơi."}
+                    <p className="eyebrow">ĐĂNG NHẬP TÀI KHOẢN</p>
+                    <h3 className="mt-2 text-2xl font-bold">
+                        Đăng nhập với Google
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                        Người dùng đăng nhập nhanh bằng Google. Tài khoản đã có
+                        trên hệ thống cần liên kết Google trong hồ sơ để giữ
+                        nguyên lịch đặt sân và quyền sử dụng.
                     </p>
                 </div>
-                <button className="btn-outline" onClick={() => setOpen(!open)}>
-                    {open
-                        ? "Đóng biểu mẫu"
-                        : data?.firebase
-                          ? "Đổi cấu hình"
-                          : "Cấu hình Firebase"}
-                </button>
+                <span className="report-pill">
+                    {status?.configured ? "Đã cấu hình" : "Cần kết nối Google"}
+                </span>
             </div>
-            {open && (
-                <form
-                    className="hub-form mt-5 space-y-4"
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        run(async () => {
-                            let parsed: Record<string, string>;
-                            try {
-                                parsed = JSON.parse(json);
-                            } catch {
-                                throw new Error(
-                                    "Nhập cấu hình dạng JSON với apiKey, authDomain, projectId và appId.",
-                                );
-                            }
-                            const body = Object.fromEntries(
-                                [
-                                    "apiKey",
-                                    "authDomain",
-                                    "projectId",
-                                    "appId",
-                                ].map((k) => [k, parsed[k]]),
-                            );
-                            const reply = await api(
-                                "admin/integrations/firebase",
-                                "PUT",
-                                body,
-                            );
-                            toast(reply.message);
-                            await after();
-                            setOpen(false);
-                            setJson("");
-                        });
-                    }}
-                >
-                    <p className="text-sm leading-6 text-slate-500">
-                        Bật Google trong Firebase Authentication, thêm{" "}
-                        <b>{location.hostname}</b> vào Authorized domains và
-                        đăng ký Web app. Nhập bốn giá trị từ cấu hình web của
-                        project.{" "}
-                        <a
-                            className="font-bold text-green-700 underline"
-                            href="https://console.firebase.google.com/"
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            Mở Firebase Console
-                        </a>
+            {error && (
+                <p role="alert" className="mt-4 text-sm text-red-700">
+                    {error}
+                </p>
+            )}
+            <div className="my-5 grid gap-4 rounded-2xl bg-slate-50 p-5 sm:grid-cols-2">
+                <div>
+                    <p className="text-xs font-semibold text-slate-500">
+                        PROJECT FIREBASE
                     </p>
-                    <label className="block text-sm font-bold">
-                        Cấu hình web Firebase (JSON)
-                        <textarea
-                            className="input mt-2 min-h-40 w-full font-mono text-xs"
-                            required
-                            value={json}
-                            onChange={(e) => setJson(e.target.value)}
-                            placeholder={
-                                '{\n  "apiKey": "AIza...",\n  "authDomain": "project.firebaseapp.com",\n  "projectId": "project-id",\n  "appId": "1:...:web:..."\n}'
-                            }
-                        />
-                    </label>
-                    <button className="btn" disabled={loading}>
-                        Lưu kết nối Google
+                    <p className="mt-2 break-all font-semibold">
+                        {status?.config?.projectId || "Chưa thiết lập"}
+                    </p>
+                </div>
+                <div>
+                    <p className="text-xs font-semibold text-slate-500">
+                        PHẠM VI TÀI KHOẢN
+                    </p>
+                    <p className="mt-2 text-sm">
+                        Người chơi, quản trị và nhân sự chi nhánh
+                    </p>
+                </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+                {status?.source !== "environment" && (
+                    <button
+                        className="btn"
+                        disabled={!status || loading}
+                        onClick={() => setEditing(true)}
+                    >
+                        {status?.configured
+                            ? "Cập nhật Firebase"
+                            : "Kết nối Firebase"}
                     </button>
-                </form>
+                )}
+                <a
+                    className="btn-outline"
+                    href="https://console.firebase.google.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    Mở Firebase Console ↗
+                </a>
+            </div>
+            {status?.source === "environment" && (
+                <p className="mt-4 text-sm text-slate-500">
+                    Kết nối đang dùng cấu hình máy chủ. Đổi project cần cập nhật
+                    tại máy chủ.
+                </p>
+            )}
+            <p className="mt-4 text-xs leading-6 text-slate-500">
+                Bật Google trong Firebase Authentication và thêm{" "}
+                {location.hostname} vào danh sách tên miền được phép. Kiểm tra
+                đăng nhập tại trang đăng nhập hoặc liên kết từ hồ sơ cá nhân.
+            </p>
+            {editing && (
+                <Editor
+                    title="Kết nối Google qua Firebase"
+                    description="Nhập bốn giá trị trong phần cấu hình Web app của Firebase. Không cần khóa riêng hay service account."
+                    initial={status?.config || {}}
+                    close={() => setEditing(false)}
+                    label="Lưu kết nối Google"
+                    fields={[
+                        {
+                            name: "projectId",
+                            label: "Project ID",
+                            required: true,
+                            maxLength: 30,
+                        },
+                        {
+                            name: "authDomain",
+                            label: "Auth domain",
+                            required: true,
+                            maxLength: 253,
+                            help: "Chỉ nhập tên miền, ví dụ project.firebaseapp.com.",
+                        },
+                        {
+                            name: "apiKey",
+                            label: "Web API key",
+                            required: true,
+                            maxLength: 104,
+                            wide: true,
+                        },
+                        {
+                            name: "appId",
+                            label: "Web App ID",
+                            required: true,
+                            maxLength: 200,
+                            wide: true,
+                        },
+                    ]}
+                    save={async (values) => {
+                        const response = await api(
+                            "admin/integrations/firebase",
+                            "PUT",
+                            values,
+                        );
+                        setStatus(response.data);
+                        setEditing(false);
+                        setError("");
+                        await after();
+                        toast(response.message);
+                    }}
+                />
             )}
         </Card>
     );

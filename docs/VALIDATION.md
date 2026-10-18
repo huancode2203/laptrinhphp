@@ -1,5 +1,13 @@
 # Kiểm tra bản Laravel / MySQL · cập nhật 18/10/2026
 
+## Gmail, cấu hình Google và hồ sơ làm việc · 18/10/2026
+
+- Thêm GET/PUT cấu hình Gmail và POST gửi thư thử chỉ dành cho Admin, giới hạn tần suất ghi/gửi. Gmail dùng STARTTLS cổng 587, mật khẩu ứng dụng được chuẩn hóa khoảng trắng rồi mã hóa; API và audit không chứa mật khẩu. Đổi địa chỉ gửi phải nhập mật khẩu mới. Thư thử chỉ gửi về chính địa chỉ gửi đã lưu, không nhận người nhận tùy ý. Chỉ ghi dấu đã thử sau khi SMTP chấp nhận; đổi cấu hình làm mất dấu thử cũ. Lỗi trả về thông báo đã lược thông tin bí mật.
+- Cấu hình SMTP từ `.env` có ưu tiên, không trộn mật khẩu database với địa chỉ của môi trường. Các luồng OTP/khôi phục đọc kết nối đã lưu; có cấu hình thật thì không trả mã demo. Email có HTML cùng màu thương hiệu và bản text.
+- Google có API trạng thái cấu hình chỉ dành cho Admin. Cấu hình máy chủ đầy đủ được hiển thị đúng nguồn và không cho ghi một project khác qua form rồi báo thành công giả. Cấu hình database hỏng được xem là chưa cấu hình, không gây lỗi 500. Hồ sơ Admin/nhân sự có nút liên kết Google với tài khoản hiện tại, giữ nguyên vai trò.
+- Toàn bộ SQLite in-memory: **211/211 tests, 5.193 assertions**. Nhóm Gmail/Google/an toàn tích hợp: **31 tests, 232 assertions**. TypeScript, Vite **907 modules** và Pint đạt. Chỉ kiểm thử provider bằng fake/mocks trong các bài tự động; chưa coi đây là bằng chứng đã nhận email hoặc đăng nhập Google thật.
+- Chủ tài khoản đã tạo mật khẩu ứng dụng và được hướng dẫn nhập trực tiếp vào form localhost. Tại thời điểm bổ sung mục này chưa xác nhận gửi/nhận thư thật, chưa xác nhận một lượt Google tới phiên Laravel. Không lưu mật khẩu người dùng cung cấp vào GitHub, `.env.example`, SQL mẫu hoặc ZIP.
+
 ## Kiểm chứng PayOS merchant thật · 18/10/2026
 
 - Trên Chrome, đã xác nhận MB ở trạng thái **Đã liên kết**, hồ sơ PayOS đã xác thực và chưa có kênh. Sau khi chủ dự án đồng ý tạo kênh/khóa, đã tạo kênh Website **Badminton Hub** và chọn MB làm ngân hàng chính.
