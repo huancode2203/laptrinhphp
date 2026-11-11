@@ -1,5 +1,31 @@
 # Badminton Hub · Laravel / MySQL / Laragon
 
+## Bản triển khai 11/11/2026
+
+Website: https://pdh2203.id.vn/badminton/ · bản tại máy: http://localhost:8088/. IIS chuyển tiếp tới Apache/PHP của Laragon tại 127.0.0.1:8091; MySQL chỉ nghe localhost. Quá trình `Start-Badminton.ps1 -Watch` kiểm tra máy chủ và chạy scheduler mỗi phút; shortcut Startup tự khởi chạy khi đăng nhập Windows. Máy Lenovo cần đang bật, có mạng và giữ phiên Windows. Giữ nguyên tuyến /lover/.
+
+- Thanh toán cọc/trả đủ cả chuỗi cố định bằng một link, phân bổ từng buổi; chặn link lẻ chồng chuỗi. Đối soát ghi số tiền thực nhận, tiền dư vào số dư nội bộ theo phần tăng thêm. Giao dịch cần kiểm tra không tự hủy lịch hoặc ghi nhận đã trả đủ.
+- PayOS đã xác nhận webhook công khai `/badminton/api/v1/payments/payos/webhook` bằng API merchant thật; không thực hiện chuyển tiền thật trong lượt này. Scheduler vẫn là đường đối soát dự phòng.
+- Firebase Auth đã thêm và xác nhận authorized domain `pdh2203.id.vn`; chưa thay chủ tài khoản thực hiện một lượt đăng nhập Google thật.
+- Admin/Quản lý có Thu chi & đối soát: chuyển khoản riêng, ca tiền mặt, nhà cung cấp, phiếu nhập, chi phí, đổi/gỡ hàng POS và PDF thu chi. Admin có thêm lương nội bộ, sao lưu CSDL mã hóa và tệp lưu tạm. Chênh lệch thu chi được ghi rõ là nội bộ, không gọi là lợi nhuận kế toán.
+- Phiếu thanh toán PDF cho bản demo; không tích hợp hóa đơn điện tử pháp lý. Đổi hàng chỉ ngang/cao giá, thu chênh lệch; không mở nghiệp vụ hoàn tiền. Dịch vụ/hàng hóa không được giảm giá cùng tiền sân.
+- Đổi lịch có thể giữ mã ưu đãi còn hợp lệ hoặc bỏ mã rồi tính lại. AI có gợi ý giờ khác đã đối chiếu DB khi không có sân đúng giờ; không trộn gợi ý vào kết quả đúng yêu cầu.
+- Nhắc lịch email/SMS mặc định tắt, chỉ gửi tới liên hệ đã xác thực và người dùng tự bật. Gmail chưa có cấu hình thực nhập, SMS cần cấu hình sender riêng; các lựa chọn chưa sẵn sàng được ẩn. Chưa thử nhận thư/SMS thật.
+- Khôi phục DB chỉ khi bảo trì, kiểm tra schema và tham chiếu, có bản dự phòng; kết thúc phiên và mã khôi phục cũ. Không thực hiện khôi phục trên DB vận hành. Bản sao lưu CSDL không chứa nội dung ảnh; phải sao lưu riêng thư mục upload và APP_KEY khi chuyển máy.
+- Không mở rộng học cầu lông hoặc giải đấu trong đợt này theo phạm vi đã chốt. Các mô-đun cũ và dữ liệu lịch sử không bị xóa.
+
+
+### Bằng chứng kiểm tra 11/11/2026
+
+- Toàn bộ **239/239 tests · 5.400 assertions** trên SQLite `:memory:` và MySQL test riêng đều đạt. Sau sửa đăng xuất khi khôi phục, chạy lại **8/8 tests · 46 assertions** của ReliabilityAndDeploymentTest trên cả hai DB, đều đạt. Danh mục CSV dùng kết quả mới nhất của từng bài.
+- TypeScript, Vite production **911 modules**, Pint và `git diff --check` đạt. PHPUnit chặn chạy với DB khác ngoài hai DB kiểm thử cho phép.
+- Browser kiểm tra tên miền: trang chủ, đăng nhập Admin, báo cáo/thu chi, Manager và các tab theo quyền, Người chơi và hồ sơ. Đã đăng xuất phiên kiểm tra. Localhost tải UI đầy đủ, tài nguyên không đi qua cổng nội bộ khác origin.
+- PayOS merchant đã trả thành công khi xác nhận webhook công khai; Firebase API đã trả thành công khi thêm authorized domain. Chưa chuyển tiền, gửi/nhận thư, SMS hoặc thay chủ tài khoản đăng nhập Google thật.
+- Có **144 test case thủ công**; không tự đánh dấu toàn bộ đã chạy. Trường hợp tiền thật và dịch vụ ngoài hệ thống giữ trạng thái chưa chạy cho người có tài khoản kiểm chứng.
+- DB vận hành đã được sao lưu riêng trước migration; giữ 98 tài khoản và 1.317 lịch hiện có. Không reset/reseed. Đã thay đúng 95 mật khẩu mẫu còn dùng mật khẩu mặc định, không thay tài khoản cá nhân hoặc mật khẩu đã đổi; tệp thông tin đăng nhập ở thư mục riêng được giới hạn quyền trên máy, không có trong Git/ZIP.
+- Bản chạy dùng `Start-Badminton.ps1 -Watch` và shortcut Startup của tài khoản Windows, đã thấy scheduler chạy qua nhiều phút. Cần giữ máy bật, có mạng và đăng nhập Windows; đây là máy chủ tại máy người dùng, không phải hosting độc lập.
+
+
 ## Cập nhật chức năng và kiểm thử · 19/10/2026
 
 - Thanh toán PayOS và thu trực tiếp tại quầy; nạp Ví HUB qua PayOS. Bỏ MoMo, checkout giả, nút hoàn tiền và mã OTP thử trên giao diện. `DEMO_ENABLED=false`.

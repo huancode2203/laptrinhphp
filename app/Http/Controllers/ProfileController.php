@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\AccountIdentity;
+use App\BookingReminderService;
 use App\BookingService;
 use App\FeatureService;
 use App\Models\AuthCode;
@@ -26,7 +27,15 @@ class ProfileController extends Controller
             'phone' => ['nullable', 'string', 'max:30', new VietnamesePhone],
             'skill_level' => ['sometimes', 'string', 'max:40'], 'public_profile' => ['sometimes', 'boolean'],
             'current_password' => ['nullable', 'string', 'max:72'], 'avatar_id' => 'sometimes|nullable|integer',
+            'email_reminders' => 'sometimes|boolean', 'sms_reminders' => 'sometimes|boolean',
         ]);
+
+        if (! empty($data['email_reminders'])) {
+            abort_unless($request->user()->email_verified_at && app(BookingReminderService::class)->ready('email'), 422, 'Xác thực email và kết nối email của hệ thống trước khi bật nhắc lịch.');
+        }
+        if (! empty($data['sms_reminders'])) {
+            abort_unless($request->user()->phone_verified_at && app(BookingReminderService::class)->ready('sms'), 422, 'SMS nhắc lịch chưa khả dụng hoặc số điện thoại chưa được xác thực.');
+        }
 
         if (! empty($data['avatar_id'])) {
             app(FeatureService::class)->media([$data['avatar_id']], $request->user());

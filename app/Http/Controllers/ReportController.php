@@ -58,9 +58,11 @@ class ReportController extends Controller
         $rows = [['Mã lịch', $booking->reference], ['Chi nhánh', $booking->court->branch->name], ['Sân', $booking->court->name], ['Thời gian', $booking->starts_at->format('d/m/Y H:i').' – '.$booking->ends_at->format('H:i')], ['Phí sân', number_format($booking->court_amount).' VND'], ['Dịch vụ', number_format($booking->service_amount).' VND'], ['Hàng tại quầy', number_format($booking->product_amount).' VND'], ['Ưu đãi', number_format($booking->discount_amount).' VND'], ['Tổng', number_format($booking->total_amount).' VND'], ['Đã thu', number_format($booking->paid_amount).' VND'], ['Còn lại', number_format(max(0, $booking->total_amount - $booking->paid_amount)).' VND']];
 
         foreach ($booking->sales()->with('items')->get()->flatMap(fn ($s) => $s->items) as $item) {
-            $rows[] = [$item->name.' x '.$item->quantity, number_format($item->amount).' VND'];
+            $rows[] = [$item->name.' x '.$item->net_quantity.($item->returned_quantity > 0 ? ' (đã gỡ '.$item->returned_quantity.')' : ''), number_format($item->net_amount).' VND'];
         }
 
-        return response(app(ReportService::class)->pdf('Hóa đơn '.$booking->reference, ['Nội dung', 'Chi tiết'], $rows), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'attachment; filename="'.$booking->reference.'.pdf"']);
+        $rows[] = ['Loại chứng từ', 'Phiếu thanh toán nội bộ · Không phải hóa đơn điện tử'];
+
+        return response(app(ReportService::class)->pdf('Phiếu thanh toán '.$booking->reference, ['Nội dung', 'Chi tiết'], $rows), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'attachment; filename="'.$booking->reference.'.pdf"']);
     }
 }

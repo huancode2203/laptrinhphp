@@ -16,11 +16,11 @@ class PayosController extends Controller
 {
     public function create(Request $request, PayosService $payos): JsonResponse
     {
-        $data = $request->validate(['request_key' => 'required|uuid', 'purpose' => 'required|in:booking,wallet', 'booking_id' => 'exclude_unless:purpose,booking|required|integer', 'amount' => 'exclude_unless:purpose,wallet|required|integer|min:1000|max:50000000', 'deposit_only' => 'sometimes|boolean']);
+        $data = $request->validate(['request_key' => 'required|uuid', 'purpose' => 'required|in:booking,series,wallet', 'booking_id' => 'exclude_unless:purpose,booking,series|required|integer', 'amount' => 'exclude_unless:purpose,wallet|required|integer|min:1000|max:50000000', 'deposit_only' => 'sometimes|boolean']);
         $actor = $request->user();
         $owner = $actor;
         if ($actor->role !== 'customer') {
-            abort_unless($data['purpose'] === 'booking', 403, 'Tài khoản làm việc chỉ tạo PayOS cho lịch của khách trong chi nhánh được giao.');
+            abort_unless(in_array($data['purpose'], ['booking', 'series'], true), 403, 'Tài khoản làm việc chỉ tạo PayOS cho lịch của khách trong chi nhánh được giao.');
             $booking = Booking::with('court', 'user')->findOrFail($data['booking_id']);
             app(BookingService::class)->assertManage($actor, $booking->court->branch_id, 'payments.write');
             app(BookingService::class)->assertManage($actor, $booking->court->branch_id, 'bookings.read');
@@ -43,7 +43,7 @@ class PayosController extends Controller
     {
         $this->authorizeAttempt($request, $attempt);
 
-        return response()->json(['data' => $payos->sync($attempt)]);
+        return response()->json(['data' => $payos->sync($attempt, true)]);
     }
 
     public function webhook(Request $request, PayosService $payos): JsonResponse

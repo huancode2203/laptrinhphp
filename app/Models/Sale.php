@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['request_key', 'reference', 'branch_id', 'clerk_id', 'user_id', 'total_amount', 'method', 'booking_id'])]
+#[Fillable(['request_key', 'reference', 'branch_id', 'clerk_id', 'user_id', 'total_amount', 'method', 'booking_id', 'exchange_credit'])]
 
 class Sale extends Model
 {
@@ -16,7 +16,7 @@ class Sale extends Model
 
     protected function casts(): array
     {
-        return ['total_amount' => 'integer'];
+        return ['total_amount' => 'integer', 'exchange_credit' => 'integer'];
     }
 
     public function items(): HasMany

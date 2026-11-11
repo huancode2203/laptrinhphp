@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class CourtSearchService
 {
-    public function search(string $message, ?User $user = null, ?array $filters = null, ?array $context = null, int $page = 1, int $perPage = 24): array
+    public function search(string $message, ?User $user = null, ?array $filters = null, ?array $context = null, int $page = 1, int $perPage = 24, bool $suggestAlternatives = true): array
     {
         $mode = 'filters';
         $modelIssue = null;
@@ -100,7 +100,30 @@ class CourtSearchService
         $lastPage = max(1, (int) ceil(count($found) / $perPage));
         $page = max(1, min($lastPage, $page));
 
-        return ['needs_clarification' => false, 'message' => count($found) ? 'Có '.count($found).' sân phù hợp từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d/m/Y').'.' : 'Chưa có sân trống phù hợp. Bạn có thể đổi giờ, khu vực hoặc ngân sách.', 'filters' => $filters, 'courts' => array_slice($found, ($page - 1) * $perPage, $perPage), 'total_count' => count($found), 'current_page' => $page, 'last_page' => $lastPage, 'per_page' => $perPage, 'checked_at' => now()->toIso8601String(), 'mode' => $mode, 'model_issue' => $modelIssue];
+        $alternatives = [];
+        if ($found === [] && $suggestAlternatives) {
+            foreach ([30, -30, 60, -60] as $minutes) {
+                $alternateStart = $start->addMinutes($minutes);
+                $alternateEnd = $end->addMinutes($minutes);
+                if ($alternateStart->lte(now()) || ! $alternateStart->isSameDay($start) || ! $alternateEnd->isSameDay($start)) {
+                    continue;
+                }
+                $alternateFilters = array_replace($filters, ['start_time' => $alternateStart->format('H:i'), 'end_time' => $alternateEnd->format('H:i')]);
+                try {
+                    $result = $this->search('', $user, $alternateFilters, null, 1, 2, false);
+                    foreach ($result['courts'] as $court) {
+                        $alternatives[] = $court + ['reason' => 'Khác giờ yêu cầu · '.$alternateStart->format('H:i').'–'.$alternateEnd->format('H:i')];
+                    }
+                } catch (ValidationException) {
+                    continue;
+                }
+                if (count($alternatives) >= 4) {
+                    break;
+                }
+            }
+        }
+
+        return ['needs_clarification' => false, 'message' => count($found) ? 'Có '.count($found).' sân phù hợp từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d/m/Y').'.' : 'Chưa có sân trống đúng yêu cầu.'.($alternatives ? ' Bạn có thể tham khảo khung giờ khác bên dưới.' : ' Bạn có thể đổi giờ, khu vực hoặc ngân sách.'), 'filters' => $filters, 'courts' => array_slice($found, ($page - 1) * $perPage, $perPage), 'alternatives' => array_slice($alternatives, 0, 4), 'total_count' => count($found), 'current_page' => $page, 'last_page' => $lastPage, 'per_page' => $perPage, 'checked_at' => now()->toIso8601String(), 'mode' => $mode, 'model_issue' => $modelIssue];
     }
 
     private function normalize(string $value): string

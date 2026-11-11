@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import {
     BarChart,
@@ -64,7 +65,9 @@ export default function ReportsView({ branch }: { branch: number | null }) {
                     <a
                         key={f}
                         className="btn-outline"
-                        href={"/api/v1/manage/reports." + f + "?" + query}
+                        href={
+                            appPath("/api/v1/manage/reports.") + f + "?" + query
+                        }
                     >
                         Tải {f.toUpperCase()}
                     </a>

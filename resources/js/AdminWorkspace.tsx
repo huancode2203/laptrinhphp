@@ -1,4 +1,6 @@
 import UsageGuide from "./UsageGuide";
+import OperationsWorkspace from "./OperationsWorkspace";
+import BackupPanel from "./BackupPanel";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { money, statusText, stamp, localDateTime, type Row } from "./data";
@@ -22,6 +24,8 @@ const menu = [
     ["moderation", "Kiểm duyệt cộng đồng"],
     ["payments", "Thanh toán & kết nối"],
     ["operations", "Cấu hình & phân quyền"],
+    ["finance", "Thu chi & đối soát"],
+    ["backups", "Sao lưu & tệp lưu tạm"],
     ["audits", "Nhật ký hoạt động"],
     ["profile", "Tài khoản quản trị"],
     ["help", "Hướng dẫn sử dụng"],
@@ -386,9 +390,12 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                     </div>
                                 </>
                             )}
-                            {["dashboard", "courts", "operations"].includes(
-                                tab,
-                            ) && (
+                            {[
+                                "dashboard",
+                                "courts",
+                                "operations",
+                                "finance",
+                            ].includes(tab) && (
                                 <label className="mb-6 block max-w-xl text-sm font-bold">
                                     {tab === "dashboard"
                                         ? "Phạm vi báo cáo"
@@ -397,7 +404,9 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                         aria-label="Phạm vi chi nhánh quản trị"
                                         className="input mt-2 w-full"
                                         value={
-                                            tab === "dashboard"
+                                            ["dashboard", "finance"].includes(
+                                                tab,
+                                            )
                                                 ? branch
                                                 : selectedBranch
                                         }
@@ -405,7 +414,9 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                             setBranch(Number(e.target.value))
                                         }
                                     >
-                                        {tab === "dashboard" && (
+                                        {["dashboard", "finance"].includes(
+                                            tab,
+                                        ) && (
                                             <option value={0}>
                                                 Toàn hệ thống
                                             </option>
@@ -434,6 +445,12 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                             {tab === "payments" && (
                                 <IntegrationPanel key={version} />
                             )}
+                            {tab === "finance" && (
+                                <OperationsWorkspace
+                                    key={branch}
+                                    branch={branch}
+                                />
+                            )}
                             {tab === "operations" && selectedBranch && (
                                 <AdvancedManagement
                                     key={tab + selectedBranch}
@@ -442,6 +459,7 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                 />
                             )}
                             {tab === "profile" && <WorkspaceAccount />}
+                            {tab === "backups" && <BackupPanel />}
                             {tab === "help" && <UsageGuide />}
                             {fields[tab] && (
                                 <>

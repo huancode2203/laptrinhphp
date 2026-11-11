@@ -22,7 +22,7 @@ const guides: Record<string, string[][]> = {
             "Đặt sân",
             "Đặt lịch cố định",
             "Giữ cùng lịch chơi qua nhiều tuần, xem tổng tiền và ưu đãi phí sân.",
-            "Chọn Đánh cố định; nhập số tuần; xem giá từng buổi, tổng sau giảm và tiền cọc. Thanh toán PayOS hiện thực hiện theo từng lịch.",
+            "Chọn Đánh cố định; nhập số tuần; xem giá từng buổi, tổng sau giảm và tiền cọc. Chọn PayOS để đặt cọc hoặc trả đủ cả chuỗi; cũng có thể thanh toán từng buổi trong chi tiết lịch.",
             "booking",
         ],
         [
@@ -318,6 +318,91 @@ const guides: Record<string, string[][]> = {
         ],
     ],
 };
+guides.customer.push(
+    [
+        "Thanh toán",
+        "Thanh toán cả chuỗi",
+        "Đặt cọc hoặc trả đủ các buổi còn thiếu bằng một liên kết PayOS.",
+        "Mở chi tiết một lịch cố định; xem số buổi và tổng tiền; chọn đặt cọc cả chuỗi hoặc thanh toán đủ cả chuỗi.",
+        "account/bookings",
+    ],
+    [
+        "Thanh toán",
+        "Gửi thông tin chuyển khoản riêng",
+        "Để chi nhánh đối chiếu khoản chuyển vào tài khoản ngân hàng ngoài liên kết PayOS.",
+        "Mở lịch; nhập số tiền, mã giao dịch và ảnh nếu cần; theo dõi kết quả. Gửi ảnh chưa làm lịch thành đã thanh toán.",
+        "account/bookings",
+    ],
+    [
+        "Tài khoản",
+        "Nhắc lịch qua email / SMS",
+        "Nhận thông báo trước buổi chơi khi kênh gửi đã kết nối và bạn đã xác thực liên hệ.",
+        "Mở hồ sơ; bật kênh muốn nhận. Có thể tắt bất cứ lúc nào.",
+        "account/profile",
+    ],
+    [
+        "Đặt sân",
+        "Đổi lịch có mã ưu đãi",
+        "Tính lại phí sân trong khi giữ nguyên hàng và dịch vụ đã dùng.",
+        "Mở lịch chưa bắt đầu; chọn sân hoặc giờ mới; giữ mã nếu còn hợp lệ, hoặc chọn bỏ mã; xem giá mới trước khi xác nhận.",
+        "account/bookings",
+    ],
+);
+const operationsGuides = [
+    [
+        "Vận hành",
+        "Đối soát chuyển khoản",
+        "Theo dõi chuyển khoản riêng và giao dịch PayOS chuyển thiếu hoặc cần kiểm tra.",
+        "Mở Thu chi & đối soát; chọn loại giao dịch; đối chiếu sao kê hoặc kiểm tra lại PayOS; ghi rõ kết quả. Chỉ ghi tiền thực nhận.",
+        "manage/finance",
+    ],
+    [
+        "Vận hành",
+        "Mở và chốt ca thu ngân",
+        "So sánh tiền mặt thực đếm với các khoản thu, chi trong ca.",
+        "Mở ca với tiền đầu ca; cuối ca kiểm kê tiền và nhập lý do nếu có chênh lệch. Ca đã chốt không sửa số tiền.",
+        "manage/finance",
+    ],
+    [
+        "Vận hành",
+        "Nhà cung cấp và nhập kho",
+        "Nhập hàng, cập nhật giá vốn bình quân và tiền đã chi.",
+        "Tạo nhà cung cấp tại chi nhánh; lập phiếu nhập, số lượng và giá nhập. Chỉ xác nhận khi đã nhận hàng và thanh toán.",
+        "manage/finance",
+    ],
+    [
+        "Vận hành",
+        "Chi phí và thu chi nội bộ",
+        "Theo dõi chi vận hành, tiền nhập hàng và thu dịch vụ theo thời gian.",
+        "Ghi khoản chi thực tế; mở Tổng hợp thu chi; lọc kỳ và tải PDF. Đây là báo cáo nội bộ, không phải lợi nhuận kế toán.",
+        "manage/finance",
+    ],
+    [
+        "Vận hành",
+        "Đổi hoặc gỡ hàng POS",
+        "Trả lại kho phần hàng chưa thu tiền hoặc đổi đơn đã trả sang hàng bằng/cao giá hơn.",
+        "Chọn đơn ở Đổi / gỡ hàng POS; nhập số lượng và lý do. Đơn đổi có bước xem chênh lệch; thu đủ chênh lệch rồi xác nhận.",
+        "manage/finance",
+    ],
+];
+guides.manager.push(...operationsGuides);
+guides.admin.push(
+    ...operationsGuides.map((row) => [...row.slice(0, 4), "admin/finance"]),
+    [
+        "Vận hành",
+        "Lương nội bộ",
+        "Lập lương thỏa thuận, phụ cấp và khấu trừ theo nhân sự và tháng.",
+        "Mở Thu chi & đối soát → Lương nội bộ; lập bảng; chỉ chọn đã chi khi đã trả tiền. Mỗi bảng chỉ tạo một khoản chi.",
+        "admin/finance",
+    ],
+    [
+        "Dữ liệu",
+        "Sao lưu và tệp lưu tạm",
+        "Sao lưu CSDL có mã hóa; kiểm tra bản lưu; khôi phục tệp không dùng đã lưu tạm.",
+        "Mở Sao lưu & tệp lưu tạm; xác thực bằng mật khẩu quản trị. Khôi phục CSDL cần bảo trì máy chủ và xác nhận riêng; tệp tham chiếu còn dùng không bị dọn.",
+        "admin/backups",
+    ],
+);
 export default function UsageGuide() {
     const { data } = useHub();
     const own =

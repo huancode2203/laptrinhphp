@@ -51,14 +51,15 @@ class CommerceService
         DB::table('commerce_payments')->insert(['user_id' => $owner->id, 'actor_id' => $actor->id, 'subject_type' => $type, 'subject_id' => $id, 'amount' => $amount, 'method' => $method, 'branch_id' => $branchId, 'kind' => $kind, 'created_at' => now(), 'updated_at' => now()]);
     }
 
-    public function discounts(?User $user, int $courtAmount, int $branchId, ?string $code = null): array
+    public function discounts(?User $user, int $courtAmount, int $branchId, ?string $code = null, ?int $excludeBookingId = null): array
     {
         $membership = $user ? Membership::with('plan')->where('user_id', $user->id)->where('starts_at', '<=', now())->where('expires_at', '>', now())->get()->sortByDesc(fn ($m) => $m->plan->discount_percent)->first() : null;
         $discount = $membership ? (int) floor($courtAmount * $membership->plan->discount_percent / 100) : 0;
         $coupon = null;
         if ($code) {
             $coupon = Coupon::where('code', strtoupper(trim($code)))->first();
-            if (! $coupon || ! $coupon->active || now()->lt($coupon->starts_at) || now()->gte($coupon->expires_at) || ($coupon->branch_id && $coupon->branch_id !== $branchId) || $courtAmount < $coupon->minimum_amount || Booking::where('coupon_id', $coupon->id)->where('status', '!=', 'cancelled')->count() >= $coupon->usage_limit || ($user && Booking::where('coupon_id', $coupon->id)->where('user_id', $user->id)->where('status', '!=', 'cancelled')->exists())) {
+            $uses = Booking::where('coupon_id', $coupon?->id)->where('status', '!=', 'cancelled')->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId));
+            if (! $coupon || ! $coupon->active || now()->lt($coupon->starts_at) || now()->gte($coupon->expires_at) || ($coupon->branch_id && $coupon->branch_id !== $branchId) || $courtAmount < $coupon->minimum_amount || (clone $uses)->count() >= $coupon->usage_limit || ($user && (clone $uses)->where('user_id', $user->id)->exists())) {
                 throw ValidationException::withMessages(['coupon_code' => 'Mã ưu đãi không khả dụng hoặc đã được sử dụng.']);
             }
             $value = $coupon->kind === 'percent' ? (int) floor(($courtAmount - $discount) * $coupon->value / 100) : $coupon->value;
@@ -177,7 +178,7 @@ class CommerceService
                 }
                 $lineAmount = $product->price * $item['quantity'];
                 $total += $lineAmount;
-                $items[] = ['product_id' => $product->id, 'name' => $product->name, 'quantity' => $item['quantity'], 'unit_price' => $product->price, 'amount' => $lineAmount];
+                $items[] = ['product_id' => $product->id, 'name' => $product->name, 'quantity' => $item['quantity'], 'unit_price' => $product->price, 'unit_cost' => $product->unit_cost, 'amount' => $lineAmount];
             }
             abort_if($total > 2147483647, 422, 'Tổng đơn vượt giới hạn.');
             $owner = isset($data['user_id']) ? User::where('role', 'customer')->where('active', true)->findOrFail($data['user_id']) : $actor;

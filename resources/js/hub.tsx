@@ -7,6 +7,7 @@ import {
     type ReactNode,
 } from "react";
 import { COMMUNITY_POSTS, hydrate, type Row } from "./data";
+import { appPath, localLinks } from "./urls";
 export class ApiError extends Error {
     constructor(
         message: string,
@@ -64,11 +65,11 @@ async function responseBody(r: Response) {
             r.status,
             j.errors ?? {},
         );
-    return j;
+    return localLinks(j);
 }
 async function request(url: string, options: RequestInit) {
     try {
-        return await fetch(url, options);
+        return await fetch(appPath(url), options);
     } catch {
         throw new ApiError(
             "Không kết nối được hệ thống. Kiểm tra kết nối mạng và thử lại.",
@@ -118,6 +119,26 @@ export async function upload(file: File) {
     return responseBody(r);
 }
 export const key = () => crypto.randomUUID();
+export async function downloadFile(path: string, body: Row, filename: string) {
+    const token = await api("csrf");
+    const response = await request("/api/v1/" + path, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": token.csrf_token,
+            Accept: "application/octet-stream",
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) await responseBody(response);
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 type Hub = {
     data: Row | null;
     refresh: () => Promise<void>;

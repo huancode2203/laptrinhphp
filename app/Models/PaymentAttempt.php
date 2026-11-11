@@ -7,14 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['request_key', 'order_id', 'user_id', 'booking_id', 'purpose', 'partner_code', 'amount', 'order_info', 'extra_data', 'status', 'pay_url', 'trans_id', 'expires_at', 'result_code'])]
+#[Fillable(['request_key', 'order_id', 'user_id', 'booking_id', 'purpose', 'partner_code', 'amount', 'order_info', 'extra_data', 'status', 'pay_url', 'trans_id', 'expires_at', 'result_code', 'received_amount', 'settled_amount', 'review_reason'])]
 class PaymentAttempt extends Model
 {
     use HasFactory;
 
     protected function casts(): array
     {
-        return ['amount' => 'integer', 'expires_at' => 'immutable_datetime', 'result_code' => 'integer'];
+        return ['amount' => 'integer', 'received_amount' => 'integer', 'settled_amount' => 'integer', 'expires_at' => 'immutable_datetime', 'result_code' => 'integer'];
     }
 
     public function user(): BelongsTo

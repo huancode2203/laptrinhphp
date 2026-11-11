@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import IntegrationPanel from "./IntegrationPanel";
 import { api, useHub } from "./hub";
@@ -555,14 +556,19 @@ export default function AdvancedManagement({
                                 <div className="mb-3 flex flex-wrap gap-2">
                                     {v.images?.map((id: number) => (
                                         <a
-                                            href={"/api/v1/media/" + id}
+                                            href={
+                                                appPath("/api/v1/media/") + id
+                                            }
                                             target="_blank"
                                             rel="noreferrer"
                                             key={id}
                                         >
                                             <img
                                                 className="h-24 w-24 rounded-xl object-cover"
-                                                src={"/api/v1/media/" + id}
+                                                src={
+                                                    appPath("/api/v1/media/") +
+                                                    id
+                                                }
                                                 alt="Ảnh trong bài"
                                             />
                                         </a>

@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import BookingResume from "./BookingResume";
 import CourtMatrix from "./CourtMatrix";
 import { ContentSupport, Coaching } from "./FeaturePages";
@@ -157,7 +158,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                             <img
                                 key={id}
                                 className="mt-3 h-32 rounded-xl"
-                                src={"/api/v1/media/" + id}
+                                src={appPath("/api/v1/media/") + id}
                                 alt="Ảnh đánh giá"
                             />
                         ))}

@@ -133,6 +133,9 @@ class FeatureController extends Controller
         if (! $allowed && $r->user()) {
             $allowed = DB::table('chat_messages')->where('deleted', false)->whereJsonContains('attachments', $media)->whereIn('conversation_id', app(AccessService::class)->conversations($r->user())->select('id'))->exists();
         }
+        if (! $allowed && $r->user() && app(AccessService::class)->allows($r->user(), 'payments.write')) {
+            $allowed = DB::table('bank_transfer_claims')->join('bookings', 'bookings.id', '=', 'bank_transfer_claims.booking_id')->join('courts', 'courts.id', '=', 'bookings.court_id')->whereJsonContains('bank_transfer_claims.media_ids', $media)->whereIn('courts.branch_id', app(AccessService::class)->branches($r->user()))->exists();
+        }
         abort_unless($allowed, 404);
 
         return Storage::disk('local')->response($item->path, $item->name, ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, max-age=120']);

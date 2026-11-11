@@ -1,4 +1,5 @@
 import UsageGuide from "./UsageGuide";
+import OperationsWorkspace from "./OperationsWorkspace";
 import PosCheckout from "./PosCheckout";
 import ManagedCourts from "./ManagedCourts";
 import CourtMatrix from "./CourtMatrix";
@@ -56,6 +57,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         maintenance: "courts.write",
         events: "events.write",
         reports: "reports.read",
+        finance: "payments.write",
         advanced: "",
     };
     const nav = [
@@ -71,6 +73,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         ["products", "📦", "Kho hàng"],
         ["events", "🏆", "Sự kiện"],
         ["reports", "📈", "Báo cáo"],
+        ["finance", "₫", "Thu chi & đối soát"],
         ["advanced", "✦", "Vận hành & nội dung"],
         ["help", "?", "Hướng dẫn sử dụng"],
         ...(admin
@@ -853,6 +856,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                             />
                         )}
                         {tab === "help" && <UsageGuide />}
+                        {tab === "finance" && (
+                            <OperationsWorkspace key={branch} branch={branch} />
+                        )}
                         {tab === "dashboard" && admin && (
                             <>
                                 <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -2186,6 +2192,12 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 >
                                     <span>
                                         {i.name} × {i.quantity}
+                                        {i.returned_quantity > 0 && (
+                                            <small className="block">
+                                                Đã trả / đổi{" "}
+                                                {i.returned_quantity}
+                                            </small>
+                                        )}
                                     </span>
                                     <b>{money(i.amount)}</b>
                                 </p>
@@ -2193,6 +2205,16 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                             <h2 className="my-4 text-xl font-bold">
                                 Tổng {money(sale.total_amount)}
                             </h2>
+                            {sale.exchange_credit > 0 && (
+                                <p>
+                                    Trừ giá trị hàng đổi:{" "}
+                                    {money(sale.exchange_credit)} · Đã thu thêm:{" "}
+                                    {money(
+                                        sale.total_amount -
+                                            sale.exchange_credit,
+                                    )}
+                                </p>
+                            )}
                             <p>
                                 {(
                                     {

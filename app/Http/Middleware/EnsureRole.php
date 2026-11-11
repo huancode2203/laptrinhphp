@@ -19,7 +19,7 @@ class EnsureRole
         } else {
             $access = app(AccessService::class);
             $permission = $access->permission($request);
-            $aggregate = in_array($request->path(), ['api/v1/manage/hub', 'api/v1/manage/features'], true);
+            $aggregate = in_array($request->path(), ['api/v1/manage/hub', 'api/v1/manage/features'], true) || str_starts_with($request->path(), 'api/v1/manage/operations/');
             $allowed = $aggregate
                 ? collect(AccessService::PERMISSIONS)->contains(fn ($p) => $access->allows($user, $p))
                 : ($permission && $access->allows($user, $permission));

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['branch_id', 'name', 'sku', 'category', 'icon', 'price', 'stock', 'active'])]
+#[Fillable(['branch_id', 'name', 'sku', 'category', 'icon', 'price', 'stock', 'active', 'unit_cost'])]
 
 class Product extends Model
 {
@@ -14,6 +14,6 @@ class Product extends Model
 
     protected function casts(): array
     {
-        return ['active' => 'boolean', 'price' => 'integer', 'stock' => 'integer'];
+        return ['active' => 'boolean', 'price' => 'integer', 'stock' => 'integer', 'unit_cost' => 'integer'];
     }
 }

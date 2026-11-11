@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\DeploymentContext;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\NormalizeAccountInput;
@@ -24,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: ['127.0.0.1', '::1'], headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_PREFIX);
+        $middleware->append(DeploymentContext::class);
+        $middleware->preventRequestsDuringMaintenance(except: ['api/v1/admin/backups*', 'api/v1/csrf']);
         $middleware->alias(['role' => EnsureRole::class]);
         $middleware->appendToGroup('web', EnsureActiveAccount::class);
         $middleware->appendToGroup('web', ValidateApiInput::class);

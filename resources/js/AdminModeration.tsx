@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { stamp, type Row } from "./data";
@@ -188,13 +189,13 @@ export default function AdminModeration({
                             {post.images?.map((id: number) => (
                                 <a
                                     key={id}
-                                    href={"/api/v1/media/" + id}
+                                    href={appPath("/api/v1/media/") + id}
                                     target="_blank"
                                     rel="noreferrer"
                                 >
                                     <img
                                         className="h-32 w-40 rounded-2xl object-cover"
-                                        src={"/api/v1/media/" + id}
+                                        src={appPath("/api/v1/media/") + id}
                                         alt="Ảnh của bài viết"
                                     />
                                 </a>

@@ -112,6 +112,59 @@ export default function Profile({
                 </div>
             </section>
             <div className="profile-columns">
+                {(data!.reminders?.email || data!.reminders?.sms) && (
+                    <section className="profile-panel">
+                        <h3 className="font-bold">Nhắc lịch trước giờ chơi</h3>
+                        <p className="my-3 text-sm text-slate-500">
+                            Nhận nhắc lịch trước khoảng 30 phút. Chỉ gửi đến
+                            email hoặc số điện thoại đã xác thực; bạn có thể tắt
+                            bất cứ lúc nào.
+                        </p>
+                        {["email", "sms"]
+                            .filter((channel) => data!.reminders?.[channel])
+                            .map((channel) => (
+                                <label
+                                    key={channel}
+                                    className="my-3 flex items-center gap-3"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        disabled={
+                                            loading ||
+                                            !(channel === "email"
+                                                ? user.email_verified_at
+                                                : user.phone_verified_at)
+                                        }
+                                        checked={!!user[channel + "_reminders"]}
+                                        onChange={(e) => {
+                                            const enabled = e.target.checked;
+                                            run(async () => {
+                                                await changed(() =>
+                                                    api("me", "PATCH", {
+                                                        name: user.name,
+                                                        email: user.email,
+                                                        [channel +
+                                                        "_reminders"]: enabled,
+                                                    }),
+                                                );
+                                                toast(
+                                                    enabled
+                                                        ? "Đã bật nhắc lịch."
+                                                        : "Đã tắt nhắc lịch.",
+                                                );
+                                            });
+                                        }}
+                                    />
+                                    Nhận qua{" "}
+                                    {channel === "email" ? "email" : "SMS"}
+                                    {!(channel === "email"
+                                        ? user.email_verified_at
+                                        : user.phone_verified_at) &&
+                                        " · Cần xác thực trước"}
+                                </label>
+                            ))}
+                    </section>
+                )}
                 <section className="profile-panel">
                     <div className="profile-panel-heading">
                         <span className="profile-panel-icon">

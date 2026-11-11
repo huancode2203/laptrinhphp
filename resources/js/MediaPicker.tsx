@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import { useState } from "react";
 import { upload, useHub } from "./hub";
 export default function MediaPicker({
@@ -21,7 +22,7 @@ export default function MediaPicker({
                         {files ? (
                             <a
                                 className="btn-outline block"
-                                href={"/api/v1/media/" + id}
+                                href={appPath("/api/v1/media/") + id}
                                 target="_blank"
                                 rel="noreferrer"
                             >
@@ -31,7 +32,7 @@ export default function MediaPicker({
                             <img
                                 alt="Ảnh đã chọn"
                                 className="h-20 w-20 rounded-xl object-cover"
-                                src={"/api/v1/media/" + id}
+                                src={appPath("/api/v1/media/") + id}
                             />
                         )}
                         <button

@@ -59,9 +59,33 @@ class ReportService
                 }
             } elseif ($p->subject_type === 'sale') {
                 $pos += $value;
-                foreach (DB::table('sale_items')->where('sale_id', $p->subject_id)->get() as $item) {
-                    $byProduct[$item->name] = ($byProduct[$item->name] ?? 0) + ($p->kind === 'refund' ? -$item->amount : $item->amount);
+                $items = DB::table('sale_items')->where('sale_id', $p->subject_id)->get();
+                $total = $items->sum('amount');
+                $through = 0;
+                $previous = 0;
+                foreach ($items as $item) {
+                    $through += $item->amount;
+                    $share = $total > 0 ? intdiv($p->amount * $through, $total) : 0;
+                    $byProduct[$item->name] = ($byProduct[$item->name] ?? 0) + ($p->kind === 'refund' ? -1 : 1) * ($share - $previous);
+                    $previous = $share;
                 }
+            }
+        }
+        $adjustments = DB::table('sale_adjustments')->join('sales', 'sales.id', '=', 'sale_adjustments.sale_id')->where('sale_adjustments.kind', 'exchange')->whereBetween('sale_adjustments.created_at', [$start, $end])->when($branch !== null, fn ($q) => $q->whereIn('sales.branch_id', (array) $branch))->select('sale_adjustments.*')->get();
+        foreach ($adjustments as $adjustment) {
+            foreach (json_decode($adjustment->items, true)['returned'] as $line) {
+                $item = DB::table('sale_items')->find($line['id']);
+                $byProduct[$item->name] = ($byProduct[$item->name] ?? 0) - $item->unit_price * $line['quantity'];
+            }
+            $items = DB::table('sale_items')->where('sale_id', $adjustment->replacement_sale_id)->get();
+            $total = $items->sum('amount');
+            $through = 0;
+            $previous = 0;
+            foreach ($items as $item) {
+                $through += $item->amount;
+                $share = $total > 0 ? intdiv($adjustment->amount * $through, $total) : 0;
+                $byProduct[$item->name] = ($byProduct[$item->name] ?? 0) + $share - $previous;
+                $previous = $share;
             }
         }
         $branches = Branch::when($branch !== null, fn ($q) => $q->whereIn('id', (array) $branch))->get()->keyBy('id');

@@ -9,6 +9,13 @@ class AuditPresenter
     public function present(object $row): object
     {
         $actions = [
+            'bank_claim.reviewed' => 'Đối chiếu chuyển khoản riêng', 'payment.reconciled' => 'Chốt đối soát PayOS',
+            'cash_shift.closed' => 'Chốt ca thu ngân', 'purchase.received' => 'Nhập kho và ghi nhận tiền đã chi',
+            'expense.created' => 'Ghi nhận chi phí vận hành', 'payroll.created' => 'Lập bảng lương nội bộ',
+            'payroll.paid' => 'Ghi nhận đã chi lương', 'supplier.saved' => 'Lưu nhà cung cấp',
+            'sale.unpaid_return' => 'Gỡ hàng chưa thanh toán và trả kho', 'sale.exchanged' => 'Đổi hàng đã thanh toán',
+            'backup.created' => 'Tạo bản sao lưu CSDL', 'backup.downloaded' => 'Tải bản sao lưu mã hóa',
+            'media.archive' => 'Lưu tạm tệp không sử dụng', 'media.restore' => 'Khôi phục tệp lưu tạm', 'media.purge' => 'Dọn vĩnh viễn tệp hết hạn',
             'booking.created' => 'Tạo lịch sân', 'booking.rescheduled' => 'Đổi sân hoặc giờ chơi',
             'booking.payment' => 'Ghi nhận thu tiền sân', 'booking.refund' => 'Ghi nhận hoàn tiền trước đây',
             'booking.cancelled' => 'Hủy lịch chưa thanh toán', 'booking.checked_in' => 'Xác nhận khách nhận sân',
@@ -49,14 +56,14 @@ class AuditPresenter
 
     private function summarize(array $details): array
     {
-        $labels = ['amount' => 'Số tiền', 'paid_amount' => 'Đã thu', 'total_amount' => 'Tổng hóa đơn', 'total' => 'Tổng tiền', 'price' => 'Giá', 'hourly_rate' => 'Giá theo giờ', 'booking_paid' => 'Ghi vào tiền sân', 'wallet_credit' => 'Ghi vào số dư', 'method' => 'Cách thanh toán', 'reference' => 'Mã lịch', 'user_id' => 'Khách hàng', 'booking_id' => 'Lịch sân', 'branch_id' => 'Chi nhánh', 'court_id' => 'Sân', 'role' => 'Vai trò', 'status' => 'Trạng thái', 'name' => 'Tên', 'plan' => 'Gói hội viên', 'reason' => 'Lý do', 'notes' => 'Ghi chú', 'quantity' => 'Số lượng', 'delta' => 'Thay đổi tồn kho', 'balance_after' => 'Số dư sau giao dịch', 'project_id' => 'Project Google', 'provider' => 'Dịch vụ xác thực', 'starts_at' => 'Bắt đầu', 'ends_at' => 'Kết thúc', 'active' => 'Đang hoạt động', 'allowed' => 'Cho phép', 'permission' => 'Quyền', 'discount_percent' => 'Giảm giá (%)', 'deposit_percent' => 'Tiền cọc (%)', 'duration_days' => 'Thời hạn (ngày)'];
+        $labels = ['expected_cash' => 'Tiền mặt dự kiến', 'counted_cash' => 'Tiền mặt thực đếm', 'difference' => 'Chênh lệch', 'month' => 'Tháng', 'description' => 'Nội dung', 'purpose' => 'Mục đích', 'count' => 'Số mục', 'amount' => 'Số tiền', 'paid_amount' => 'Đã thu', 'total_amount' => 'Tổng hóa đơn', 'total' => 'Tổng tiền', 'price' => 'Giá', 'hourly_rate' => 'Giá theo giờ', 'booking_paid' => 'Ghi vào tiền sân', 'wallet_credit' => 'Ghi vào số dư', 'method' => 'Cách thanh toán', 'reference' => 'Mã lịch', 'user_id' => 'Khách hàng', 'booking_id' => 'Lịch sân', 'branch_id' => 'Chi nhánh', 'court_id' => 'Sân', 'role' => 'Vai trò', 'status' => 'Trạng thái', 'name' => 'Tên', 'plan' => 'Gói hội viên', 'reason' => 'Lý do', 'notes' => 'Ghi chú', 'quantity' => 'Số lượng', 'delta' => 'Thay đổi tồn kho', 'balance_after' => 'Số dư sau giao dịch', 'project_id' => 'Project Google', 'provider' => 'Dịch vụ xác thực', 'starts_at' => 'Bắt đầu', 'ends_at' => 'Kết thúc', 'active' => 'Đang hoạt động', 'allowed' => 'Cho phép', 'permission' => 'Quyền', 'discount_percent' => 'Giảm giá (%)', 'deposit_percent' => 'Tiền cọc (%)', 'duration_days' => 'Thời hạn (ngày)'];
         $values = ['cash' => 'Tiền mặt tại quầy', 'bank' => 'Chuyển khoản tại quầy', 'payos' => 'Chuyển khoản PayOS', 'wallet' => 'Số dư tài khoản', 'customer' => 'Người chơi', 'admin' => 'Quản trị viên', 'manager' => 'Quản lý chi nhánh', 'staff' => 'Nhân viên', 'cashier' => 'Thu ngân', 'confirmed' => 'Đã tạo lịch', 'cancelled' => 'Đã hủy', 'completed' => 'Đã hoàn tất', 'checked_in' => 'Đang chơi', 'firebase' => 'Google qua Firebase'];
         $summary = [];
         foreach ($details as $key => $value) {
             if (! isset($labels[$key]) || ! is_scalar($value)) {
                 continue;
             }
-            $money = in_array($key, ['amount', 'paid_amount', 'total_amount', 'total', 'price', 'hourly_rate', 'booking_paid', 'wallet_credit', 'balance_after'], true);
+            $money = in_array($key, ['expected_cash', 'counted_cash', 'difference', 'amount', 'paid_amount', 'total_amount', 'total', 'price', 'hourly_rate', 'booking_paid', 'wallet_credit', 'balance_after'], true);
             $display = $money ? number_format((int) $value, 0, ',', '.').' đ' : ($values[(string) $value] ?? mb_substr((string) $value, 0, 250));
             if (in_array($key, ['active', 'allowed'], true)) {
                 $display = $value ? 'Có' : 'Không';

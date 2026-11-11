@@ -14,6 +14,7 @@ export default function RescheduleBooking({
     const { run, toast, loading, data } = useHub();
     const [requestKey] = useState(key);
     const [wholeSeries, setWholeSeries] = useState(false);
+    const [removeCoupon, setRemoveCoupon] = useState(false);
     const [quote, setQuote] = useState<Row | null>(null),
         [quoteError, setQuoteError] = useState("");
     const [start, setStart] = useState(localDateTime(booking.starts_at)),
@@ -69,6 +70,7 @@ export default function RescheduleBooking({
                     starts_at: start,
                     ends_at: end,
                     scope: wholeSeries ? "remaining" : "single",
+                    remove_coupon: removeCoupon,
                 })
                     .then((response) => {
                         if (live) setQuote(response.data);
@@ -82,7 +84,15 @@ export default function RescheduleBooking({
             live = false;
             clearTimeout(timer);
         };
-    }, [court, start, end, selected?.id, booking.id, wholeSeries]);
+    }, [
+        court,
+        start,
+        end,
+        selected?.id,
+        booking.id,
+        wholeSeries,
+        removeCoupon,
+    ]);
     return (
         <Modal title="Đổi sân hoặc khung giờ" close={close}>
             <p className="mb-5 text-sm text-slate-500">
@@ -106,6 +116,7 @@ export default function RescheduleBooking({
                                 expected_total: quote!.booking.total_amount,
                                 expected_refund: quote!.refund_amount,
                                 scope: wholeSeries ? "remaining" : "single",
+                                remove_coupon: removeCoupon,
                             },
                         );
                         await after();
@@ -125,6 +136,19 @@ export default function RescheduleBooking({
                             Đổi tất cả buổi chưa bắt đầu trong chuỗi. Các buổi
                             giữ khoảng cách ngày hiện có và dùng giờ, sân mới đã
                             chọn.
+                        </span>
+                    </label>
+                )}
+                {booking.coupon_code && (
+                    <label className="form-field-wide flex gap-3 rounded-xl bg-amber-50 p-4">
+                        <input
+                            type="checkbox"
+                            checked={removeCoupon}
+                            onChange={(e) => setRemoveCoupon(e.target.checked)}
+                        />
+                        <span>
+                            Bỏ mã {booking.coupon_code} và tính lại giá. Nếu giữ
+                            mã, lịch mới phải đáp ứng điều kiện ưu đãi.
                         </span>
                     </label>
                 )}

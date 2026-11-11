@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import UsageGuide from "./UsageGuide";
 import RescheduleBooking from "./RescheduleBooking";
 import HistoryBrowser from "./HistoryBrowser";
@@ -206,6 +207,14 @@ export function BookingDetail({
                             key={attempt.id}
                             className="mt-4 flex flex-wrap gap-3"
                         >
+                            {attempt.review_reason && (
+                                <p className="w-full rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                                    {attempt.review_reason} Đã báo nhận:{" "}
+                                    {money(attempt.received_amount)}. Chi nhánh
+                                    sẽ đối chiếu trước khi chốt; không tạo giao
+                                    dịch khác cho cùng khoản tiền.
+                                </p>
+                            )}
                             {attempt.pay_url &&
                                 Date.parse(attempt.expires_at) > Date.now() && (
                                     <a
@@ -235,6 +244,81 @@ export function BookingDetail({
                             </button>
                         </div>
                     ))}
+            {data!.user.id === booking.user_id &&
+                data!.bank &&
+                data!.bank.mode !== "demo" &&
+                ["confirmed", "checked_in"].includes(booking.status) &&
+                booking.remaining_amount > 0 && (
+                    <button
+                        className="btn-outline mt-3"
+                        onClick={() => setForm("bank-claim")}
+                    >
+                        Gửi thông tin đã chuyển khoản
+                    </button>
+                )}
+            {receipt?.bank_claims?.map((claim: Row) => (
+                <div
+                    key={claim.id}
+                    className="mt-3 rounded-xl bg-slate-50 p-3 text-sm"
+                >
+                    <b>
+                        {money(claim.amount)} · {claim.bank_reference}
+                    </b>
+                    <p>
+                        {
+                            (
+                                {
+                                    submitted:
+                                        "Chi nhánh đang đối chiếu sao kê. Lịch chưa được xác nhận thanh toán.",
+                                    approved: "Đã xác nhận tiền vào tài khoản.",
+                                    rejected: "Chưa xác nhận được giao dịch.",
+                                } as Row
+                            )[claim.status]
+                        }
+                    </p>
+                    {claim.notes && <p>{claim.notes}</p>}
+                </div>
+            ))}
+            {form === "bank-claim" && (
+                <Editor
+                    title="Gửi thông tin chuyển khoản"
+                    description="Chỉ dùng cho chuyển khoản riêng vào tài khoản chi nhánh. Giao dịch qua PayOS được hệ thống tự kiểm tra. Nhân viên chỉ xác nhận sau khi đối chiếu sao kê."
+                    fields={[
+                        {
+                            name: "amount",
+                            label: "Số tiền đã chuyển",
+                            type: "number",
+                            required: true,
+                            min: 1000,
+                            max: 50000000,
+                        },
+                        {
+                            name: "bank_reference",
+                            label: "Mã giao dịch trên ứng dụng ngân hàng",
+                            required: true,
+                            maxLength: 100,
+                        },
+                        {
+                            name: "media_ids",
+                            label: "Ảnh xác nhận chuyển khoản (che thông tin không cần thiết)",
+                            type: "images",
+                        },
+                    ]}
+                    close={() => setForm("")}
+                    save={async (d) => {
+                        await api(
+                            "bookings/" + booking.id + "/bank-claim",
+                            "POST",
+                            { ...d, amount: Number(d.amount) },
+                        );
+                        await refreshPayment();
+                        setForm("");
+                        toast(
+                            "Đã gửi. Chi nhánh sẽ kiểm tra tiền vào tài khoản.",
+                        );
+                    }}
+                />
+            )}
             {qr && ["confirmed", "checked_in"].includes(booking.status) && (
                 <details className="my-4 rounded-2xl border border-slate-200 p-4">
                     <summary className="cursor-pointer font-bold">
@@ -257,6 +341,70 @@ export function BookingDetail({
                 </details>
             )}
             <div className="my-4 flex flex-wrap gap-2">
+                {data!.payos_enabled &&
+                    receipt?.series_payment?.sessions?.length > 1 &&
+                    (data!.user.id === booking.user_id ||
+                        data!.permissions?.["payments.write"]) && (
+                        <Card className="w-full border-emerald-200">
+                            <h3 className="font-bold">
+                                Thanh toán chuỗi lịch cố định
+                            </h3>
+                            <p className="my-3 text-sm text-slate-600">
+                                Gộp {receipt!.series_payment.sessions.length}{" "}
+                                buổi còn cần thanh toán. Số tiền được phân bổ
+                                vào từng lịch; sản phẩm và dịch vụ tính nguyên
+                                giá.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {[true, false].map((deposit) => {
+                                    const amount = deposit
+                                        ? receipt!.series_payment
+                                              .deposit_remaining
+                                        : receipt!.series_payment
+                                              .remaining_amount;
+                                    return (
+                                        amount > 0 && (
+                                            <button
+                                                key={String(deposit)}
+                                                className={
+                                                    deposit
+                                                        ? "btn-outline"
+                                                        : "btn"
+                                                }
+                                                disabled={loading}
+                                                onClick={() =>
+                                                    run(async () => {
+                                                        const r = await api(
+                                                            "payments/payos",
+                                                            "POST",
+                                                            {
+                                                                request_key:
+                                                                    key(),
+                                                                purpose:
+                                                                    "series",
+                                                                booking_id:
+                                                                    booking.id,
+                                                                deposit_only:
+                                                                    deposit,
+                                                            },
+                                                        );
+                                                        location.assign(
+                                                            r.data.pay_url,
+                                                        );
+                                                    })
+                                                }
+                                            >
+                                                {deposit
+                                                    ? "Đặt cọc cả chuỗi"
+                                                    : "Thanh toán đủ cả chuỗi"}{" "}
+                                                · {money(amount)}
+                                            </button>
+                                        )
+                                    );
+                                })}
+                            </div>
+                        </Card>
+                    )}
                 {data!.user.role !== "customer" &&
                     data!.permissions?.["bookings.write"] &&
                     ["confirmed", "checked_in"].includes(booking.status) && (
@@ -308,7 +456,11 @@ export function BookingDetail({
                     )}
                 <a
                     className="btn-outline"
-                    href={"/api/v1/bookings/" + booking.id + "/receipt.pdf"}
+                    href={
+                        appPath("/api/v1/bookings/") +
+                        booking.id +
+                        "/receipt.pdf"
+                    }
                 >
                     Tải phiếu PDF
                 </a>
@@ -419,9 +571,15 @@ export function BookingDetail({
                     {receipt.booking?.product_items?.map((i: Row) => (
                         <p className="flex justify-between text-sm" key={i.id}>
                             <span>
-                                {i.name} × {i.quantity}
+                                {i.name} × {i.net_quantity ?? i.quantity}
+                                {i.returned_quantity > 0 && (
+                                    <small>
+                                        {" "}
+                                        (đã gỡ {i.returned_quantity})
+                                    </small>
+                                )}
                             </span>
-                            <span>{money(i.amount)}</span>
+                            <span>{money(i.net_amount ?? i.amount)}</span>
                         </p>
                     ))}
                     <p className="flex justify-between text-sm">

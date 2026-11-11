@@ -14,7 +14,10 @@ class FeatureService
     public function expireBookings(): int
     {
         $expired = 0;
-        $ids = Booking::where('status', 'confirmed')->whereNotNull('payment_expires_at')->where('payment_expires_at', '<=', now())->where('paid_amount', 0)->whereColumn('paid_amount', '<', 'deposit_amount')->limit(200)->pluck('id');
+        $review = DB::table('payment_attempts')->where('status', 'pending')->whereNotNull('review_reason');
+        $ids = Booking::where('status', 'confirmed')->whereNotNull('payment_expires_at')->where('payment_expires_at', '<=', now())->where('paid_amount', 0)->whereColumn('paid_amount', '<', 'deposit_amount')
+            ->whereNotIn('id', (clone $review)->whereNotNull('booking_id')->select('booking_id'))
+            ->whereNotIn('id', DB::table('payment_attempt_bookings')->whereIn('payment_attempt_id', (clone $review)->select('id'))->select('booking_id'))->limit(200)->pluck('id');
         foreach ($ids as $id) {
             DB::transaction(function () use ($id, &$expired): void {
                 $booking = Booking::find($id);
@@ -23,7 +26,7 @@ class FeatureService
                 }
                 Court::lockForUpdate()->findOrFail($booking->court_id);
                 $booking = Booking::lockForUpdate()->findOrFail($id);
-                if ($booking->status !== 'confirmed' || $booking->paid_amount >= $booking->deposit_amount || $booking->payment_expires_at->gt(now())) {
+                if ($booking->status !== 'confirmed' || $booking->paid_amount > 0 || $booking->paid_amount >= $booking->deposit_amount || $booking->payment_expires_at->gt(now()) || app(PayosService::class)->pendingFor([$booking->id])->whereNotNull('review_reason')->exists()) {
                     return;
                 }
                 $booking->status = 'cancelled';

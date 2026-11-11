@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import { useEffect } from "react";
 import { useHub } from "./hub";
 
@@ -40,7 +41,7 @@ export default function GoogleButton({
         return (
             <a
                 className="google-button"
-                href="/auth/google"
+                href={appPath("/auth/google")}
                 aria-disabled={disabled || loading}
                 onClick={(event) => {
                     if (disabled || loading) event.preventDefault();

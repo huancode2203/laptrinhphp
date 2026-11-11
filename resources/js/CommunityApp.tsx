@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -179,7 +180,7 @@ export default function CommunityApp({
         get();
         let version = "";
         const stream = new EventSource(
-            "/api/v1/conversations/" + conversation.id + "/stream",
+            appPath("/api/v1/conversations/") + conversation.id + "/stream",
         );
         stream.addEventListener("update", (e) => {
             const next = JSON.parse((e as MessageEvent).data).version;
@@ -493,7 +494,7 @@ export default function CommunityApp({
                                 {p.images?.map((id: number) => (
                                     <img
                                         key={id}
-                                        src={"/api/v1/media/" + id}
+                                        src={appPath("/api/v1/media/") + id}
                                         alt="Ảnh bài viết"
                                         className="mb-3 max-h-52 w-full rounded-xl object-cover"
                                     />
@@ -834,6 +835,12 @@ export default function CommunityApp({
                                                             </div>
                                                         </div>
                                                     ))}
+                                                <SearchAlternatives
+                                                    rows={
+                                                        m.result?.alternatives
+                                                    }
+                                                    book={book}
+                                                />
                                                 {m.result?.checked_at && (
                                                     <p className="mt-2 text-xs text-slate-500">
                                                         Cập nhật{" "}
@@ -854,8 +861,9 @@ export default function CommunityApp({
                                                                 key={id}
                                                                 className="mt-2 block font-bold text-[#168449]"
                                                                 href={
-                                                                    "/api/v1/media/" +
-                                                                    id
+                                                                    appPath(
+                                                                        "/api/v1/media/",
+                                                                    ) + id
                                                                 }
                                                                 target="_blank"
                                                                 rel="noreferrer"
@@ -869,7 +877,9 @@ export default function CommunityApp({
                                                                             f.name
                                                                         }
                                                                         src={
-                                                                            "/api/v1/media/" +
+                                                                            appPath(
+                                                                                "/api/v1/media/",
+                                                                            ) +
                                                                             id
                                                                         }
                                                                     />
@@ -1085,7 +1095,7 @@ export default function CommunityApp({
                         <img
                             key={id}
                             className="mt-3 max-h-72 rounded-xl"
-                            src={"/api/v1/media/" + id}
+                            src={appPath("/api/v1/media/") + id}
                             alt="Ảnh trong bài"
                         />
                     ))}
@@ -1095,7 +1105,7 @@ export default function CommunityApp({
                             onClick={async () => {
                                 const url =
                                     location.origin +
-                                    "/#community/post/" +
+                                    appPath("/#community/post/") +
                                     post.id;
                                 try {
                                     if (navigator.share)
@@ -1388,3 +1398,4 @@ export default function CommunityApp({
         </div>
     );
 }
+import SearchAlternatives from "./SearchAlternatives";

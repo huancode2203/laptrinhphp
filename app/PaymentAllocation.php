@@ -17,7 +17,7 @@ class PaymentAllocation
         foreach ($booking->sales as $sale) {
             foreach ($sale->items as $item) {
                 $key = 'product:'.$item->id;
-                $items[$key] = ['key' => $key, 'kind' => 'product', 'name' => $item->name, 'amount' => (int) $item->amount];
+                $items[$key] = ['key' => $key, 'kind' => 'product', 'name' => $item->name, 'amount' => max(0, (int) $item->amount - $item->returned_quantity * $item->unit_price)];
             }
         }
         $items = $this->distribute($items, (int) $booking->total_amount);

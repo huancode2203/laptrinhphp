@@ -19,7 +19,7 @@ class ValidateApiInput
             // Cross-field date comparisons cannot safely parse arrays/objects.
             // Validate their shape first, before any endpoint compares dates.
             $rules = [];
-            foreach (['starts_at', 'ends_at', 'expires_at', 'date', 'from', 'to', 'open_time', 'close_time', 'peak_time', 'start_time', 'end_time', 'filters.date', 'filters.start_time', 'filters.end_time'] as $field) {
+            foreach (['starts_at', 'ends_at', 'expires_at', 'date', 'from', 'to', 'month', 'incurred_on', 'open_time', 'close_time', 'peak_time', 'start_time', 'end_time', 'filters.date', 'filters.start_time', 'filters.end_time'] as $field) {
                 $rules[$field] = ['sometimes', 'nullable', 'string'];
             }
             $request->validate($rules);

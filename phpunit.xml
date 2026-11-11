@@ -19,6 +19,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_URL" value="http://localhost" force="true"/>
         <env name="DEMO_ENABLED" value="false"/>
         <env name="FIREBASE_API_KEY" value="" force="true"/>
         <env name="FIREBASE_AUTH_DOMAIN" value="" force="true"/>

@@ -8,7 +8,6 @@ use App\Models\Court;
 use App\Models\CourtHold;
 use App\Models\Membership;
 use App\Models\Payment;
-use App\Models\PaymentAttempt;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\WaitlistEntry;
@@ -45,7 +44,7 @@ class BookingService
     }
 
     /** @return array<string, mixed> */
-    public function quote(Court $court, CarbonImmutable $start, CarbonImmutable $end, array $selectedServices = [], ?User $actor = null, ?string $couponCode = null, bool $fixed = false): array
+    public function quote(Court $court, CarbonImmutable $start, CarbonImmutable $end, array $selectedServices = [], ?User $actor = null, ?string $couponCode = null, bool $fixed = false, ?int $excludeBookingId = null): array
     {
         $courtAmount = 0;
         $rules = DB::table('pricing_rules')->where('branch_id', $court->branch_id)->where('active', true)->where(fn ($q) => $q->whereNull('court_id')->orWhere('court_id', $court->id))->orderByDesc('priority')->orderByDesc('id')->get();
@@ -72,7 +71,7 @@ class BookingService
             ];
         }
         $serviceAmount = array_sum(array_column($items, 'amount'));
-        $discounts = app(CommerceService::class)->discounts($actor, $courtAmount, $court->branch_id, $couponCode);
+        $discounts = app(CommerceService::class)->discounts($actor, $courtAmount, $court->branch_id, $couponCode, $excludeBookingId);
         $otherDiscount = min($courtAmount, $discounts['discount_amount']);
         $fixedDiscount = $fixed ? min($courtAmount - $otherDiscount, (int) floor($courtAmount * $court->branch->fixed_discount / 100)) : 0;
         $discount = $otherDiscount + $fixedDiscount;
@@ -241,8 +240,7 @@ class BookingService
             if ($actor->role === 'customer') {
                 abort_unless($booking->user_id === $actor->id, 403);
                 if ($booking->paid_amount > 0) {
-                    $walletPaid = $booking->payments()->where('method', 'wallet')->get()->sum(fn ($payment) => $payment->kind === 'refund' ? -$payment->amount : $payment->amount);
-                    abort_unless($walletPaid === $booking->paid_amount && $booking->starts_at->gte(now()->addHours(4)), 422, 'Lịch đã trả bằng phương thức khác hoặc còn dưới 4 tiếng cần chi nhánh hỗ trợ đổi.');
+                    abort_unless($booking->starts_at->gte(now()->addHours(4)), 422, 'Lịch còn dưới 4 tiếng cần chi nhánh hỗ trợ đổi.');
                 }
             } else {
                 $this->assertManage($actor, $court->branch_id, 'bookings.write');
@@ -259,15 +257,17 @@ class BookingService
             $this->assertManageMove($actor, $booking, $court);
             $this->assertOpen($court, $start, $end, $booking->user);
             $this->assertAvailable($court, $start, $end, $booking->id, $actor->id, $data['_series_ids'] ?? []);
-            $quote = $this->quote($court, $start, $end, [], $booking->user, null, $booking->booking_type === 'fixed');
+            if ($booking->coupon_id) {
+                Coupon::whereKey($booking->coupon_id)->lockForUpdate()->first();
+            }
+            $couponCode = ! empty($data['remove_coupon']) ? null : $booking->coupon_code;
+            $quote = $this->quote($court, $start, $end, [], $booking->user, $couponCode, $booking->booking_type === 'fixed', $booking->id);
             $quote['items'] = $booking->services->mapWithKeys(fn (Service $service) => [$service->id => ['name' => $service->pivot->name, 'quantity' => $service->pivot->quantity, 'unit_price' => $service->pivot->unit_price, 'amount' => $service->pivot->amount]])->all();
             $quote['service_amount'] = array_sum(array_column($quote['items'], 'amount'));
             $quote['total_amount'] += $quote['service_amount'];
-            if ($booking->coupon_id) {
-                throw ValidationException::withMessages(['starts_at' => 'Chức năng đổi lịch đã dùng mã ưu đãi chưa hỗ trợ tự động. Vui lòng liên hệ chi nhánh để kiểm tra giá và điều kiện mã.']);
-            }
-            abort_if(PaymentAttempt::where('booking_id', $booking->id)->where('partner_code', 'PAYOS')->where('status', 'pending')->where('expires_at', '>', now())->exists(), 409, 'Lịch đang có giao dịch chờ xác nhận. Hãy đối soát thanh toán trước khi đổi sân hoặc giờ.');
+            abort_if(app(PayosService::class)->pendingFor([$booking->id])->exists(), 409, 'Lịch đang có giao dịch chờ xác nhận. Hãy đối soát thanh toán trước khi đổi sân hoặc giờ.');
             $newTotal = $quote['total_amount'] + $booking->product_amount;
+            abort_if($newTotal > 2147483647, 422, 'Tổng hóa đơn sau khi đổi vượt giới hạn. Vui lòng liên hệ chi nhánh.');
             if (isset($data['expected_total'])) {
                 abort_if((int) $data['expected_total'] !== $newTotal, 409, 'Giá đã thay đổi. Vui lòng xem lại báo giá trước khi xác nhận.');
             }
@@ -276,7 +276,7 @@ class BookingService
             $previousCourt = $locked[$booking->court_id];
             $previous = ['court_id' => $booking->court_id, 'starts_at' => $booking->starts_at->toIso8601String(), 'ends_at' => $booking->ends_at->toIso8601String(), 'total_amount' => $booking->total_amount];
             abort_if($refund > 0 && ! $preview, 422, 'Khung giờ mới có giá thấp hơn khoản đã trả. Vui lòng chọn lịch có giá phù hợp hoặc liên hệ chi nhánh; hệ thống không xử lý hoàn tiền.');
-            $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $newTotal, 'discount_amount' => $quote['discount_amount'], 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at]);
+            $booking->fill(['court_id' => $court->id, 'starts_at' => $start, 'ends_at' => $end, 'court_amount' => $quote['court_amount'], 'service_amount' => $quote['service_amount'], 'total_amount' => $newTotal, 'discount_amount' => $quote['discount_amount'], 'coupon_id' => $quote['coupon_id'], 'coupon_code' => $couponCode, 'deposit_amount' => $booking->source === 'online' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0, 'payment_expires_at' => $booking->payment_expires_at && $start->lt($booking->payment_expires_at) ? $start : $booking->payment_expires_at]);
             if ($preview) {
                 return $booking->setRelation('court', $court);
             }

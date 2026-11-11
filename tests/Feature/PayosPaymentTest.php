@@ -68,7 +68,7 @@ class PayosPaymentTest extends TestCase
         $attempt = $this->attempt(['user_id' => $customer->id, 'purpose' => 'wallet', 'booking_id' => null]);
         $data = ['orderCode' => (int) $attempt->order_id, 'amount' => 100000, 'currency' => 'VND', 'paymentLinkId' => 'abc123', 'code' => '00'];
         $this->postJson('/api/v1/payments/payos/webhook', ['code' => '00', 'success' => true, 'data' => $data, 'signature' => str_repeat('0', 64)])->assertForbidden();
-        $wrong = [...$data, 'amount' => 99999];
+        $wrong = [...$data, 'paymentLinkId' => 'other-link'];
         $this->postJson('/api/v1/payments/payos/webhook', ['code' => '00', 'success' => true, 'data' => $wrong, 'signature' => app(PayosService::class)->sign($wrong)])->assertConflict();
         Http::fake(['*' => Http::response(['code' => '00', 'data' => ['id' => 'abc123'], 'signature' => str_repeat('0', 64)])]);
         $this->actingAs($customer)->postJson('/api/v1/payments/payos/'.$attempt->id.'/sync')->assertStatus(502);

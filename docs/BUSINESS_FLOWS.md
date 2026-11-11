@@ -1,6 +1,6 @@
 # Chức năng và cách sử dụng Badminton Hub
 
-Cập nhật 19/10/2026. Tài liệu mô tả chức năng hiện có, không đồng nhất dữ liệu môn học với một hệ thống đã vận hành thương mại.
+Cập nhật 11/11/2026. Tài liệu mô tả chức năng hiện có, không đồng nhất dữ liệu môn học với một hệ thống đã vận hành thương mại.
 
 ## Thanh toán và mã QR
 
@@ -88,3 +88,22 @@ Cập nhật 19/10/2026. Tài liệu mô tả chức năng hiện có, không đ
 - Khoản đã trả một phần nhưng chưa đủ cọc cần quầy xử lý; hệ thống không tự hủy hoặc tự hoàn khoản đó. Chuyển thừa khác số tiền link cần đối chiếu ngân hàng; bộ kiểm thử chưa thay thế thử tiền thật.
 - Không có hoàn tiền ngân hàng tự động, quản lý ca thu ngân, POS đổi/trả, quản trị khóa học nhiều buổi hay thi đấu đôi/đội đầy đủ.
 - Báo cáo phân bổ cũ có thể là ước tính; doanh thu theo ngày thu tiền, số lịch/công nợ theo ngày chơi.
+
+## Nghiệp vụ bổ sung 11/11/2026
+
+| Vai trò | Chức năng | Công dụng và cách sử dụng |
+|---|---|---|
+| Người chơi | Thanh toán cả chuỗi | Chi tiết lịch cố định → chọn cọc/trả đủ cả chuỗi, xem tổng tiền và các buổi được phân bổ. |
+| Người chơi | Chuyển khoản riêng | Gửi số tiền, mã giao dịch, ảnh nếu cần; chờ chi nhánh đối chiếu sao kê, chưa tự coi là đã thanh toán. |
+| Người chơi | Nhắc lịch ngoài app | Trong hồ sơ, tự bật email/SMS đã xác thực khi kênh gửi sẵn sàng; có thể tắt. |
+| Người chơi | Đổi lịch có ưu đãi | Giữ mã còn hợp lệ hoặc bỏ mã; xem tiền sân mới. Hàng và dịch vụ giữ nguyên giá. |
+| Thu ngân / Quản lý | Ca tiền mặt | Mở ca với tiền đầu; chốt tiền thực đếm; giải thích chênh lệch. Không tính khoản chuyển ngân hàng vào quỹ tiền mặt. |
+| Quản lý | Nhà cung cấp / nhập kho | Tạo nhà cung cấp theo chi nhánh, nhập hàng đã nhận và thanh toán; cộng kho và tính giá vốn bình quân. |
+| Quản lý | Đổi / gỡ hàng POS | Gỡ phần hàng chưa thu khỏi hóa đơn sân; đơn riêng đã thu chỉ đổi ngang/cao giá sau khi xem và thu chênh lệch. |
+| Admin / Quản lý | Đối soát | Duyệt chuyển khoản riêng bằng sao kê; PayOS chỉ chốt tiền ngân hàng xác nhận, phần thiếu vẫn còn nợ. |
+| Admin / Quản lý | Chi phí / thu chi | Lưu tiền thực chi; xem thu dịch vụ, chi vận hành và tiền nhập hàng theo kỳ, xuất PDF. |
+| Admin | Lương nội bộ | Mỗi nhân sự/tháng/chi nhánh một bảng; ghi đã chi tạo đúng một khoản chi. Không tự tính thuế, BHXH. |
+| Admin | Sao lưu / khôi phục | Mật khẩu quản trị → sao lưu mã hóa → kiểm tra. Bảo trì trước khôi phục; luôn có bản dự phòng. |
+| Admin | Tệp lưu tạm | Chỉ lưu tạm tệp cũ không còn tham chiếu; khôi phục được, dọn vĩnh viễn chỉ sau 30 ngày. |
+
+Hướng dẫn trong ứng dụng cũng có các mục mới trên, được gắn đúng không gian vai trò. Bộ test thủ công và trạng thái thử thật được ghi riêng trong TEST_CASES.csv và VALIDATION.md.

@@ -63,9 +63,12 @@ export default function BookingFlow({
     const [waitlistCourt, setWaitlistCourt] = useState<Row | null>(null);
     const b = data!.branches.find((b: Row) => b.id === Number(branch));
     useEffect(() => {
-        if (fixed || data!.user.role !== "customer")
+        if (
+            data!.user.role !== "customer" &&
+            !data!.permissions?.["payments.write"]
+        )
             setMethod((value) => (value === "payos" ? "cash" : value));
-    }, [fixed, data!.user.role]);
+    }, [data!.user.role]);
     useEffect(() => {
         if (method === "payos" && !data!.payos_enabled) setMethod("cash");
     }, [data!.payos_enabled, method]);
@@ -346,18 +349,10 @@ export default function BookingFlow({
         clearBookingDraft(data!.user.id);
 
         if (method === "payos") {
-            if (fixed) {
-                await refresh().catch(() => {});
-                toast(
-                    "Lịch cố định đã đặt. Thanh toán từng lịch trong Lịch của tôi.",
-                );
-                done(booked[0]);
-                return;
-            }
             try {
                 const p = await api("payments/" + method, "POST", {
                     request_key: key(),
-                    purpose: "booking",
+                    purpose: fixed ? "series" : "booking",
                     booking_id: booked[0].id,
                     deposit_only: depositOnly && b.deposit_percent > 0,
                 });
@@ -838,7 +833,6 @@ export default function BookingFlow({
                                 },
 
                                 ...(data!.payos_enabled &&
-                                !fixed &&
                                 (data!.user.role === "customer" ||
                                     data!.permissions?.["payments.write"])
                                     ? [

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CommerceController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\HubController;
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\PayosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecoveryController;
@@ -85,6 +87,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::post('bookings/series', [BookingController::class, 'series'])->middleware('throttle:book');
         Route::get('bookings/{booking}', [BookingController::class, 'show']);
         Route::get('bookings/{booking}/receipt', [BookingController::class, 'receipt']);
+        Route::post('bookings/{booking}/bank-claim', [OperationsController::class, 'claim'])->middleware('throttle:book');
         Route::patch('bookings/{booking}/reschedule', [BookingController::class, 'reschedule'])->middleware('throttle:book');
         Route::post('bookings/{booking}/reschedule-quote', [BookingController::class, 'rescheduleQuote'])->middleware('throttle:quote');
         Route::post('bookings/{booking}/series-cancel-quote', [BookingController::class, 'cancelSeries'])->middleware('throttle:quote');
@@ -123,6 +126,10 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::post('events/{event}/register', [EventController::class, 'register'])->middleware('throttle:book');
         Route::delete('events/{event}/register', [EventController::class, 'withdraw']);
         Route::prefix('manage')->middleware('role:admin,manager,staff,cashier')->group(function (): void {
+            Route::get('operations/choices', [OperationsController::class, 'choices']);
+            Route::get('operations/finance', [OperationsController::class, 'finance']);
+            Route::get('operations/{kind}', [OperationsController::class, 'index']);
+            Route::post('operations/{action}', [OperationsController::class, 'action'])->middleware('throttle:book');
             Route::get('hub', [HubController::class, 'manage']);
             Route::get('branches', [ManagementController::class, 'branches']);
             Route::get('calendar', [ManagementController::class, 'calendar']);
@@ -170,6 +177,13 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             });
         });
         Route::prefix('admin')->middleware('role:admin')->group(function (): void {
+            Route::get('backups', [BackupController::class, 'index']);
+            Route::post('backups', [BackupController::class, 'create'])->middleware('throttle:sensitive');
+            Route::post('backups/{reference}/download', [BackupController::class, 'download'])->whereUuid('reference')->middleware('throttle:sensitive');
+            Route::post('backups/{reference}/inspect', [BackupController::class, 'inspect'])->whereUuid('reference')->middleware('throttle:sensitive');
+            Route::post('backups/{reference}/restore', [BackupController::class, 'restore'])->whereUuid('reference')->middleware('throttle:sensitive');
+            Route::get('retention', [BackupController::class, 'retention']);
+            Route::post('retention/{action}', [BackupController::class, 'retain'])->middleware('throttle:sensitive');
             Route::get('history/{kind}', [HistoryController::class, 'index']);
 
             Route::get('integrations', [IntegrationController::class, 'integrations']);

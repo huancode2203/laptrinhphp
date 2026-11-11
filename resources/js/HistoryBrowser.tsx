@@ -1,3 +1,4 @@
+import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import { api } from "./hub";
 import { money, stamp, statusText, type Row } from "./data";
@@ -16,6 +17,7 @@ const definitions: Record<
         headers: ["Thời gian", "Mã giao dịch", "Số tiền", "Trạng thái"],
         states: [
             ["pending", "Chờ xác nhận"],
+            ["partial", "Đã nhận một phần"],
             ["paid", "Đã thanh toán"],
             ["credited", "Đã cộng ví"],
             ["failed", "Không thành công"],
@@ -107,6 +109,12 @@ export default function HistoryBrowser({
                 money(row.amount),
                 <div className="space-y-2">
                     <span>{statusText(row.status)}</span>
+                    {row.received_amount > 0 && (
+                        <p>Đã nhận: {money(row.received_amount)}</p>
+                    )}
+                    {row.review_reason && (
+                        <p className="text-amber-800">{row.review_reason}</p>
+                    )}
                     {row.status === "pending" &&
                         row.partner_code === "PAYOS" &&
                         row.pay_url &&
@@ -186,7 +194,7 @@ export default function HistoryBrowser({
                     <a
                         className="btn-outline"
                         href={
-                            "/api/v1/admin/history/audits?" +
+                            appPath("/api/v1/admin/history/audits?") +
                             new URLSearchParams({
                                 search,
                                 from,

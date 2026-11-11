@@ -62,6 +62,10 @@ class AccessService
             return true;
         }
 
+        if ($user->role === 'staff' && $permission === 'reports.read') {
+            return false;
+        }
+
         return in_array($permission, ['bookings.read', 'bookings.write', 'payments.write', 'pos.read', 'pos.write', 'courts.read', 'customers.read', 'customers.write', 'reports.read', 'support.write'], true);
     }
 

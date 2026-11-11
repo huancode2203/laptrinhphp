@@ -10,6 +10,7 @@ use App\Http\Requests\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\PaymentAttempt;
+use App\PayosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -103,7 +104,7 @@ class BookingController extends Controller
 
     public function reschedule(Request $request, Booking $booking, BookingService $engine): BookingResource|JsonResponse
     {
-        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id', 'request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'prohibited', 'refund_confirmed' => 'sometimes|boolean', 'scope' => 'sometimes|in:single,remaining']);
+        $data = $request->validate(['starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'], 'court_id' => 'sometimes|integer|exists:courts,id', 'request_key' => 'sometimes|uuid', 'expected_total' => 'sometimes|integer|min:0', 'expected_refund' => 'sometimes|integer|min:0', 'refund_method' => 'prohibited', 'refund_confirmed' => 'sometimes|boolean', 'scope' => 'sometimes|in:single,remaining', 'remove_coupon' => 'sometimes|boolean']);
         if (($data['scope'] ?? '') === 'remaining') {
             return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'move')]);
         }
@@ -113,7 +114,7 @@ class BookingController extends Controller
 
     public function rescheduleQuote(Request $request, Booking $booking, BookingService $engine): JsonResponse
     {
-        $data = $request->validate(['starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'court_id' => 'required|integer|exists:courts,id', 'scope' => 'sometimes|in:single,remaining']);
+        $data = $request->validate(['starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'court_id' => 'required|integer|exists:courts,id', 'scope' => 'sometimes|in:single,remaining', 'remove_coupon' => 'sometimes|boolean']);
         if (($data['scope'] ?? '') === 'remaining') {
             return response()->json(['data' => app(BookingSeries::class)->operate($request->user(), $booking, $data, 'move', true)]);
         }
@@ -136,7 +137,9 @@ class BookingController extends Controller
 
         return response()->json(['data' => [
             'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->whereNotIn('partner_code', ['DEMO_MOMO', 'DEMO_BANK'])->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
-            'pending_payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('partner_code', 'PAYOS')->where('status', 'pending')->get(['id', 'amount', 'status', 'expires_at', 'partner_code', 'pay_url']),
+            'pending_payment_attempts' => app(PayosService::class)->pendingFor([$booking->id])->get(['id', 'amount', 'received_amount', 'review_reason', 'purpose', 'status', 'expires_at', 'partner_code', 'pay_url']),
+            'series_payment' => app(PayosService::class)->seriesOptions($booking),
+            'bank_claims' => DB::table('bank_transfer_claims')->where('booking_id', $booking->id)->latest('id')->get(['id', 'amount', 'bank_reference', 'status', 'notes', 'created_at', 'reviewed_at']),
             'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',
             'customer' => ['name' => $booking->user->name, 'phone' => $booking->user->phone],
             'branch' => ['name' => $booking->court->branch->name, 'address' => $booking->court->branch->address],

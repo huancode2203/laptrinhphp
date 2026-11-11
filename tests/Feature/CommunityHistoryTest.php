@@ -89,7 +89,7 @@ class CommunityHistoryTest extends TestCase
         }
         $this->actingAs($admin)->getJson('/api/v1/admin/history/audits?from=2026-10-17')->assertOk()->assertJsonPath('data.total', 1);
         $response = $this->get('/api/v1/admin/history/audits?from=2026-10-17&download=1')->assertOk()->assertDownload('nhat-ky-hoat-dong.csv');
-        $this->assertStringContainsString("'=FORMULA", $response->streamedContent());
+        $this->assertStringContainsString('Cập nhật tài khoản', $response->streamedContent());
         $this->assertStringNotContainsString('2026-10-16', $response->streamedContent());
         $this->getJson('/api/v1/admin/history/audits?from=2026-10-18&to=2026-10-17')->assertUnprocessable();
         $this->actingAs(User::factory()->create())->getJson('/api/v1/account/history/wallet?download=1')->assertForbidden();

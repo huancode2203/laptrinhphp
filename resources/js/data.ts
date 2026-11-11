@@ -40,6 +40,7 @@ export const statusText = (s: string) =>
             completed: "Hoàn tất",
             cancelled: "Đã hủy",
             pending: "Chờ xác nhận",
+            partial: "Đã nhận một phần",
             accepted: "Đã duyệt",
             rejected: "Từ chối",
             withdrawn: "Đã rời",

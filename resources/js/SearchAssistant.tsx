@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import Icon from "./Icon";
+import SearchAlternatives from "./SearchAlternatives";
 import { api, useHub } from "./hub";
 import { BRANCHES, day, money, type Row } from "./data";
 export default function SearchAssistant({
@@ -219,6 +220,10 @@ export default function SearchAssistant({
             {result && (
                 <div className="mt-5" aria-live="polite">
                     <p className="font-bold">{result.message}</p>
+                    <SearchAlternatives
+                        rows={result.alternatives}
+                        book={book}
+                    />
                     {result.checked_at && (
                         <p className="mt-1 text-xs text-slate-500">
                             Kiểm tra lúc{" "}
