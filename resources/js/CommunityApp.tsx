@@ -126,6 +126,17 @@ export default function CommunityApp({
         if (!conversation) return;
         setMessages([]);
         setText("");
+        try {
+            const draft = sessionStorage.getItem(
+                "hub:support-draft:" + conversation.id,
+            );
+            if (draft) {
+                setText(draft);
+                sessionStorage.removeItem(
+                    "hub:support-draft:" + conversation.id,
+                );
+            }
+        } catch {}
         setAttachments([]);
         setMembers([]);
         setFiles([]);
@@ -660,8 +671,11 @@ export default function CommunityApp({
                                         </span>
                                     )}
                                     <p className="mt-1 truncate text-[#6d8474]">
-                                        {c.messages?.[0]?.content ??
-                                            "Bắt đầu trò chuyện"}
+                                        {c.messages?.[0]?.content ||
+                                            (c.messages?.[0]?.attachments
+                                                ?.length
+                                                ? "Đã gửi ảnh hoặc tệp đính kèm"
+                                                : "Bắt đầu trò chuyện")}
                                     </p>
                                 </button>
                             ))}
@@ -1008,7 +1022,10 @@ export default function CommunityApp({
                                                     ? 1000
                                                     : 2000
                                             }
-                                            required
+                                            required={
+                                                conversation.id === "hub-ai" ||
+                                                attachments.length === 0
+                                            }
                                             value={text}
                                             onChange={(e) => {
                                                 setText(e.target.value);

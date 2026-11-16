@@ -7,7 +7,7 @@ import Profile from "./Profile";
 import { AccountExtras } from "./FeaturePages";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { api, key, useHub } from "./hub";
+import { api, ApiError, key, useHub } from "./hub";
 import { money, stamp, statusText, type Row } from "./data";
 import { Card, Confirm, Editor, Empty, Modal, Table, cell } from "./ui";
 export function BookingDetail({
@@ -115,12 +115,14 @@ export function BookingDetail({
                     ? "· Cần quầy đối chiếu giao dịch cũ"
                     : ""}
             </p>
-            {booking.deposit_remaining > 0 && booking.payment_expires_at && (
-                <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm">
-                    Cần đặt cọc {money(booking.deposit_remaining)} trước{" "}
-                    {stamp(booking.payment_expires_at)} để giữ lịch.
-                </p>
-            )}
+            {booking.status === "confirmed" &&
+                booking.deposit_remaining > 0 &&
+                booking.payment_expires_at && (
+                    <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm">
+                        Cần đặt cọc {money(booking.deposit_remaining)} trước{" "}
+                        {stamp(booking.payment_expires_at)} để giữ lịch.
+                    </p>
+                )}
             {data!.bank &&
                 data!.bank.mode !== "demo" &&
                 ["confirmed", "checked_in"].includes(booking.status) &&
@@ -472,8 +474,16 @@ export function BookingDetail({
                                 "bookings/" + booking.id + "/conversation",
                                 "POST",
                             );
-                            location.hash = "community/chat/" + r.data.id;
+                            try {
+                                sessionStorage.setItem(
+                                    "hub:support-draft:" + r.data.id,
+                                    "Tôi cần hỗ trợ về lịch đặt sân " +
+                                        booking.reference +
+                                        ".",
+                                );
+                            } catch {}
                             close();
+                            location.hash = "community/chat/" + r.data.id;
                         })
                     }
                 >
@@ -1244,18 +1254,28 @@ export default function Account({
                                 {p.name}
                             </h2>
                             <p className="my-4 text-2xl font-bold text-[#16a34a]">
-                                {money(p.price)}
+                                {p.price === 0 && p.points_threshold > 0
+                                    ? "Hạng tích điểm"
+                                    : money(p.price)}
                             </p>
                             <p>
                                 Giảm {p.discount_percent}% phí sân ·{" "}
                                 {p.duration_days} ngày
                             </p>
-                            <button
-                                className="btn mt-5"
-                                onClick={() => setForm("plan:" + p.id)}
-                            >
-                                Mua bằng ví
-                            </button>
+                            {p.price === 0 && p.points_threshold > 0 ? (
+                                <p className="mt-5 text-sm text-slate-600">
+                                    Tự động nhận khi tích lũy{" "}
+                                    {p.points_threshold} điểm. Bạn đã tích{" "}
+                                    {data!.user.earned_points ?? 0} điểm.
+                                </p>
+                            ) : (
+                                <button
+                                    className="btn mt-5"
+                                    onClick={() => setForm("plan:" + p.id)}
+                                >
+                                    Mua bằng ví
+                                </button>
+                            )}
                         </Card>
                     ))}
                 </div>
@@ -1534,15 +1554,28 @@ export default function Account({
                 <Confirm
                     title="Kích hoạt hội viên"
                     close={() => setForm("")}
-                    action={(requestKey) =>
-                        changed(() =>
-                            api(
-                                "memberships/" + form.split(":")[1] + "/buy",
-                                "POST",
-                                { request_key: requestKey },
-                            ),
-                        )
-                    }
+                    action={async (requestKey) => {
+                        try {
+                            await changed(() =>
+                                api(
+                                    "memberships/" +
+                                        form.split(":")[1] +
+                                        "/buy",
+                                    "POST",
+                                    { request_key: requestKey },
+                                ),
+                            );
+                            toast("Đã kích hoạt gói hội viên.");
+                        } catch (failure) {
+                            if (
+                                failure instanceof ApiError &&
+                                failure.status === 422 &&
+                                failure.fields.amount
+                            )
+                                setForm("");
+                            throw failure;
+                        }
+                    }}
                 >
                     Phí gói sẽ được trừ từ ví HUB. Kiểm tra số dư trước khi xác
                     nhận.

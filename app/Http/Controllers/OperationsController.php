@@ -32,8 +32,8 @@ class OperationsController extends Controller
             $query->join('bookings', 'bookings.id', '=', 'bank_transfer_claims.booking_id')->join('courts', 'courts.id', '=', 'bookings.court_id')->join('users', 'users.id', '=', 'bank_transfer_claims.user_id')->select('bank_transfer_claims.*', 'bookings.reference', 'users.name as customer_name');
             $branchColumn = 'courts.branch_id';
         } elseif ($kind === 'reconciliations') {
-            $query->join('payment_attempts', 'payment_attempts.id', '=', 'payment_reconciliations.payment_attempt_id')->leftJoin('bookings', 'bookings.id', '=', 'payment_attempts.booking_id')->leftJoin('courts', 'courts.id', '=', 'bookings.court_id')->select('payment_reconciliations.*', 'payment_attempts.order_id as reference', 'payment_attempts.settled_amount');
-            $branchColumn = 'courts.branch_id';
+            $query->join('payment_attempts', 'payment_attempts.id', '=', 'payment_reconciliations.payment_attempt_id')->leftJoin('bookings', 'bookings.id', '=', 'payment_attempts.booking_id')->leftJoin('courts', 'courts.id', '=', 'bookings.court_id')->leftJoin('membership_payment_orders', 'membership_payment_orders.payment_attempt_id', '=', 'payment_attempts.id')->select('payment_reconciliations.*', 'payment_attempts.order_id as reference', 'payment_attempts.settled_amount');
+            $branchColumn = DB::raw('COALESCE(courts.branch_id, membership_payment_orders.branch_id)');
         }
         if (in_array($kind, ['payroll', 'shifts'], true)) {
             $query->join('users', 'users.id', '=', $table.'.user_id')->select($table.'.*', 'users.name as employee_name');
@@ -45,9 +45,9 @@ class OperationsController extends Controller
         if ($request->filled('branch_id')) {
             abort_unless(in_array((int) $data['branch_id'], $allowed, true), 403);
             if ($kind === 'reconciliations' && $request->user()->role === 'admin') {
-                $query->where(fn ($q) => $q->where($branchColumn, $data['branch_id'])->orWhereNull('payment_attempts.booking_id'));
+                $query->where(fn ($q) => $q->where($branchColumn, (int) $data['branch_id'])->orWhereNull($branchColumn));
             } else {
-                $query->where($branchColumn, $data['branch_id']);
+                $query->where($branchColumn, (int) $data['branch_id']);
             }
         } elseif ($request->user()->role !== 'admin') {
             $query->whereIn($branchColumn, $allowed);

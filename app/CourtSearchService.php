@@ -20,6 +20,9 @@ class CourtSearchService
         if (! $filters) {
             $filters = $this->parseLocal($message);
             $explicit = $filters;
+            if ($context && collect($explicit)->except('clarification')->every(fn ($value) => $value === null || $value === [])) {
+                return ['needs_clarification' => true, 'message' => 'Mình có thể tìm sân theo lịch trống thực tế. Bạn muốn đổi ngày, khung giờ, phường hoặc ngân sách nào? Ví dụ: ngày mai từ 9h đến 10h ở phường Tân Phú.', 'filters' => $context, 'courts' => [], 'mode' => 'conversation'];
+            }
             if (in_array(config('ai.search.provider'), ['openai', 'ollama'], true)) {
                 try {
                     $schema = ['type' => 'object', 'additionalProperties' => false, 'properties' => [
@@ -39,11 +42,9 @@ class CourtSearchService
                     if (preg_match('/(?:toan|ca)\s+(?:tp\.?\s*hcm|thanh pho ho chi minh)/', $this->normalize($message))) {
                         $filters['district'] = null;
                     }
-                    if (! preg_match('/\b(chieu|toi|dem|sang)\b/', $this->normalize($message))) {
-                        foreach (['start_time', 'end_time'] as $field) {
-                            if ($explicit[$field] !== null) {
-                                $filters[$field] = $explicit[$field];
-                            }
+                    foreach (['start_time', 'end_time'] as $field) {
+                        if ($explicit[$field] !== null) {
+                            $filters[$field] = $explicit[$field];
                         }
                     }
                     $mode = 'model';
@@ -149,8 +150,17 @@ class CourtSearchService
                 $date = sprintf('%04d-%02d-%02d', $year, $m[2], $m[1]);
             }
         }
-        preg_match_all('/\b(\d{1,2})\s*(?:h|gio|:)\s*(\d{2})?/', $text, $times, PREG_SET_ORDER);
-        $hours = array_map(fn ($m) => sprintf('%02d:%02d', (int) $m[1], (int) ($m[2] ?? 0)), $times);
+        preg_match_all('/\b(\d{1,2})\s*(?:h|gio|:)\s*(\d{2})?(?:\s*(sang|chieu|toi|dem))?/', $text, $times, PREG_SET_ORDER);
+        $periods = array_values(array_unique(array_filter(array_column($times, 3))));
+        $hours = array_map(function ($match) use ($periods): string {
+            $hour = (int) $match[1];
+            $period = $match[3] ?? (count($periods) === 1 ? $periods[0] : null);
+            if (($period === 'chieu' || $period === 'toi') && $hour < 12) {
+                $hour += 12;
+            }
+
+            return sprintf('%02d:%02d', $hour, (int) ($match[2] ?? 0));
+        }, $times);
         $areas = Branch::where('active', true)->get()->map(fn ($branch) => $branch->ward ?: $branch->district)->unique()->sortByDesc(fn ($area) => mb_strlen($area));
         if (preg_match('/(?:phuong|xa)\s+([^,.;!?]+)/', $text, $match)) {
             $district = trim(preg_split('/\s+(?:(?:luc|tu|vao|ngay|hom|thi|co|khong|voi|duoi|ngan|can|de|di|nhe|nha|giup|cho)\b|\d)/', $match[1], 2)[0]);

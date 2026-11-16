@@ -1,9 +1,16 @@
 import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import IntegrationPanel from "./IntegrationPanel";
+import SupportInbox from "./SupportInbox";
 import { api, useHub } from "./hub";
-import { BRANCHES, money, stamp, type Row } from "./data";
-import { Card, Editor, Empty, Table, cell, type Field } from "./ui";
+import { BRANCHES, money, stamp, statusText, type Row } from "./data";
+import { Card, Editor, Empty, Modal, Table, cell, type Field } from "./ui";
+const pageTypes: Record<string, string> = {
+    page: "Giới thiệu",
+    faq: "Câu hỏi thường gặp",
+    blog: "Bài viết",
+    job: "Tuyển dụng",
+};
 const labels: Record<string, string> = {
     "bookings.read": "Xem lịch",
     "bookings.write": "Đặt, đổi và nhận sân",
@@ -388,7 +395,16 @@ export default function AdvancedManagement({
                     <button className="btn mb-4" onClick={() => edit(tab)}>
                         + Thêm mới
                     </button>
-                    <Table headers={["Tên", "Thông tin", "Trạng thái", ""]}>
+                    <Table
+                        headers={[
+                            "Tên",
+                            tab === "pages"
+                                ? "Loại và nội dung tóm tắt"
+                                : "Chi tiết",
+                            "Trạng thái",
+                            "",
+                        ]}
+                    >
                         {(tab === "pricing"
                             ? extras.pricing
                             : tab === "coaches"
@@ -398,20 +414,33 @@ export default function AdvancedManagement({
                             <tr key={v.id}>
                                 {td(v.name ?? v.title)}
                                 {td(
-                                    tab === "pricing"
-                                        ? hm(v.from_minute) +
-                                              "–" +
-                                              hm(v.to_minute) +
-                                              " · " +
-                                              money(v.hourly_rate) +
-                                              "/giờ"
-                                        : tab === "coaches"
-                                          ? money(v.hourly_rate) + "/giờ"
-                                          : tab === "rewards"
-                                            ? v.points +
-                                              " điểm → " +
-                                              money(v.wallet_amount)
-                                            : v.slug,
+                                    tab === "pricing" ? (
+                                        hm(v.from_minute) +
+                                            "–" +
+                                            hm(v.to_minute) +
+                                            " · " +
+                                            money(v.hourly_rate) +
+                                            "/giờ"
+                                    ) : tab === "coaches" ? (
+                                        money(v.hourly_rate) + "/giờ"
+                                    ) : tab === "rewards" ? (
+                                        v.points +
+                                        " điểm → " +
+                                        money(v.wallet_amount)
+                                    ) : (
+                                        <div>
+                                            <b>
+                                                {pageTypes[v.type] ??
+                                                    "Nội dung website"}
+                                            </b>
+                                            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                                                {v.content}
+                                            </p>
+                                            <small className="text-slate-500">
+                                                Đường dẫn: {v.slug}
+                                            </small>
+                                        </div>
+                                    ),
                                 )}
                                 {td(
                                     (v.active ?? v.published)
@@ -465,6 +494,7 @@ export default function AdvancedManagement({
                             </button>
                         </Card>
                     ))}
+            {tab === "support" && <SupportInbox key={branch} branch={branch} />}
             {tab === "support" && (
                 <div className="space-y-4">
                     {tickets.map((v: Row) => (
@@ -679,7 +709,7 @@ export default function AdvancedManagement({
                             return (
                                 <tr key={u.id}>
                                     {td(u.name)}
-                                    {td(u.role)}
+                                    {td(statusText(u.role))}
                                     {td(
                                         BRANCHES.filter((b) =>
                                             ids.includes(b.id),
@@ -704,10 +734,14 @@ export default function AdvancedManagement({
                 </Table>
             )}
             {assign && (
-                <Card>
-                    <h2 className="mb-4 text-xl font-bold">
-                        Chi nhánh của {assign.name}
-                    </h2>
+                <Modal
+                    title={"Phân chi nhánh cho " + assign.name}
+                    close={() => setAssign(null)}
+                >
+                    <p className="mb-4 text-sm text-slate-600">
+                        Chọn các chi nhánh nhân sự được phép làm việc. Chi nhánh
+                        đầu tiên được chọn là chi nhánh chính.
+                    </p>
                     <div className="mb-4 flex flex-wrap gap-4">
                         {BRANCHES.map((b) => (
                             <label key={b.id}>
@@ -728,6 +762,34 @@ export default function AdvancedManagement({
                             </label>
                         ))}
                     </div>
+                    {assigned.length > 0 && (
+                        <label className="mb-5 block font-bold">
+                            Chi nhánh chính
+                            <select
+                                className="input mt-2"
+                                value={assigned[0]}
+                                onChange={(event) => {
+                                    const id = Number(event.target.value);
+                                    setAssigned([
+                                        id,
+                                        ...assigned.filter(
+                                            (value) => value !== id,
+                                        ),
+                                    ]);
+                                }}
+                            >
+                                {assigned.map((id) => (
+                                    <option key={id} value={id}>
+                                        {
+                                            BRANCHES.find(
+                                                (branch) => branch.id === id,
+                                            )?.name
+                                        }
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
                     <button
                         className="btn"
                         onClick={() =>
@@ -750,7 +812,7 @@ export default function AdvancedManagement({
                     >
                         Đóng
                     </button>
-                </Card>
+                </Modal>
             )}
             {tab === "transactions" && (
                 <>

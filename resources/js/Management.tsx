@@ -1,6 +1,7 @@
 import UsageGuide from "./UsageGuide";
 import OperationsWorkspace from "./OperationsWorkspace";
 import PosCheckout from "./PosCheckout";
+import PayosCheckout from "./PayosCheckout";
 import ManagedCourts from "./ManagedCourts";
 import CourtMatrix from "./CourtMatrix";
 import QuickBooking from "./QuickBooking";
@@ -137,6 +138,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
         [found, setFound] = useState<Row | null>(null),
         [quick, setQuick] = useState<Row | null>(null),
         [confirm, setConfirm] = useState<Row | null>(null),
+        [payosCheckout, setPayosCheckout] = useState<Row | null>(null),
         [navSearch, setNavSearch] = useState(""),
         [loadError, setLoadError] = useState(""),
         [fetching, setFetching] = useState(false);
@@ -489,16 +491,26 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 name: "plan_id",
                 label: "Gói hội viên",
                 required: true,
-                options: data!.plans.map((p: Row) => ({
-                    value: p.id,
-                    label: p.name + " · " + money(p.price),
-                })),
+                options: data!.plans
+                    .filter(
+                        (p: Row) => !(p.price === 0 && p.points_threshold > 0),
+                    )
+                    .map((p: Row) => ({
+                        value: p.id,
+                        label: p.name + " · " + money(p.price),
+                    })),
             },
             {
                 name: "method",
-                label: "Phương thức đã thu",
+                label: "Phương thức thanh toán",
                 required: true,
-                options: opts(["cash", "bank"]),
+                options: [
+                    { value: "cash", label: "Đã thu tiền mặt tại quầy" },
+                    {
+                        value: "bank",
+                        label: "Chuyển khoản qua PayOS (chờ thanh toán)",
+                    },
+                ],
             },
         ],
         payment: [
@@ -616,6 +628,10 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 }));
         }
         const r = await api(path, method, d);
+        if (kind === "membership" && r.checkout_required) {
+            setPayosCheckout(r.data);
+            return;
+        }
         if (kind === "sale") {
             setSale(r.data);
             setCart({});
@@ -1665,9 +1681,30 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                 <button
                                                     className="btn-outline text-xs"
                                                     onClick={() =>
-                                                        edit("membership", {
-                                                            id: c.id,
-                                                            method: "cash",
+                                                        run(async () => {
+                                                            const pending =
+                                                                await api(
+                                                                    "manage/users/" +
+                                                                        c.id +
+                                                                        "/membership-payments?branch_id=" +
+                                                                        branch,
+                                                                );
+                                                            if (
+                                                                pending.data
+                                                                    .length
+                                                            )
+                                                                setPayosCheckout(
+                                                                    pending
+                                                                        .data[0],
+                                                                );
+                                                            else
+                                                                edit(
+                                                                    "membership",
+                                                                    {
+                                                                        id: c.id,
+                                                                        method: "cash",
+                                                                    },
+                                                                );
                                                         })
                                                     }
                                                 >
@@ -2046,7 +2083,40 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                         }}
                     />
                 )}
+                {payosCheckout && (
+                    <PayosCheckout
+                        key={payosCheckout.id}
+                        initial={payosCheckout}
+                        close={() => setPayosCheckout(null)}
+                        changed={async () => {
+                            await load();
+                            await refresh();
+                        }}
+                    />
+                )}
+                {editing && editing.kind === "checkin" && (
+                    <Modal
+                        title="Nhận sân bằng QR"
+                        close={() => setEditing(null)}
+                    >
+                        <Suspense
+                            fallback={<Empty text="Đang mở máy quét QR…" />}
+                        >
+                            <QRScanner
+                                found={async (token) => {
+                                    await api("manage/checkin", "POST", {
+                                        token,
+                                    });
+                                    setEditing(null);
+                                    await load();
+                                    toast("Đã nhận sân.");
+                                }}
+                            />
+                        </Suspense>
+                    </Modal>
+                )}
                 {editing &&
+                    editing.kind !== "checkin" &&
                     (editing.kind === "sale" ? (
                         <PosCheckout
                             branch={branch}

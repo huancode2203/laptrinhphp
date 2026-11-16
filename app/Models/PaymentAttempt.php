@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PaymentAttempt extends Model
 {
     use HasFactory;
+
+    protected $appends = ['qr_code'];
+
+    protected function qrCode(): Attribute
+    {
+        return Attribute::get(fn (): ?string => json_decode(base64_decode($this->extra_data ?? ''), true)['qr_code'] ?? null);
+    }
 
     protected function casts(): array
     {

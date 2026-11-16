@@ -49,13 +49,18 @@ class PayosService
                 $existing = PaymentAttempt::where('request_key', $data['request_key'])->first();
                 if ($existing) {
                     $extra = json_decode(base64_decode($existing->extra_data), true);
-                    abort_unless($existing->partner_code === 'PAYOS' && $existing->user_id === $user->id && $existing->purpose === $data['purpose'] && $existing->booking_id === (isset($data['booking_id']) ? (int) $data['booking_id'] : null) && ($extra['deposit_only'] ?? false) === (bool) ($data['deposit_only'] ?? false) && (in_array($existing->purpose, ['booking', 'series'], true) || $existing->amount === (int) $data['amount']), 409, 'Yêu cầu này đã dùng cho một giao dịch khác.');
+                    $sameMembership = $existing->purpose === 'membership' && DB::table('membership_payment_orders')->where('payment_attempt_id', $existing->id)->where('membership_plan_id', $data['membership_plan_id'] ?? 0)->where('branch_id', $data['branch_id'] ?? 0)->where('initiated_by', $data['actor_id'] ?? 0)->exists();
+                    abort_unless($existing->partner_code === 'PAYOS' && $existing->user_id === $user->id && $existing->purpose === $data['purpose'] && $existing->booking_id === (isset($data['booking_id']) ? (int) $data['booking_id'] : null) && ($extra['deposit_only'] ?? false) === (bool) ($data['deposit_only'] ?? false) && (in_array($existing->purpose, ['booking', 'series'], true) || $sameMembership || ($existing->purpose === 'wallet' && $existing->amount === (int) ($data['amount'] ?? 0))), 409, 'Yêu cầu này đã dùng cho một giao dịch khác.');
 
                     return $existing;
                 }
                 $booking = null;
                 $allocations = [];
                 $amount = (int) ($data['amount'] ?? 0);
+                $membership = $data['purpose'] === 'membership' ? app(MembershipCheckout::class)->prepare($owner, $data) : null;
+                if ($membership) {
+                    $amount = $membership['amount'];
+                }
                 if (in_array($data['purpose'], ['booking', 'series'], true)) {
                     $booking = Booking::lockForUpdate()->findOrFail($data['booking_id']);
                     abort_unless($booking->user_id === $user->id, 403);
@@ -91,6 +96,10 @@ class PayosService
                 foreach ($allocations as $id => $due) {
                     DB::table('payment_attempt_bookings')->insert(['payment_attempt_id' => $attempt->id, 'booking_id' => $id, 'amount' => $due]);
                 }
+                if ($membership) {
+                    $attempt->update(['order_info' => 'Gói hội viên '.$membership['plan_name']]);
+                    DB::table('membership_payment_orders')->insert(collect($membership)->except('amount')->all() + ['payment_attempt_id' => $attempt->id, 'created_at' => now(), 'updated_at' => now()]);
+                }
 
                 return $attempt;
             }, 5);
@@ -116,7 +125,7 @@ class PayosService
             $url = $reply['checkoutUrl'] ?? '';
             abort_unless(is_string($url) && parse_url($url, PHP_URL_SCHEME) === 'https' && parse_url($url, PHP_URL_HOST) === 'pay.payos.vn', 502, 'Đường dẫn thanh toán PayOS không hợp lệ.');
             $extra = json_decode(base64_decode($attempt->extra_data), true);
-            $attempt->update(['pay_url' => $url, 'extra_data' => base64_encode(json_encode([...$extra, 'payment_link_id' => $reply['paymentLinkId'] ?? '']))]);
+            $attempt->update(['pay_url' => $url, 'extra_data' => base64_encode(json_encode([...$extra, 'payment_link_id' => $reply['paymentLinkId'] ?? '', 'qr_code' => is_string($reply['qrCode'] ?? null) ? $reply['qrCode'] : null]))]);
 
             return $attempt->refresh();
         });

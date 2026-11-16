@@ -618,10 +618,13 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                                             ? statusText(
                                                                   row.role,
                                                               )
-                                                            : money(
-                                                                  row.price ??
-                                                                      row.value,
-                                                              ))}
+                                                            : row.kind ===
+                                                                "percent"
+                                                              ? row.value + "%"
+                                                              : money(
+                                                                    row.price ??
+                                                                        row.value,
+                                                                ))}
                                                 </td>
                                                 <td className={cell}>
                                                     {row.active

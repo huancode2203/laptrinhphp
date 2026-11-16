@@ -26,6 +26,34 @@ function Test-LocalPort([int] $Port) {
 }
 do {
 try {
+if (!(Test-LocalPort 11434)) {
+    $workspacePath = Split-Path (Split-Path $projectPath -Parent) -Parent
+    $ollamaPath = Join-Path $workspacePath 'work\ollama'
+    $ollamaExecutable = Join-Path $ollamaPath 'runtime\ollama.exe'
+    $ollamaModels = Join-Path $ollamaPath 'models'
+    if ((Test-Path -LiteralPath $ollamaExecutable) -and (Test-Path -LiteralPath $ollamaModels)) {
+        $aiEnvironment = @{
+            OLLAMA_MODELS = $ollamaModels
+            OLLAMA_HOST = '127.0.0.1:11434'
+            OLLAMA_NO_CLOUD = 'true'
+            OLLAMA_NUM_PARALLEL = '1'
+            OLLAMA_MAX_LOADED_MODELS = '1'
+            OLLAMA_CONTEXT_LENGTH = '4096'
+        }
+        $previousEnvironment = @{}
+        try {
+            foreach ($name in $aiEnvironment.Keys) {
+                $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+                [Environment]::SetEnvironmentVariable($name, $aiEnvironment[$name], 'Process')
+            }
+            Start-Process -FilePath $ollamaExecutable -ArgumentList 'serve' -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runtimePath 'ollama-out.log') -RedirectStandardError (Join-Path $runtimePath 'ollama-error.log')
+        } finally {
+            foreach ($name in $previousEnvironment.Keys) {
+                [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
+            }
+        }
+    }
+}
 if (!(Test-LocalPort 3306)) {
     Start-Process -FilePath $mysqlPath -ArgumentList '--defaults-file=C:\laragon\bin\mysql\mysql-8.4.3-winx64\my.ini','--bind-address=127.0.0.1' -WindowStyle Hidden
     for ($attempt = 0; $attempt -lt 10 -and !(Test-LocalPort 3306); $attempt++) { Start-Sleep -Seconds 1 }

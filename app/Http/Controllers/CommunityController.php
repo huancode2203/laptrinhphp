@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\AccessService;
 use App\BookingService;
 use App\FeatureService;
+use App\Models\Booking;
 use App\Models\ChatMessage;
 use App\Models\CommunityPost;
 use App\Models\Conversation;
@@ -263,7 +264,13 @@ class CommunityController extends Controller
 
     public function conversations(Request $request): JsonResponse
     {
-        $items = app(AccessService::class)->conversations($request->user())->with(['members:id,name,skill_level,last_seen_at,avatar_path', 'messages' => fn ($q) => $q->latest('id')->limit(1)])->latest('updated_at')->get()->filter(function ($conversation) use ($request) {
+        $data = $request->validate(['support_branch_id' => 'sometimes|required|integer|exists:branches,id']);
+        $query = app(AccessService::class)->conversations($request->user());
+        if (isset($data['support_branch_id'])) {
+            app(BookingService::class)->assertManage($request->user(), (int) $data['support_branch_id'], 'support.write');
+            $query->whereIn('booking_id', Booking::whereHas('court', fn ($q) => $q->where('branch_id', $data['support_branch_id']))->select('id'));
+        }
+        $items = $query->with(['members:id,name,skill_level,last_seen_at,avatar_path', 'messages' => fn ($q) => $q->latest('id')->limit(1)])->latest('updated_at')->get()->filter(function ($conversation) use ($request) {
             $pivot = $conversation->members->firstWhere('id', $request->user()->id)->pivot;
 
             return ! $pivot->hidden_at || ($conversation->messages->first()?->id ?? 0) > $pivot->cleared_through_id;
@@ -271,6 +278,9 @@ class CommunityController extends Controller
             $cutoff = $conversation->members->firstWhere('id', $request->user()->id)->pivot->cleared_through_id;
             $conversation->setRelation('messages', $conversation->messages->filter(fn ($message) => $message->id > $cutoff)->values());
             $conversation->members->each(fn ($member) => $member->pivot->makeHidden(['hidden_at', 'cleared_through_id']));
+            if ($conversation->direct_key) {
+                $conversation->title = $conversation->members->first(fn ($member) => $member->id !== $request->user()->id)?->name ?? 'Cuộc trò chuyện';
+            }
 
             return $conversation;
         })->values();
@@ -295,12 +305,18 @@ class CommunityController extends Controller
             return $conversation;
         }, 5);
 
+        $conversation->title = $peer->name;
+
         return response()->json(['data' => $conversation]);
     }
 
     private function assertMember(Request $request, Conversation $conversation): void
     {
         abort_unless(app(AccessService::class)->conversations($request->user())->whereKey($conversation->id)->exists(), 403);
+        if ($conversation->booking_id && $request->user()->role !== 'customer') {
+            $booking = Booking::with('court')->findOrFail($conversation->booking_id);
+            app(BookingService::class)->assertManage($request->user(), $booking->court->branch_id, 'support.write');
+        }
     }
 
     public function messages(Request $request, Conversation $conversation): JsonResponse
@@ -332,7 +348,8 @@ class CommunityController extends Controller
             $peers = $conversation->members()->where('users.id', '!=', $request->user()->id)->pluck('users.id');
             abort_if(DB::table('blocked_users')->where(fn ($q) => $q->where('user_id', $request->user()->id)->whereIn('blocked_id', $peers))->orWhere(fn ($q) => $q->whereIn('user_id', $peers)->where('blocked_id', $request->user()->id))->exists(), 403, 'Không thể gửi tin nhắn cho tài khoản đã chặn.');
         }
-        $data = $request->validate(['request_key' => ['required', 'uuid'], 'content' => ['required', 'string', 'max:2000'], 'attachments' => 'sometimes|array|list|max:4', 'attachments.*' => 'integer|distinct|exists:media_uploads,id']);
+        $data = $request->validate(['request_key' => ['required', 'uuid'], 'content' => ['nullable', 'required_without:attachments', 'string', 'max:2000'], 'attachments' => 'sometimes|array|list|max:4', 'attachments.*' => 'integer|distinct|exists:media_uploads,id']);
+        $data['content'] = $data['content'] ?? '';
         if (isset($data['attachments'])) {
             $data['attachments'] = array_map('intval', $data['attachments']);
         }

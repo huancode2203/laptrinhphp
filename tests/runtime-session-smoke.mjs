@@ -1,10 +1,22 @@
-// Run against a local Laragon instance containing the documented demo accounts.
+import { readFile } from "node:fs/promises";
+
+// Use HUB_TEST_CREDENTIALS_FILE for accounts secured after deployment.
 // Unlike in-process PHP tests, this exercises concurrent Apache/PHP requests.
 const base = process.env.HUB_TEST_URL || "http://127.0.0.1:8088";
 if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(base).hostname)) {
     throw new Error("This check only accepts a local demo instance.");
 }
 let checks = 0;
+let customerId = null;
+const credentials = new Map();
+if (process.env.HUB_TEST_CREDENTIALS_FILE) {
+    for (const line of (
+        await readFile(process.env.HUB_TEST_CREDENTIALS_FILE, "utf8")
+    ).split(/\r?\n/)) {
+        const parts = line.split(" · ");
+        if (parts.length === 4) credentials.set(parts[2], parts[3]);
+    }
+}
 for (const role of ["customer", "manager", "staff", "cashier", "admin"]) {
     const cookies = new Map();
     async function request(path, method = "GET", body, token = "") {
@@ -30,14 +42,16 @@ for (const role of ["customer", "manager", "staff", "cashier", "admin"]) {
         return response.json();
     }
     const csrf = (await request("csrf")).csrf_token;
-    await request(
-        "login",
-        "POST",
-        { email: role + "@badminton.test", password: "Demo@12345" },
-        csrf,
-    );
+    const email = role + "@badminton.test";
+    const password = process.env.HUB_TEST_CREDENTIALS_FILE
+        ? credentials.get(email)
+        : "Demo@12345";
+    if (!password)
+        throw new Error("Missing private credentials for role " + role);
+    await request("login", "POST", { email, password }, csrf);
     const hub = (await request("hub")).data;
     if (hub.user?.role !== role) throw new Error("Unexpected signed-in role");
+    if (role === "customer") customerId = hub.user.id;
     const branch =
         hub.user.branch_id ?? hub.managed_branch_ids[0] ?? hub.branches[0].id;
     const paths = [
@@ -56,6 +70,16 @@ for (const role of ["customer", "manager", "staff", "cashier", "admin"]) {
             "manage/features?branch_id=" + branch,
         );
     if (role === "admin") paths.push("admin/hub");
+    if (role !== "customer" && hub.permissions?.["support.write"])
+        paths.push("conversations?support_branch_id=" + branch);
+    if (role !== "customer" && hub.permissions?.["payments.write"])
+        paths.push(
+            "manage/users/" +
+                customerId +
+                "/membership-payments?branch_id=" +
+                branch,
+            "manage/operations/reconciliations?branch_id=" + branch,
+        );
     for (let round = 0; round < 3; round++) {
         const results = await Promise.all(paths.map((path) => request(path)));
         if (

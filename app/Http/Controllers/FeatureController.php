@@ -32,11 +32,11 @@ class FeatureController extends Controller
     public function bookingChat(Request $r, Booking $booking): JsonResponse
     {
         if ($booking->user_id !== $r->user()->id) {
-            app(BookingService::class)->assertManage($r->user(), $booking->court->branch_id);
+            app(BookingService::class)->assertManage($r->user(), $booking->court->branch_id, 'support.write');
         }
-        $conversation = DB::transaction(function () use ($r, $booking): Conversation {
+        $conversation = DB::transaction(function () use ($booking): Conversation {
             Booking::whereKey($booking->id)->lockForUpdate()->firstOrFail();
-            $c = Conversation::firstOrCreate(['booking_id' => $booking->id], ['title' => 'Hỗ trợ '.$booking->reference, 'type' => 'support', 'created_by' => $r->user()->id]);
+            $c = Conversation::firstOrCreate(['booking_id' => $booking->id], ['title' => 'Hỗ trợ '.$booking->reference]);
             $staff = User::where('active', true)->whereIn('role', ['admin', 'manager', 'staff', 'cashier'])->get()->filter(fn ($u) => app(AccessService::class)->manages($u, $booking->court->branch_id))->pluck('id')->all();
             $c->members()->syncWithoutDetaching(array_unique([$booking->user_id, ...$staff]));
 

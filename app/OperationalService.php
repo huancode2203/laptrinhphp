@@ -67,6 +67,10 @@ class OperationalService
         $attempt = PaymentAttempt::findOrFail($row->payment_attempt_id);
         if ($attempt->booking_id) {
             app(BookingService::class)->assertManage($actor, $attempt->booking->court->branch_id, 'payments.write');
+        } elseif ($attempt->purpose === 'membership') {
+            $branch = app(MembershipCheckout::class)->branch($attempt);
+            abort_unless($branch, 403);
+            app(BookingService::class)->assertManage($actor, $branch, 'payments.write');
         } else {
             abort_unless($actor->role === 'admin', 403);
         }

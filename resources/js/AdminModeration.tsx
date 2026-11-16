@@ -314,10 +314,14 @@ export default function AdminModeration({
                     close={() => setEditing(null)}
                     save={async (values) => {
                         if (editing.decision === "hidden")
-                            await api("admin/posts/" + editing.id, "PATCH", {
-                                status: "hidden",
-                                reason: values.reason,
-                            });
+                            await api(
+                                "admin/posts/" + editing.id + "/status",
+                                "PATCH",
+                                {
+                                    status: "hidden",
+                                    reason: values.reason,
+                                },
+                            );
                         else
                             await api(
                                 "admin/posts/" + editing.id + "/moderation",

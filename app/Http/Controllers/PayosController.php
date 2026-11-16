@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\BookingService;
+use App\MembershipCheckout;
 use App\Models\Booking;
 use App\Models\PaymentAttempt;
 use App\PayosService;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PayosController extends Controller
 {
@@ -46,6 +48,17 @@ class PayosController extends Controller
         return response()->json(['data' => $payos->sync($attempt, true)]);
     }
 
+    public function resumeMembership(Request $request, PaymentAttempt $attempt, PayosService $payos): JsonResponse
+    {
+        $this->authorizeAttempt($request, $attempt);
+        abort_unless($attempt->purpose === 'membership' && $attempt->status === 'pending' && $attempt->expires_at->isFuture(), 422, 'Giao dịch không còn chờ thanh toán. Kiểm tra trạng thái hoặc tạo giao dịch mới.');
+        $order = DB::table('membership_payment_orders')->where('payment_attempt_id', $attempt->id)->first();
+        abort_unless($order, 409, 'Chưa có thông tin gói hội viên để tiếp tục thanh toán.');
+        $resumed = $payos->create($attempt->user, ['request_key' => $attempt->request_key, 'purpose' => 'membership', 'membership_plan_id' => $order->membership_plan_id, 'branch_id' => $order->branch_id, 'actor_id' => $order->initiated_by]);
+
+        return response()->json(['data' => $resumed]);
+    }
+
     public function webhook(Request $request, PayosService $payos): JsonResponse
     {
         $data = $request->validate(['code' => 'required|string', 'success' => 'required|boolean', 'data' => 'required|array', 'data.orderCode' => 'required|integer|min:1', 'data.amount' => 'required|integer|min:0', 'signature' => 'required|string|size:64']);
@@ -71,7 +84,7 @@ class PayosController extends Controller
         $attempt = is_string($order) && ctype_digit($order) ? PaymentAttempt::where('partner_code', 'PAYOS')->where('order_id', $order)->first() : null;
 
         if (! $attempt || ! $request->user()) {
-            return redirect('/#auth');
+            return redirect()->away(rtrim(config('app.url'), '/').'/#auth');
         }
         $this->authorizeAttempt($request, $attempt);
         try {
@@ -80,15 +93,22 @@ class PayosController extends Controller
             $request->session()->flash('auth_notice', 'Chưa kiểm tra được kết quả chuyển khoản. Mở lịch thanh toán và chọn kiểm tra trạng thái để cập nhật.');
         }
         if ($request->user()->role !== 'customer') {
-            return redirect('/#'.($request->user()->role === 'admin' ? 'admin/payments' : 'manage/bookings'));
+            return redirect()->away(rtrim(config('app.url'), '/').'/#'.($request->user()->role === 'admin' ? 'admin/payments' : ($attempt->purpose === 'membership' ? 'manage/customers' : 'manage/bookings')));
         }
 
-        return redirect('/#account/'.($attempt->booking_id ? 'bookings/'.$attempt->booking_id : 'wallet'));
+        return redirect()->away(rtrim(config('app.url'), '/').'/#account/'.($attempt->booking_id ? 'bookings/'.$attempt->booking_id : ($attempt->purpose === 'membership' ? 'membership' : 'wallet')));
     }
 
     private function authorizeAttempt(Request $request, PaymentAttempt $attempt): void
     {
         if ($attempt->user_id === $request->user()->id) {
+            return;
+        }
+        if ($attempt->purpose === 'membership' && $request->user()->role !== 'customer') {
+            $branch = app(MembershipCheckout::class)->branch($attempt);
+            abort_unless($branch, 403);
+            app(BookingService::class)->assertManage($request->user(), $branch, 'payments.write');
+
             return;
         }
         abort_unless($attempt->booking_id && $request->user()->role !== 'customer', 403);

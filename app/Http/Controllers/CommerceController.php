@@ -11,11 +11,13 @@ use App\Models\Coupon;
 use App\Models\Court;
 use App\Models\CourtHold;
 use App\Models\MembershipPlan;
+use App\Models\PaymentAttempt;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Sale;
 use App\Models\User;
 use App\Models\WaitlistEntry;
+use App\PayosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -92,6 +94,7 @@ class CommerceController extends Controller
 
     public function buyMembership(Request $request, MembershipPlan $plan, CommerceService $commerce): JsonResponse
     {
+        abort_if($plan->price === 0 && $plan->points_threshold > 0, 422, 'Hạng tích điểm được hệ thống tự động cấp khi đủ điểm, không cần mua bằng ví.');
         abort_if($plan->points_threshold > $request->user()->earned_points, 422, 'Chưa đủ điểm để nhận hạng hội viên này.');
         $data = $request->validate(['request_key' => ['required', 'uuid']]);
         $data['method'] = 'wallet';
@@ -102,10 +105,27 @@ class CommerceController extends Controller
     public function activateMembership(Request $request, User $user, CommerceService $commerce, BookingService $engine): JsonResponse
     {
         $data = $request->validate(['request_key' => ['required', 'uuid'], 'plan_id' => ['required', 'integer', 'exists:membership_plans,id'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'method' => ['required', Rule::in(['cash', 'bank'])]]);
-        $engine->assertManage($request->user(), (int) $data['branch_id']);
+        $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
         abort_unless($user->role === 'customer', 422);
+        $plan = MembershipPlan::findOrFail($data['plan_id']);
+        abort_if($plan->price === 0 && $plan->points_threshold > 0, 422, 'Hạng tích điểm được hệ thống tự động cấp, không bán tại quầy.');
+        abort_if($plan->points_threshold > $user->earned_points, 422, 'Khách hàng chưa đủ điểm để mua gói hội viên này.');
+        if ($data['method'] === 'bank') {
+            $attempt = app(PayosService::class)->create($user, ['purpose' => 'membership', 'request_key' => $data['request_key'], 'membership_plan_id' => $plan->id, 'branch_id' => $data['branch_id'], 'actor_id' => $request->user()->id]);
 
-        return response()->json(['data' => $commerce->membership($request->user(), $user, MembershipPlan::findOrFail($data['plan_id']), $data)]);
+            return response()->json(['data' => $attempt, 'checkout_required' => true]);
+        }
+
+        return response()->json(['data' => $commerce->membership($request->user(), $user, $plan, $data)]);
+    }
+
+    public function membershipPayments(Request $request, User $user, BookingService $engine): JsonResponse
+    {
+        $data = $request->validate(['branch_id' => 'required|integer|exists:branches,id']);
+        $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
+        $attempts = PaymentAttempt::where('user_id', $user->id)->where('purpose', 'membership')->where('status', 'pending')->where(fn ($q) => $q->where('expires_at', '>', now())->orWhereNotNull('review_reason'))->whereIn('id', DB::table('membership_payment_orders')->where('branch_id', $data['branch_id'])->select('payment_attempt_id'))->latest('id')->limit(10)->get();
+
+        return response()->json(['data' => $attempts]);
     }
 
     public function saveProduct(Request $request, BookingService $engine, ?Product $product = null): JsonResponse

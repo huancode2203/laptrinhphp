@@ -46,7 +46,7 @@ class PaymentSettlement
                 $allocations = DB::table('payment_attempt_bookings')->where('payment_attempt_id', $a->id)->get();
             }
             $available = $delta;
-            $paid = 0;
+            $paid = $a->purpose === 'membership' ? app(MembershipCheckout::class)->allocate($a, $owner, $received, $previous) : 0;
             foreach ($allocations as $allocation) {
                 $booking = Booking::lockForUpdate()->findOrFail($allocation->booking_id);
                 abort_unless($booking->user_id === $owner->id, 409, 'Chủ lịch không khớp giao dịch ngân hàng.');
@@ -64,14 +64,22 @@ class PaymentSettlement
                     $available -= $portion;
                 }
             }
+            $unfulfilledMembership = $a->purpose === 'membership' && ! DB::table('membership_payment_orders')->where('payment_attempt_id', $a->id)->whereNotNull('membership_id')->exists();
             $extra = $delta - $paid;
             if ($extra > 0) {
                 $walletKey = $previous > 0 ? (string) Uuid::uuid5($a->request_key, 'payos-additional-'.$received) : ($paid > 0 ? (string) Uuid::uuid5($a->request_key, 'momo-excess') : $a->request_key);
-                app(CommerceService::class)->wallet($owner, $owner, $extra, 'payos_topup', $walletKey, $a->booking_id ? 'Số tiền chuyển dư hoặc đến sau khi lịch thay đổi' : 'Nạp ví bằng chuyển khoản', null, 'payment_attempt', $a->id);
+                $description = match (true) {
+                    $a->purpose !== 'membership' => $a->booking_id ? 'Số tiền chuyển dư hoặc đến sau khi lịch thay đổi' : 'Nạp ví bằng chuyển khoản',
+                    ! $unfulfilledMembership => 'Số tiền chuyển dư khi mua hội viên được cộng vào ví HUB',
+                    $a->status === 'failed' => 'Tiền đến sau khi giao dịch mua hội viên đã hủy được giữ trong ví HUB',
+                    $received < $a->amount => 'Tiền chuyển thiếu cho gói hội viên đã được chi nhánh kiểm tra và cộng vào ví HUB',
+                    default => 'Tiền chuyển bổ sung của giao dịch hội viên đã được cộng vào ví HUB',
+                };
+                app(CommerceService::class)->wallet($owner, $owner, $extra, 'payos_topup', $walletKey, $description, null, 'payment_attempt', $a->id);
             }
-            $a->forceFill(['status' => $received < $a->amount ? 'partial' : ($a->booking_id && $paid === 0 && $previous === 0 ? 'credited' : 'paid'), 'trans_id' => $transId, 'result_code' => 0, 'received_amount' => $received, 'settled_amount' => $received, 'review_reason' => null])->save();
+            $a->forceFill(['status' => $received < $a->amount ? 'partial' : ($unfulfilledMembership || ($a->booking_id && $paid === 0 && $previous === 0) ? 'credited' : 'paid'), 'trans_id' => $transId, 'result_code' => 0, 'received_amount' => $received, 'settled_amount' => $received, 'review_reason' => null])->save();
             DB::table('payment_reconciliations')->where('payment_attempt_id', $a->id)->where('status', 'pending')->update(['status' => 'resolved', 'received_amount' => $received, 'resolved_at' => now(), 'updated_at' => now()]);
-            app(BookingService::class)->audit($owner, 'payos.received', $a->id, ['amount' => $delta, 'trans_id' => $transId, 'booking_paid' => $paid, 'wallet_credit' => $extra], 'payment_attempt');
+            app(BookingService::class)->audit($owner, 'payos.received', $a->id, ['amount' => $delta, 'trans_id' => $transId, 'booking_paid' => $a->purpose === 'membership' ? 0 : $paid, 'membership_paid' => $a->purpose === 'membership' ? $paid : 0, 'wallet_credit' => $extra], 'payment_attempt');
             $owner->notify(new HubNotification(['type' => 'payment.received', 'title' => 'Đã ghi nhận chuyển khoản', 'body' => 'Đã ghi nhận '.number_format($delta, 0, ',', '.').'đ'.($extra > 0 ? ', trong đó '.number_format($extra, 0, ',', '.').'đ vào số dư HUB.' : '.')]));
         }, 5);
     }

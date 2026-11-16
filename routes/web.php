@@ -105,6 +105,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::delete('waitlist/{entry}', [CommerceController::class, 'cancelWaitlist']);
         Route::post('payments/payos', [PayosController::class, 'create'])->middleware('throttle:book');
         Route::post('payments/payos/{attempt}/sync', [PayosController::class, 'sync'])->middleware('throttle:sensitive');
+        Route::post('payments/payos/{attempt}/resume-membership', [PayosController::class, 'resumeMembership'])->middleware('throttle:sensitive');
         Route::post('community/posts', [CommunityController::class, 'save'])->middleware('throttle:book');
         Route::put('community/posts/{post}', [CommunityController::class, 'save']);
         Route::post('community/posts/{post}/join', [CommunityController::class, 'join']);
@@ -149,6 +150,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
             Route::post('bookings/{booking}/services', [BookingController::class, 'services'])->middleware('throttle:book');
             Route::post('users/{user}/topup', [CommerceController::class, 'topup']);
             Route::post('users/{user}/membership', [CommerceController::class, 'activateMembership']);
+            Route::get('users/{user}/membership-payments', [CommerceController::class, 'membershipPayments']);
             Route::post('sales', [CommerceController::class, 'sale']);
             Route::get('sales/open-bookings', [ManagementController::class, 'posBookings']);
             Route::get('sales/{sale}/receipt', [CommerceController::class, 'saleReceipt']);
