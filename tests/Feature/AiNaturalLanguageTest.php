@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\CourtSearchService;
 use App\Models\Branch;
 use App\Models\Court;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -95,8 +97,98 @@ class AiNaturalLanguageTest extends TestCase
         $this->chat('Chủ nhật nhé')->assertJsonPath('data.1.result.filters.date', '2026-11-29')->assertJsonPath('data.1.result.filters.start_time', '20:00')->assertJsonPath('data.1.result.needs_clarification', false);
     }
 
+    public function test_a_date_choice_from_the_chat_button_keeps_the_pending_time_window(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->chat('Cuối tuần sau 10h tối đánh 2 tiếng');
+        $result = $this->chat('Ngày 2026-11-28')->json('data.1.result');
+        $this->assertSame('2026-11-28', $result['filters']['date']);
+        $this->assertSame('22:00', $result['filters']['start_time']);
+        $this->assertSame('00:00', $result['filters']['end_time']);
+        $this->assertSame([], $result['filters']['date_options']);
+        $this->assertStringContainsString('đóng cửa', $result['message']);
+        $this->assertStringNotContainsString('Bạn có muốn đánh cầu lông không', $result['message']);
+    }
+
     public function test_a_new_time_without_an_end_does_not_receive_a_fabricated_duration(): void
     {
         $this->postJson('/api/v1/ai/courts', ['message' => 'Ngày mai tôi muốn đánh lúc 19h'])->assertOk()->assertJsonPath('data.needs_clarification', true)->assertJsonPath('data.filters.end_time', null);
+    }
+
+    public function test_the_reported_morning_request_finds_real_courts_in_chat(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->chat('ngày mai 8h sáng 3 tiếng')
+            ->assertJsonPath('data.1.result.filters.date', '2026-11-23')
+            ->assertJsonPath('data.1.result.filters.start_time', '08:00')
+            ->assertJsonPath('data.1.result.filters.end_time', '11:00')
+            ->assertJsonPath('data.1.result.total_count', 1);
+    }
+
+    public function test_past_search_context_is_not_carried_through_small_talk_into_a_new_request(): void
+    {
+        $user = User::factory()->create();
+        DB::table('ai_search_turns')->insert([
+            'user_id' => $user->id, 'request_key' => (string) Str::uuid(), 'message' => 'Hôm nay tôi thất tình',
+            'result' => json_encode(['filters' => ['date' => '2026-10-17', 'start_time' => '13:00', 'end_time' => '15:00', 'district' => 'binh thanh', 'max_budget' => 1000, 'amenities' => []], 'message' => 'Bạn có muốn đánh cầu lông không?']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actingAs($user);
+        $reply = $this->chat('có')->assertJsonPath('data.1.result.needs_clarification', true)->json('data.1.content');
+        $this->assertStringNotContainsString('Bạn có muốn đánh cầu lông không', $reply);
+        $this->chat('ngày mai 8h sáng 3 tiếng')
+            ->assertJsonPath('data.1.result.filters.district', null)
+            ->assertJsonPath('data.1.result.filters.max_budget', null)
+            ->assertJsonPath('data.1.result.total_count', 1);
+    }
+
+    public function test_idle_chat_does_not_silently_reuse_previous_filters(): void
+    {
+        $user = User::factory()->create();
+        DB::table('ai_search_turns')->insert([
+            'user_id' => $user->id, 'request_key' => (string) Str::uuid(), 'message' => 'Lịch chơi cũ',
+            'result' => json_encode(['filters' => ['date' => '2026-11-24', 'start_time' => '13:00', 'end_time' => '15:00', 'district' => 'binh thanh', 'amenities' => []], 'message' => 'Lịch chơi cũ']),
+            'created_at' => now()->subMinutes(31), 'updated_at' => now()->subMinutes(31),
+        ]);
+        $this->actingAs($user);
+        $this->chat('ngày mai 8h sáng 3 tiếng')->assertJsonPath('data.1.result.filters.district', null)->assertJsonPath('data.1.result.total_count', 1);
+    }
+
+    public function test_a_former_district_asks_for_an_actual_ward_and_preserves_the_requested_hours(): void
+    {
+        $west = Court::factory()->create(['branch_id' => Branch::factory()->create(['ward' => 'Phường Thạnh Mỹ Tây', 'district' => 'Bình Thạnh'])->id]);
+        Court::factory()->create(['branch_id' => Branch::factory()->create(['ward' => 'Phường Bình Quới', 'district' => 'Bình Thạnh'])->id]);
+        $this->actingAs(User::factory()->create());
+        $reply = $this->chat('ngày mai 8h sáng 3 tiếng ở Bình Thạnh')
+            ->assertJsonPath('data.1.result.needs_clarification', true)
+            ->assertJsonPath('data.1.result.total_count', 0)
+            ->json('data.1.result');
+        $this->assertEqualsCanonicalizing(['Phường Thạnh Mỹ Tây', 'Phường Bình Quới'], $reply['area_options']);
+        $this->assertStringNotContainsString('Chưa có sân trống', $reply['message']);
+        $this->chat('Phường Thạnh Mỹ Tây')
+            ->assertJsonPath('data.1.result.filters.date', '2026-11-23')
+            ->assertJsonPath('data.1.result.filters.start_time', '08:00')
+            ->assertJsonPath('data.1.result.filters.end_time', '11:00')
+            ->assertJsonPath('data.1.result.courts.0.court_id', $west->id);
+    }
+
+    public function test_all_areas_clears_both_ward_and_legacy_district_filters(): void
+    {
+        Court::factory()->create(['branch_id' => Branch::factory()->create(['ward' => 'Phường Bình Quới'])->id]);
+        $context = ['date' => '2026-11-23', 'start_time' => '08:00', 'end_time' => '11:00', 'ward' => 'Phường Tân Phú', 'district' => 'Phường Tân Phú', 'amenities' => []];
+        $result = app(CourtSearchService::class)->search('Tất cả khu vực nhé', null, null, $context);
+        $this->assertFalse($result['needs_clarification']);
+        $this->assertEmpty($result['filters']['ward'] ?? null);
+        $this->assertEmpty($result['filters']['district']);
+        $this->assertSame(2, $result['total_count']);
+    }
+
+    public function test_the_morning_request_works_when_the_model_returns_unhelpful_fields_or_is_unavailable(): void
+    {
+        config(['ai.search.provider' => 'ollama']);
+        Http::fake(['*/api/chat' => Http::sequence()->push(['done' => true, 'message' => ['content' => json_encode(['date' => '2026-10-17', 'start_time' => '20:00', 'end_time' => '21:00', 'district' => 'Bình Thạnh', 'max_budget' => 1, 'amenities' => ['Shower'], 'clarification' => 'Cần xác nhận ngày giờ'])]])->push([], 503)]);
+        $this->actingAs(User::factory()->create());
+        $this->chat('ngày mai 8h sáng 3 tiếng')->assertJsonPath('data.1.result.filters.clarification', null)->assertJsonPath('data.1.result.total_count', 1);
+        $this->chat('ngày mai 8h sáng 3 tiếng')->assertJsonPath('data.1.result.mode', 'filters')->assertJsonPath('data.1.result.total_count', 1);
     }
 }

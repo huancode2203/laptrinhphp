@@ -3,6 +3,7 @@ import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
 import UserName from "./MembershipBadge";
 import MembershipHeading from "./MembershipHeading";
+import AiChatCriteria from "./AiChatCriteria";
 import { useChatDelivery } from "./chatDelivery";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
@@ -793,12 +794,11 @@ export default function CommunityApp({
                                                     className="btn-outline mt-3 text-sm"
                                                     onClick={() =>
                                                         setText(
-                                                            "Ngày mai tôi muốn đánh cầu từ 13h tới 15h ở Bình Thạnh",
+                                                            "Ngày mai 8h sáng 3 tiếng",
                                                         )
                                                     }
                                                 >
-                                                    Ngày mai, 13:00–15:00, Bình
-                                                    Thạnh
+                                                    Ngày mai, 08:00–11:00
                                                 </button>
                                             </div>
                                         )}
@@ -859,6 +859,19 @@ export default function CommunityApp({
                                                 <p className="mt-1 whitespace-pre-wrap break-words">
                                                     {m.content}
                                                 </p>
+                                                <AiChatCriteria
+                                                    result={m.result}
+                                                    canReply={
+                                                        conversation.id ===
+                                                            "hub-ai" &&
+                                                        m.id ===
+                                                            messages.at(-1)?.id
+                                                    }
+                                                    sending={delivery.sending}
+                                                    reply={(value) =>
+                                                        delivery.send(value, [])
+                                                    }
+                                                />
                                                 {m.result?.courts
                                                     ?.slice(0, 6)
                                                     .map((c: Row) => (

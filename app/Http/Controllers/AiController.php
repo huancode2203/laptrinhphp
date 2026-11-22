@@ -42,7 +42,7 @@ class AiController extends Controller
 
                 return $existing;
             }
-            $previous = DB::table('ai_search_turns')->where('user_id', $r->user()->id)->latest('id')->first();
+            $previous = DB::table('ai_search_turns')->where('user_id', $r->user()->id)->where('created_at', '>=', now()->subMinutes(30))->latest('id')->first();
             $context = $previous ? (json_decode($previous->result, true)['filters'] ?? null) : null;
             $result = $service->search($data['message'], $r->user(), null, $context);
             $id = DB::table('ai_search_turns')->insertGetId(['user_id' => $r->user()->id, 'request_key' => $data['request_key'], 'message' => $data['message'], 'result' => json_encode($result, JSON_UNESCAPED_UNICODE), 'created_at' => now(), 'updated_at' => now()]);
