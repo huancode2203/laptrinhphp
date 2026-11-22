@@ -383,7 +383,6 @@ export default function App() {
                 {page === "counter-booking" ? (
                     <BookingFlow
                         initial={initial}
-                        close={() => go("manage/bookings")}
                         done={(booking) => {
                             try {
                                 localStorage.setItem(
@@ -469,11 +468,7 @@ export default function App() {
                 <AuthScreen done={(role) => go(signInDestination(role))} />
             ) : page === "booking" ? (
                 user ? (
-                    <BookingFlow
-                        initial={initial}
-                        close={() => go("home")}
-                        done={() => go("account")}
-                    />
+                    <BookingFlow initial={initial} done={() => go("account")} />
                 ) : (
                     <AuthScreen done={() => go("booking")} />
                 )

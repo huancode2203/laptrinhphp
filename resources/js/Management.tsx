@@ -1169,12 +1169,6 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                     >
                                         + Đặt sân tại quầy
                                     </button>
-                                    <button
-                                        className="btn-outline"
-                                        onClick={() => edit("checkin")}
-                                    >
-                                        QR check-in
-                                    </button>
                                     <input
                                         aria-label="Mã lịch đặt"
                                         className="input"

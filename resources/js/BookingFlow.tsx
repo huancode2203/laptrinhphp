@@ -16,11 +16,9 @@ import { Card, Confirm, Empty, Modal } from "./ui";
 export default function BookingFlow({
     initial = {},
     done,
-    close,
 }: {
     initial?: Row;
     done: (b: Row) => void;
-    close: () => void;
 }) {
     const { data, run, toast, loading, refresh } = useHub();
     const online = data!.user.role === "customer";
@@ -514,19 +512,6 @@ export default function BookingFlow({
                         Đặt sân của bạn
                     </h1>
                 </div>
-                <button
-                    className="btn-outline"
-                    onClick={() =>
-                        run(async () => {
-                            toast(
-                                "Đã lưu lựa chọn. Bạn có thể tiếp tục đặt sân; thời gian giữ chỗ vẫn theo bộ đếm hiện tại.",
-                            );
-                            close();
-                        })
-                    }
-                >
-                    Lưu và thoát
-                </button>
             </div>
             <div className="booking-steps">
                 {[
