@@ -1,6 +1,7 @@
 import { formatDate } from "./dates";
 import { useEffect, useState } from "react";
 import CustomerPicker from "./CustomerPicker";
+import PayosCheckout from "./PayosCheckout";
 import { api, key, useHub } from "./hub";
 import { money, type Row } from "./data";
 import { Modal } from "./ui";
@@ -14,7 +15,8 @@ export default function QuickBooking({
     close: () => void;
     done: (booking: Row) => void;
 }) {
-    const { data, run, loading, toast } = useHub();
+    const { data, run, loading, toast, refresh } = useHub();
+    const [checkout, setCheckout] = useState<Row | null>(null);
     const [customer, setCustomer] = useState<number | string>(""),
         [quote, setQuote] = useState<Row | null>(null),
         [error, setError] = useState(""),
@@ -54,6 +56,14 @@ export default function QuickBooking({
             live = false;
         };
     }, [customer, start, end, range.court_id]);
+    if (checkout)
+        return (
+            <PayosCheckout
+                initial={checkout.attempt}
+                close={() => done(checkout.booking)}
+                changed={refresh}
+            />
+        );
     return (
         <Modal title="Đặt sân nhanh" close={close} className="form-dialog">
             <form
@@ -81,7 +91,10 @@ export default function QuickBooking({
                                         booking_id: r.data.id,
                                     },
                                 );
-                                location.assign(payment.data.pay_url);
+                                setCheckout({
+                                    attempt: payment.data,
+                                    booking: r.data,
+                                });
                                 return;
                             } catch (failure) {
                                 toast(

@@ -3,6 +3,7 @@ import { DateInput } from "./DateInput";
 import Icon from "./Icon";
 import CourtMatrix from "./CourtMatrix";
 import CustomerPicker from "./CustomerPicker";
+import PayosCheckout from "./PayosCheckout";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, day, localDateTime, money, type Row } from "./data";
@@ -23,6 +24,7 @@ export default function BookingFlow({
 }) {
     const { data, run, toast, loading, refresh } = useHub();
     const online = data!.user.role === "customer";
+    const [counterCheckout, setCounterCheckout] = useState<Row | null>(null);
     const [draft] = useState(() =>
         Object.values(initial).some((v) => v !== undefined) && !initial.resume
             ? initial
@@ -378,16 +380,16 @@ export default function BookingFlow({
                             ? "#account/bookings/" + booked[0].id
                             : location.hash,
                     booking_id: booked[0].id,
-                    deposit_only: depositOnly && b.deposit_percent > 0,
+                    deposit_only: false,
                 });
-                location.assign(p.data.pay_url);
+                setCounterCheckout({ attempt: p.data, booking: booked[0] });
                 return;
             } catch (e) {
                 await refresh().catch(() => {});
                 toast(
                     "Lịch đã tạo. " +
                         (e as Error).message +
-                        " Xem Lịch của tôi để tiếp tục thanh toán.",
+                        " Mở chi tiết lịch trong Quản lý lịch để tiếp tục thanh toán.",
                 );
                 done(booked[0]);
                 return;
@@ -469,6 +471,14 @@ export default function BookingFlow({
         </div>
     );
     const depositAmount = quote?.deposit_amount ?? 0;
+    if (counterCheckout)
+        return (
+            <PayosCheckout
+                initial={counterCheckout.attempt}
+                close={() => done(counterCheckout.booking)}
+                changed={refresh}
+            />
+        );
     if (restoring)
         return (
             <div className="product-page p-10">

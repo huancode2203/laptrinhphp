@@ -24,6 +24,7 @@ export function BookingDetail({
     refreshBookings: () => Promise<void>;
 }) {
     const { run, toast, data, refresh, loading } = useHub();
+    const [bankCheckout, setBankCheckout] = useState<Row | null>(null);
     const [qr, setQr] = useState(""),
         [form, setForm] = useState(""),
         [receipt, setReceipt] = useState<Row | null>(null);
@@ -80,6 +81,14 @@ export function BookingDetail({
         await refreshBookings();
         close();
     }
+    if (bankCheckout)
+        return (
+            <PayosCheckout
+                initial={bankCheckout}
+                close={() => setBankCheckout(null)}
+                changed={refreshPayment}
+            />
+        );
     return (
         <Modal title={booking.reference} close={close}>
             {booking.needs_checkout && (
@@ -222,7 +231,8 @@ export function BookingDetail({
                                 </p>
                             )}
                             {attempt.pay_url &&
-                                Date.parse(attempt.expires_at) > Date.now() && (
+                                Date.parse(attempt.expires_at) > Date.now() &&
+                                (data!.user.role === "customer" ? (
                                     <a
                                         className="btn-outline"
                                         href={attempt.pay_url}
@@ -230,7 +240,15 @@ export function BookingDetail({
                                         Tiếp tục chuyển khoản ·{" "}
                                         {money(attempt.amount)}
                                     </a>
-                                )}
+                                ) : (
+                                    <button
+                                        className="btn"
+                                        onClick={() => setBankCheckout(attempt)}
+                                    >
+                                        Hiện mã QR chuyển khoản ·{" "}
+                                        {money(attempt.amount)}
+                                    </button>
+                                ))}
                             <button
                                 className="btn-outline"
                                 disabled={loading}
@@ -396,9 +414,17 @@ export function BookingDetail({
                                                                     deposit,
                                                             },
                                                         );
-                                                        location.assign(
-                                                            r.data.pay_url,
-                                                        );
+                                                        if (
+                                                            data!.user.role ===
+                                                            "customer"
+                                                        )
+                                                            location.assign(
+                                                                r.data.pay_url,
+                                                            );
+                                                        else
+                                                            setBankCheckout(
+                                                                r.data,
+                                                            );
                                                     })
                                                 }
                                             >
@@ -450,7 +476,9 @@ export function BookingDetail({
                                                     deposit_only: deposit,
                                                 },
                                             );
-                                            location.assign(r.data.pay_url);
+                                            if (data!.user.role === "customer")
+                                                location.assign(r.data.pay_url);
+                                            else setBankCheckout(r.data);
                                         })
                                     }
                                 >

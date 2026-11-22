@@ -154,7 +154,7 @@ class BookingController extends Controller
 
         return response()->json(['data' => [
             'payment_attempts' => PaymentAttempt::where('booking_id', $booking->id)->where('status', 'paid')->whereNotIn('partner_code', ['DEMO_MOMO', 'DEMO_BANK'])->get(), 'refund_requests' => DB::table('refund_requests')->where('booking_id', $booking->id)->get(),
-            'pending_payment_attempts' => app(PayosService::class)->pendingFor([$booking->id])->get(['id', 'amount', 'received_amount', 'review_reason', 'purpose', 'status', 'expires_at', 'partner_code', 'pay_url']),
+            'pending_payment_attempts' => app(PayosService::class)->pendingFor([$booking->id])->get(['id', 'order_id', 'order_info', 'extra_data', 'amount', 'received_amount', 'review_reason', 'purpose', 'status', 'expires_at', 'partner_code', 'pay_url']),
             'series_payment' => app(PayosService::class)->seriesOptions($booking),
             'bank_claims' => DB::table('bank_transfer_claims')->where('booking_id', $booking->id)->latest('id')->get(['id', 'amount', 'bank_reference', 'status', 'notes', 'created_at', 'reviewed_at']),
             'reference' => $booking->reference, 'issued_at' => $booking->created_at->toIso8601String(), 'currency' => 'VND',

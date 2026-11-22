@@ -16,7 +16,14 @@ import CommunityApp from "./CommunityApp";
 import EventsPage from "./EventsPage";
 const Management = lazy(() => import("./Management"));
 import { api, useHub } from "./hub";
-import { BRANCHES, day, money, statusText, type Row } from "./data";
+import {
+    BRANCHES,
+    day,
+    localDateTime,
+    money,
+    statusText,
+    type Row,
+} from "./data";
 import { Card, Empty, Modal } from "./ui";
 function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
     const { data, toast } = useHub();
@@ -377,7 +384,21 @@ export default function App() {
                     <BookingFlow
                         initial={initial}
                         close={() => go("manage/bookings")}
-                        done={() => go("manage/bookings")}
+                        done={(booking) => {
+                            try {
+                                localStorage.setItem(
+                                    "hub:manage:" + user.id,
+                                    JSON.stringify({
+                                        tab: "bookings",
+                                        branch: booking.court?.branch_id,
+                                        date: localDateTime(
+                                            booking.starts_at,
+                                        ).slice(0, 10),
+                                    }),
+                                );
+                            } catch {}
+                            go("manage/bookings");
+                        }}
                     />
                 ) : location.hash === "#manage/profile" ? (
                     <div className="p-5">

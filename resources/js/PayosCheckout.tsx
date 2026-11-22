@@ -15,6 +15,7 @@ export default function PayosCheckout({
 }) {
     const [attempt, setAttempt] = useState(initial);
     const [image, setImage] = useState("");
+    const [qrError, setQrError] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const { data } = useHub();
@@ -60,29 +61,48 @@ export default function PayosCheckout({
     }, [attempt.id, attempt.status, attempt.pay_url]);
     useEffect(() => {
         let live = true;
+        setImage("");
+        setQrError("");
         if (attempt.qr_code)
             QRCode.toDataURL(attempt.qr_code, { width: 300, margin: 2 })
                 .then((url) => {
                     if (live) setImage(url);
                 })
-                .catch(() => {});
+                .catch(() => {
+                    if (live)
+                        setQrError(
+                            "Chưa hiển thị được mã QR. Vui lòng mở trang thanh toán PayOS bên dưới để lấy mã ngân hàng.",
+                        );
+                });
+        else if (attempt.pay_url)
+            setQrError(
+                "Giao dịch này chưa có mã QR ngân hàng. Vui lòng mở trang thanh toán PayOS bên dưới để xem mã.",
+            );
         return () => {
             live = false;
         };
-    }, [attempt.qr_code]);
+    }, [attempt.qr_code, attempt.pay_url]);
     const paid = attempt.status === "paid";
     const failed = attempt.status === "failed";
     const wallet = attempt.purpose === "wallet";
+    const booking =
+        attempt.purpose === "booking" || attempt.purpose === "series";
     return (
         <Modal
             title={
                 paid
-                    ? wallet
-                        ? "Đã nạp ví HUB"
-                        : "Đã thanh toán hội viên"
-                    : wallet
-                      ? "Nạp ví HUB qua PayOS"
-                      : "Thanh toán hội viên qua PayOS"
+                    ? booking
+                        ? "Đã nhận thanh toán sân"
+                        : wallet
+                          ? "Đã nạp ví HUB"
+                          : "Đã thanh toán hội viên"
+                    : booking
+                      ? attempt.purpose === "series"
+                          ? "Quét mã thanh toán lịch cố định"
+                          : "Quét mã thanh toán sân"
+                      : wallet
+                        ? "Nạp ví HUB qua PayOS"
+                        : "Thanh toán hội viên qua PayOS"
             }
             close={close}
         >
@@ -98,44 +118,59 @@ export default function PayosCheckout({
                 </div>
                 {paid ? (
                     <p role="status" className="font-bold text-green-700">
-                        {wallet
-                            ? customer
-                                ? "Nạp tiền thành công. Số dư ví HUB của bạn đã được cập nhật."
-                                : "Ngân hàng đã xác nhận. Số tiền đã được cộng vào ví HUB của khách."
-                            : "Ngân hàng đã xác nhận thanh toán. Hội viên của khách đã được kích hoạt."}
+                        {booking
+                            ? "Ngân hàng đã xác nhận khoản chuyển tiền. Hóa đơn sân đã được cập nhật; bạn có thể đóng cửa sổ để xem số tiền còn lại và nhận sân."
+                            : wallet
+                              ? customer
+                                  ? "Nạp tiền thành công. Số dư ví HUB của bạn đã được cập nhật."
+                                  : "Ngân hàng đã xác nhận. Số tiền đã được cộng vào ví HUB của khách."
+                              : "Ngân hàng đã xác nhận thanh toán. Hội viên của khách đã được kích hoạt."}
                     </p>
                 ) : failed ? (
                     <p role="status">
-                        {wallet
-                            ? "Thanh toán đã hủy hoặc hết hạn. Ví HUB chưa được cộng tiền."
-                            : "Thanh toán đã hủy hoặc hết hạn. Hội viên chưa được kích hoạt."}
+                        {booking
+                            ? "Giao dịch đã hủy hoặc hết hạn. Hóa đơn sân chưa được ghi nhận khoản thanh toán này. Mở lại chi tiết lịch để kiểm tra và tạo mã mới."
+                            : wallet
+                              ? "Thanh toán đã hủy hoặc hết hạn. Ví HUB chưa được cộng tiền."
+                              : "Thanh toán đã hủy hoặc hết hạn. Hội viên chưa được kích hoạt."}
                     </p>
                 ) : attempt.status === "credited" ||
                   attempt.status === "partial" ? (
                     <p role="status">
-                        {wallet
-                            ? "Khoản tiền đã được đối chiếu và lưu vào ví HUB. Kiểm tra số dư và lịch sử nạp tiền của khách."
-                            : "Khoản tiền đã được chi nhánh đối chiếu và lưu vào ví HUB. Kiểm tra số dư của khách trước khi mua lại gói hội viên."}
+                        {booking
+                            ? "Khoản tiền đã được đối chiếu. Kiểm tra số tiền đã thu và số dư HUB của khách trong chi tiết lịch trước khi tạo thanh toán khác."
+                            : wallet
+                              ? "Khoản tiền đã được đối chiếu và lưu vào ví HUB. Kiểm tra số dư và lịch sử nạp tiền của khách."
+                              : "Khoản tiền đã được chi nhánh đối chiếu và lưu vào ví HUB. Kiểm tra số dư của khách trước khi mua lại gói hội viên."}
                     </p>
                 ) : (
                     <>
                         <p>
-                            {wallet
-                                ? customer
-                                    ? "Quét mã bằng ứng dụng ngân hàng để nạp tiền. Giữ trang này mở, số dư sẽ tự cập nhật sau khi ngân hàng xác nhận."
-                                    : "Khách quét mã bằng ứng dụng ngân hàng để nạp tiền. Ví HUB chỉ được cộng sau khi ngân hàng xác nhận thanh toán."
-                                : "Khách quét mã bằng ứng dụng ngân hàng và thanh toán đúng số tiền. Hội viên chỉ được kích hoạt sau khi ngân hàng xác nhận đủ tiền."}
+                            {booking
+                                ? "Khách quét mã này bằng ứng dụng ngân hàng và chuyển đúng số tiền. Không cần đăng nhập tài khoản khách trên website. Giữ màn hình này mở, hóa đơn tự cập nhật khi PayOS xác nhận."
+                                : wallet
+                                  ? customer
+                                      ? "Quét mã bằng ứng dụng ngân hàng để nạp tiền. Giữ trang này mở, số dư sẽ tự cập nhật sau khi ngân hàng xác nhận."
+                                      : "Khách quét mã bằng ứng dụng ngân hàng để nạp tiền. Ví HUB chỉ được cộng sau khi ngân hàng xác nhận thanh toán."
+                                  : "Khách quét mã bằng ứng dụng ngân hàng và thanh toán đúng số tiền. Hội viên chỉ được kích hoạt sau khi ngân hàng xác nhận đủ tiền."}
                         </p>
                         {image && (
                             <img
                                 src={image}
                                 alt={
-                                    wallet
-                                        ? "Mã QR chuyển khoản nạp ví HUB"
-                                        : "Mã QR chuyển khoản ngân hàng cho gói hội viên"
+                                    booking
+                                        ? "Mã QR chuyển khoản ngân hàng cho lịch sân"
+                                        : wallet
+                                          ? "Mã QR chuyển khoản nạp ví HUB"
+                                          : "Mã QR chuyển khoản ngân hàng cho gói hội viên"
                                 }
-                                className="mx-auto w-64 rounded-xl border border-slate-200"
+                                className="mx-auto w-72 max-w-full rounded-xl border border-slate-200"
                             />
+                        )}
+                        {qrError && (
+                            <p role="alert" className="text-sm text-amber-800">
+                                {qrError}
+                            </p>
                         )}
                         <p className="text-sm text-slate-600">
                             Hạn thanh toán: {stamp(attempt.expires_at)}
@@ -214,7 +249,9 @@ export default function PayosCheckout({
                 </div>
                 {!paid && !failed && (
                     <p className="text-xs text-slate-500">
-                        {customer ? (
+                        {booking ? (
+                            "Đóng cửa sổ không hủy giao dịch. Mở chi tiết lịch và chọn Hiện mã QR chuyển khoản để tiếp tục dùng mã đang chờ."
+                        ) : customer ? (
                             "Đóng cửa sổ không hủy giao dịch. Bạn có thể kiểm tra lại trong lịch sử thanh toán tại Ví HUB."
                         ) : (
                             <>
