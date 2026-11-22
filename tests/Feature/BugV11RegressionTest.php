@@ -180,6 +180,6 @@ class BugV11RegressionTest extends TestCase
         $customer = User::factory()->create();
         $attempt = PaymentAttempt::factory()->create(['user_id' => $customer->id, 'partner_code' => 'PAYOS', 'purpose' => 'wallet', 'booking_id' => null, 'order_id' => '1234567891234', 'extra_data' => base64_encode(json_encode(['payment_link_id' => 'wallet123']))]);
         Http::fake(['*' => Http::response($this->reply(['id' => 'wallet123', 'orderCode' => (int) $attempt->order_id, 'amount' => $attempt->amount, 'amountPaid' => 0, 'amountRemaining' => $attempt->amount, 'status' => 'PENDING']))]);
-        $this->actingAs($customer)->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders(['X-Forwarded-Host' => 'pdh2203.id.vn', 'X-Forwarded-Proto' => 'https', 'X-Forwarded-Prefix' => '/badminton'])->get('/payments/payos/return?orderCode='.$attempt->order_id)->assertRedirect('https://pdh2203.id.vn/badminton/#account/wallet');
+        $this->actingAs($customer)->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders(['X-Forwarded-Host' => 'pdh2203.id.vn', 'X-Forwarded-Proto' => 'https', 'X-Forwarded-Prefix' => '/badminton'])->get('/payments/payos/return?orderCode='.$attempt->order_id)->assertStatus(302)->assertHeader('Location', '/badminton/#account/wallet');
     }
 }

@@ -105,6 +105,11 @@ class PayosService
                     $attempt->update(['extra_data' => base64_encode(json_encode(['deposit_only' => false, 'branch_id' => (int) $data['branch_id'], 'actor_id' => (int) $data['actor_id']]))]);
                     app(BookingService::class)->audit($actor, 'payos.checkout_created', $attempt->id, ['purpose' => 'wallet', 'user_id' => $owner->id, 'branch_id' => (int) $data['branch_id'], 'amount' => $amount], 'payment_attempt');
                 }
+                $navigation = app(PaymentNavigation::class)->capture($data['return_role'] ?? 'customer', $data['return_to'] ?? null);
+                if ($navigation) {
+                    $extra = json_decode(base64_decode($attempt->extra_data), true) ?: [];
+                    $attempt->update(['extra_data' => base64_encode(json_encode([...$extra, ...$navigation]))]);
+                }
                 foreach ($allocations as $id => $due) {
                     DB::table('payment_attempt_bookings')->insert(['payment_attempt_id' => $attempt->id, 'booking_id' => $id, 'amount' => $due]);
                 }
@@ -128,7 +133,7 @@ class PayosService
                 }
             }
             abort_if($attempt->expires_at->isPast(), 422, 'Giao dịch đã hết hạn. Vui lòng tạo giao dịch mới.');
-            $callback = rtrim(config('app.url'), '/').'/payments/payos/return';
+            $callback = route('payos.return');
             $payload = ['orderCode' => (int) $attempt->order_id, 'amount' => $attempt->amount, 'description' => 'BH'.substr($attempt->order_id, -7), 'returnUrl' => $callback, 'cancelUrl' => $callback];
             $payload['signature'] = $this->sign($payload);
             $payload['expiredAt'] = $attempt->expires_at->timestamp;

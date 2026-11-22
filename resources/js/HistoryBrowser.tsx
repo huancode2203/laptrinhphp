@@ -118,14 +118,23 @@ export default function HistoryBrowser({
                     {row.status === "pending" &&
                         row.partner_code === "PAYOS" &&
                         row.pay_url &&
-                        Date.parse(row.expires_at) > Date.now() && (
+                        Date.parse(row.expires_at) > Date.now() &&
+                        (row.purpose === "wallet" && onSelect ? (
+                            <button
+                                type="button"
+                                className="block font-bold text-emerald-700"
+                                onClick={() => onSelect(row)}
+                            >
+                                Tiếp tục thanh toán →
+                            </button>
+                        ) : (
                             <a
                                 className="block font-bold text-emerald-700"
                                 href={row.pay_url}
                             >
                                 Tiếp tục thanh toán →
                             </a>
-                        )}
+                        ))}
                 </div>,
             ];
         if (kind === "points")

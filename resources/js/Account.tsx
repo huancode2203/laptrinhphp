@@ -3,6 +3,7 @@ import UsageGuide from "./UsageGuide";
 import RescheduleBooking from "./RescheduleBooking";
 import HistoryBrowser from "./HistoryBrowser";
 import SeriesCancel from "./SeriesCancel";
+import PayosCheckout from "./PayosCheckout";
 import Profile from "./Profile";
 import { AccountExtras } from "./FeaturePages";
 import { useEffect, useRef, useState } from "react";
@@ -385,6 +386,8 @@ export function BookingDetail({
                                                                     key(),
                                                                 purpose:
                                                                     "series",
+                                                                return_to:
+                                                                    location.hash,
                                                                 booking_id:
                                                                     booking.id,
                                                                 deposit_only:
@@ -440,6 +443,7 @@ export function BookingDetail({
                                                 {
                                                     request_key: key(),
                                                     purpose: "booking",
+                                                    return_to: location.hash,
                                                     booking_id: booking.id,
                                                     deposit_only: deposit,
                                                 },
@@ -795,6 +799,7 @@ export default function Account({
         [page, setPage] = useState(1),
         [couponPage, setCouponPage] = useState(1),
         [paymentVersion, setPaymentVersion] = useState(0),
+        [payosCheckout, setPayosCheckout] = useState<Row | null>(null),
         [lastPage, setLastPage] = useState(1),
         [deletingNotification, setDeletingNotification] = useState<Row | null>(
             null,
@@ -1220,7 +1225,7 @@ export default function Account({
                             </button>
                         </div>
                     )}
-                    <HistoryBrowser kind="wallet" />
+                    <HistoryBrowser kind="wallet" version={paymentVersion} />
                     <HistoryBrowser
                         kind="payments"
                         version={paymentVersion}
@@ -1232,13 +1237,18 @@ export default function Account({
                                 return;
                             }
                             run(async () => {
-                                await api(
+                                const response = await api(
                                     "payments/payos" +
                                         "/" +
                                         payment.id +
                                         "/sync",
                                     "POST",
                                 );
+                                if (
+                                    response.data.purpose === "wallet" &&
+                                    response.data.status === "pending"
+                                )
+                                    setPayosCheckout(response.data);
                                 await load();
                                 await refresh();
                                 setPaymentVersion((value) => value + 1);
@@ -1564,8 +1574,23 @@ export default function Account({
                         const response = await api("payments/payos", "POST", {
                             ...values,
                             purpose: "wallet",
+                            return_to: location.hash,
                         });
-                        location.assign(response.data.pay_url);
+                        setForm("");
+                        setPayosCheckout(response.data);
+                        setPaymentVersion((value) => value + 1);
+                    }}
+                />
+            )}
+            {payosCheckout && (
+                <PayosCheckout
+                    key={payosCheckout.id}
+                    initial={payosCheckout}
+                    close={() => setPayosCheckout(null)}
+                    changed={async () => {
+                        await refresh();
+                        await load();
+                        setPaymentVersion((value) => value + 1);
                     }}
                 />
             )}

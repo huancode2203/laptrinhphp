@@ -76,6 +76,7 @@ export default function QuickBooking({
                                     {
                                         request_key: key(),
                                         purpose: "booking",
+                                        return_to: location.hash,
                                         booking_id: r.data.id,
                                     },
                                 );

@@ -85,12 +85,13 @@ class CommerceController extends Controller
 
     public function topup(Request $request, User $user, CommerceService $commerce, BookingService $engine): JsonResponse
     {
+        $navigation = $request->validate(['return_to' => 'nullable|string|max:200']);
         $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'amount' => ['required', 'integer', 'min:1000', 'max:50000000'], 'method' => ['required', Rule::in(['cash', 'bank'])]]);
         $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
         abort_unless($user->role === 'customer', 422);
 
         if ($data['method'] === 'bank') {
-            $attempt = app(PayosService::class)->create($user, ['purpose' => 'wallet', 'request_key' => $data['request_key'], 'amount' => $data['amount'], 'branch_id' => $data['branch_id'], 'actor_id' => $request->user()->id]);
+            $attempt = app(PayosService::class)->create($user, ['purpose' => 'wallet', 'request_key' => $data['request_key'], 'amount' => $data['amount'], 'branch_id' => $data['branch_id'], 'actor_id' => $request->user()->id, 'return_to' => $navigation['return_to'] ?? null, 'return_role' => $request->user()->role]);
 
             return response()->json(['data' => $attempt, 'checkout_required' => true]);
         }
@@ -119,6 +120,7 @@ class CommerceController extends Controller
 
     public function activateMembership(Request $request, User $user, CommerceService $commerce, BookingService $engine): JsonResponse
     {
+        $navigation = $request->validate(['return_to' => 'nullable|string|max:200']);
         $data = $request->validate(['request_key' => ['required', 'uuid'], 'plan_id' => ['required', 'integer', 'exists:membership_plans,id'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'method' => ['required', Rule::in(['cash', 'bank'])]]);
         $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
         abort_unless($user->role === 'customer', 422);
@@ -126,7 +128,7 @@ class CommerceController extends Controller
         abort_if($plan->price === 0 && $plan->points_threshold > 0, 422, 'Hạng tích điểm được hệ thống tự động cấp, không bán tại quầy.');
         abort_if($plan->points_threshold > $user->earned_points, 422, 'Khách hàng chưa đủ điểm để mua gói hội viên này.');
         if ($data['method'] === 'bank') {
-            $attempt = app(PayosService::class)->create($user, ['purpose' => 'membership', 'request_key' => $data['request_key'], 'membership_plan_id' => $plan->id, 'branch_id' => $data['branch_id'], 'actor_id' => $request->user()->id]);
+            $attempt = app(PayosService::class)->create($user, ['purpose' => 'membership', 'request_key' => $data['request_key'], 'membership_plan_id' => $plan->id, 'branch_id' => $data['branch_id'], 'actor_id' => $request->user()->id, 'return_to' => $navigation['return_to'] ?? null, 'return_role' => $request->user()->role]);
 
             return response()->json(['data' => $attempt, 'checkout_required' => true]);
         }

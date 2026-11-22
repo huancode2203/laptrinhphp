@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/auth/google', [IntegrationController::class, 'google']);
 Route::get('/auth/google/callback', [IntegrationController::class, 'googleCallback']);
 Route::get('/', fn () => view('hub'))->name('home');
-Route::get('/payments/payos/return', [PayosController::class, 'returned']);
+Route::get('/payments/payos/return', [PayosController::class, 'returned'])->name('payos.return');
 Route::prefix('api/v1')->name('api.')->group(function (): void {
     Route::get('csrf', [AuthController::class, 'csrf']);
     Route::get('hub', [HubController::class, 'bootstrap']);
@@ -104,7 +104,7 @@ Route::prefix('api/v1')->name('api.')->group(function (): void {
         Route::post('waitlist', [CommerceController::class, 'waitlist']);
         Route::delete('waitlist/{entry}', [CommerceController::class, 'cancelWaitlist']);
         Route::post('payments/payos', [PayosController::class, 'create'])->middleware('throttle:book');
-        Route::post('payments/payos/{attempt}/sync', [PayosController::class, 'sync'])->middleware('throttle:sensitive');
+        Route::post('payments/payos/{attempt}/sync', [PayosController::class, 'sync'])->middleware('throttle:payment-status');
         Route::post('payments/payos/{attempt}/resume-membership', [PayosController::class, 'resumeMembership'])->middleware('throttle:sensitive');
         Route::post('payments/payos/{attempt}/resume', [PayosController::class, 'resume'])->middleware('throttle:sensitive');
         Route::post('community/posts', [CommunityController::class, 'save'])->middleware('throttle:book');

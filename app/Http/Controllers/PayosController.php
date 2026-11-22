@@ -6,6 +6,7 @@ use App\BookingService;
 use App\MembershipCheckout;
 use App\Models\Booking;
 use App\Models\PaymentAttempt;
+use App\PaymentNavigation;
 use App\PayosService;
 use App\PayosSettings;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -18,8 +19,9 @@ class PayosController extends Controller
 {
     public function create(Request $request, PayosService $payos): JsonResponse
     {
-        $data = $request->validate(['request_key' => 'required|uuid', 'purpose' => 'required|in:booking,series,wallet', 'booking_id' => 'exclude_unless:purpose,booking,series|required|integer', 'amount' => 'exclude_unless:purpose,wallet|required|integer|min:1000|max:50000000', 'deposit_only' => 'sometimes|boolean']);
+        $data = $request->validate(['request_key' => 'required|uuid', 'purpose' => 'required|in:booking,series,wallet', 'booking_id' => 'exclude_unless:purpose,booking,series|required|integer', 'amount' => 'exclude_unless:purpose,wallet|required|integer|min:1000|max:50000000', 'deposit_only' => 'sometimes|boolean', 'return_to' => 'nullable|string|max:200']);
         $actor = $request->user();
+        $data['return_role'] = $actor->role;
         $owner = $actor;
         if ($actor->role !== 'customer') {
             abort_unless(in_array($data['purpose'], ['booking', 'series'], true), 403, 'Tài khoản làm việc chỉ tạo PayOS cho lịch của khách trong chi nhánh được giao.');
@@ -97,7 +99,7 @@ class PayosController extends Controller
         $attempt = is_string($order) && ctype_digit($order) ? PaymentAttempt::where('partner_code', 'PAYOS')->where('order_id', $order)->first() : null;
 
         if (! $attempt || ! $request->user()) {
-            return redirect()->away(rtrim(config('app.url'), '/').'/#auth');
+            return redirect()->away($request->getBaseUrl().'/#auth');
         }
         $this->authorizeAttempt($request, $attempt);
         try {
@@ -105,11 +107,8 @@ class PayosController extends Controller
         } catch (\Throwable) {
             $request->session()->flash('auth_notice', 'Chưa kiểm tra được kết quả chuyển khoản. Mở lịch thanh toán và chọn kiểm tra trạng thái để cập nhật.');
         }
-        if ($request->user()->role !== 'customer') {
-            return redirect()->away(rtrim(config('app.url'), '/').'/#'.($request->user()->role === 'admin' ? 'admin/payments' : (in_array($attempt->purpose, ['membership', 'wallet'], true) ? 'manage/customers' : 'manage/bookings')));
-        }
 
-        return redirect()->away(rtrim(config('app.url'), '/').'/#account/'.($attempt->booking_id ? 'bookings/'.$attempt->booking_id : ($attempt->purpose === 'membership' ? 'membership' : 'wallet')));
+        return redirect()->away($request->getBaseUrl().'/'.app(PaymentNavigation::class)->destination($request, $attempt));
     }
 
     private function authorizeAttempt(Request $request, PaymentAttempt $attempt): void

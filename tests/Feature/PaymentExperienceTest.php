@@ -47,7 +47,7 @@ class PaymentExperienceTest extends TestCase
         $booking = Booking::factory()->create(['source' => 'online', 'paid_amount' => 0]);
         $attempt = $this->attempt($booking);
         $this->fakeStatus($attempt, 'CANCELLED');
-        $this->actingAs($booking->user)->get('/payments/payos/return?orderCode='.$attempt->order_id.'&cancel=true')->assertRedirect('/#account/bookings/'.$booking->id);
+        $this->actingAs($booking->user)->get('/payments/payos/return?orderCode='.$attempt->order_id.'&cancel=true')->assertStatus(302)->assertHeader('Location', '/#account/bookings/'.$booking->id);
         $this->assertSame('cancelled', $booking->fresh()->status);
         $this->assertSame('failed', $attempt->fresh()->status);
         $this->getJson('/api/v1/bookings/'.$booking->id)->assertJsonPath('data.status_label', 'Đã hủy');

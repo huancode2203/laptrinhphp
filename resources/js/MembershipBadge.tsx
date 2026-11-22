@@ -36,6 +36,15 @@ export function ShuttleMark({
                     <stop offset=".46" stopColor="var(--medal-main)" />
                     <stop offset="1" stopColor="var(--medal-dark)" />
                 </linearGradient>
+                <linearGradient id={id + "-shine"}>
+                    <stop stopColor="white" stopOpacity="0" />
+                    <stop offset=".45" stopColor="white" stopOpacity=".15" />
+                    <stop offset=".5" stopColor="white" stopOpacity=".95" />
+                    <stop offset=".65" stopColor="white" stopOpacity="0" />
+                </linearGradient>
+                <clipPath id={id + "-clip"}>
+                    <path d="M25 43 8 13l6-5 15 33ZM28 41 19 5l8-2 5 37ZM32 40 31 2l8 1-3 38ZM36 41 44 5l8 4-12 34ZM40 43 55 13l5 6-17 27Zm-16-1 18 2-1 7c-1 9-18 9-18-1Z" />
+                </clipPath>
             </defs>
             <g
                 transform="rotate(24 32 32)"
@@ -47,6 +56,25 @@ export function ShuttleMark({
                 <path d="M25 43 8 13l6-5 15 33ZM28 41 19 5l8-2 5 37ZM32 40 31 2l8 1-3 38ZM36 41 44 5l8 4-12 34ZM40 43 55 13l5 6-17 27Z" />
                 <path d="m24 42 18 2-1 7c-1 9-18 9-18-1Z" strokeWidth="2" />
                 <path d="m24 42 18 2M25 47l16 2" fill="none" />
+                <g clipPath={"url(#" + id + "-clip)"} stroke="none">
+                    <rect
+                        className="shuttle-gloss"
+                        x="-64"
+                        y="0"
+                        width="64"
+                        height="64"
+                        fill={"url(#" + id + "-shine)"}
+                    />
+                </g>
+            </g>
+            <g
+                className="shuttle-sparkles"
+                fill="white"
+                stroke="var(--medal-main)"
+                strokeWidth=".6"
+            >
+                <path d="m12 4 1.8 5.2L19 11l-5.2 1.8L12 18l-1.8-5.2L5 11l5.2-1.8Z" />
+                <path d="m52 40 1.2 3.8L57 45l-3.8 1.2L52 50l-1.2-3.8L47 45l3.8-1.2Z" />
             </g>
         </svg>
     );

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { api } from "./hub";
+import { api, useHub } from "./hub";
 import { money, stamp, type Row } from "./data";
 import { Modal } from "./ui";
 
@@ -17,6 +17,47 @@ export default function PayosCheckout({
     const [image, setImage] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const { data } = useHub();
+    const customer = data?.user?.role === "customer";
+    const onChanged = useRef(changed);
+    onChanged.current = changed;
+    useEffect(() => {
+        if (attempt.status !== "pending" || !attempt.pay_url) return;
+        let live = true,
+            checking = false;
+        const check = async () => {
+            if (!live || checking || document.visibilityState === "hidden")
+                return;
+            checking = true;
+            try {
+                const response = await api(
+                    "payments/payos/" + attempt.id + "/sync",
+                    "POST",
+                );
+                if (!live) return;
+                setAttempt(response.data);
+                if (
+                    ["paid", "failed", "credited", "partial"].includes(
+                        response.data.status,
+                    )
+                )
+                    await onChanged.current();
+            } catch {
+                // The visible manual check remains available if a background check fails.
+            } finally {
+                checking = false;
+            }
+        };
+        const timer = window.setInterval(check, 10000);
+        window.addEventListener("focus", check);
+        document.addEventListener("visibilitychange", check);
+        return () => {
+            live = false;
+            window.clearInterval(timer);
+            window.removeEventListener("focus", check);
+            document.removeEventListener("visibilitychange", check);
+        };
+    }, [attempt.id, attempt.status, attempt.pay_url]);
     useEffect(() => {
         let live = true;
         if (attempt.qr_code)
@@ -58,7 +99,9 @@ export default function PayosCheckout({
                 {paid ? (
                     <p role="status" className="font-bold text-green-700">
                         {wallet
-                            ? "Ngân hàng đã xác nhận. Số tiền đã được cộng vào ví HUB của khách."
+                            ? customer
+                                ? "Nạp tiền thành công. Số dư ví HUB của bạn đã được cập nhật."
+                                : "Ngân hàng đã xác nhận. Số tiền đã được cộng vào ví HUB của khách."
                             : "Ngân hàng đã xác nhận thanh toán. Hội viên của khách đã được kích hoạt."}
                     </p>
                 ) : failed ? (
@@ -78,7 +121,9 @@ export default function PayosCheckout({
                     <>
                         <p>
                             {wallet
-                                ? "Khách quét mã bằng ứng dụng ngân hàng để nạp tiền. Ví HUB chỉ được cộng sau khi ngân hàng xác nhận thanh toán."
+                                ? customer
+                                    ? "Quét mã bằng ứng dụng ngân hàng để nạp tiền. Giữ trang này mở, số dư sẽ tự cập nhật sau khi ngân hàng xác nhận."
+                                    : "Khách quét mã bằng ứng dụng ngân hàng để nạp tiền. Ví HUB chỉ được cộng sau khi ngân hàng xác nhận thanh toán."
                                 : "Khách quét mã bằng ứng dụng ngân hàng và thanh toán đúng số tiền. Hội viên chỉ được kích hoạt sau khi ngân hàng xác nhận đủ tiền."}
                         </p>
                         {image && (
@@ -169,9 +214,15 @@ export default function PayosCheckout({
                 </div>
                 {!paid && !failed && (
                     <p className="text-xs text-slate-500">
-                        Đóng cửa sổ không hủy giao dịch. Bấm “
-                        {wallet ? "Nạp ví" : "Mua hội viên"}” ở khách hàng này
-                        để mở lại thanh toán đang chờ.
+                        {customer ? (
+                            "Đóng cửa sổ không hủy giao dịch. Bạn có thể kiểm tra lại trong lịch sử thanh toán tại Ví HUB."
+                        ) : (
+                            <>
+                                Đóng cửa sổ không hủy giao dịch. Bấm “
+                                {wallet ? "Nạp ví" : "Mua hội viên"}” ở khách
+                                hàng này để mở lại thanh toán đang chờ.
+                            </>
+                        )}
                     </p>
                 )}
             </div>

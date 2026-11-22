@@ -631,6 +631,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                     quantity: Number(quantity),
                 }));
         }
+        if (["membership", "topup"].includes(kind)) d.return_to = location.hash;
         const r = await api(path, method, d);
         if (["membership", "topup"].includes(kind) && r.checkout_required) {
             setPayosCheckout(r.data);

@@ -64,7 +64,7 @@ class BugV03RegressionTest extends TestCase
         $customer = User::factory()->create(['wallet_balance' => 0]);
         $attempt = PaymentAttempt::factory()->create(['partner_code' => 'PAYOS', 'order_id' => '1234567890123', 'user_id' => $customer->id, 'booking_id' => null, 'purpose' => 'wallet', 'amount' => 100000, 'extra_data' => base64_encode(json_encode(['payment_link_id' => 'member123']))]);
         $this->bankStatus($attempt, 'CANCELLED', 0);
-        $this->actingAs($customer)->get('/payments/payos/return?orderCode='.$attempt->order_id.'&cancel=true&status=CANCELLED')->assertRedirect('https://pdh2203.id.vn/badminton/#account/wallet');
+        $this->actingAs($customer)->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders(['X-Forwarded-Host' => 'pdh2203.id.vn', 'X-Forwarded-Proto' => 'https', 'X-Forwarded-Prefix' => '/badminton'])->get('http://localhost/payments/payos/return?orderCode='.$attempt->order_id.'&cancel=true&status=CANCELLED')->assertStatus(302)->assertHeader('Location', '/badminton/#account/wallet');
         $this->assertSame('failed', $attempt->fresh()->status);
         $this->assertSame(0, $customer->fresh()->wallet_balance);
         $this->assertDatabaseCount('wallet_entries', 0);
@@ -73,7 +73,7 @@ class BugV03RegressionTest extends TestCase
     public function test_an_expired_login_returns_to_the_public_login_page(): void
     {
         config(['app.url' => 'https://pdh2203.id.vn/badminton']);
-        $this->get('/payments/payos/return?orderCode=123')->assertRedirect('https://pdh2203.id.vn/badminton/#auth');
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders(['X-Forwarded-Host' => 'pdh2203.id.vn', 'X-Forwarded-Proto' => 'https', 'X-Forwarded-Prefix' => '/badminton'])->get('http://localhost/payments/payos/return?orderCode=123')->assertStatus(302)->assertHeader('Location', '/badminton/#auth');
     }
 
     public function test_insufficient_wallet_balance_never_activates_or_debits_a_membership(): void
@@ -232,7 +232,7 @@ class BugV03RegressionTest extends TestCase
         $customer = User::factory()->create();
         $attempt = $this->checkout($manager, $customer, MembershipPlan::factory()->create());
         $this->bankStatus($attempt, 'CANCELLED', 0);
-        $this->get('/payments/payos/return?orderCode='.$attempt->order_id.'&status=PAID')->assertRedirect('https://pdh2203.id.vn/badminton/#manage/customers');
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders(['X-Forwarded-Host' => 'pdh2203.id.vn', 'X-Forwarded-Proto' => 'https', 'X-Forwarded-Prefix' => '/badminton'])->get('http://localhost/payments/payos/return?orderCode='.$attempt->order_id.'&status=PAID')->assertStatus(302)->assertHeader('Location', '/badminton/#manage/customers');
         $this->assertDatabaseCount('memberships', 0);
         $this->assertDatabaseCount('commerce_payments', 0);
         $this->assertSame('failed', $attempt->fresh()->status);

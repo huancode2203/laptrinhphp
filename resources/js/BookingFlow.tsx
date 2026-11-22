@@ -353,6 +353,10 @@ export default function BookingFlow({
                 const p = await api("payments/" + method, "POST", {
                     request_key: key(),
                     purpose: fixed ? "series" : "booking",
+                    return_to:
+                        data!.user.role === "customer"
+                            ? "#account/bookings/" + booked[0].id
+                            : location.hash,
                     booking_id: booked[0].id,
                     deposit_only: depositOnly && b.deposit_percent > 0,
                 });

@@ -73,7 +73,7 @@ class HistoryController extends Controller
         }
         $columns = match ($kind) {
             'users' => ['id', 'name', 'email', 'phone', 'phone_normalized', 'role', 'branch_id', 'active', 'created_at'],
-            'payments' => ['id', 'order_id', 'order_info', 'amount', 'received_amount', 'settled_amount', 'review_reason', 'status', 'created_at', 'expires_at', 'partner_code', 'pay_url'],
+            'payments' => ['id', 'order_id', 'order_info', 'purpose', 'amount', 'received_amount', 'settled_amount', 'review_reason', 'status', 'created_at', 'expires_at', 'partner_code', 'pay_url'],
             default => ['*'],
         };
         $result = $query->orderByDesc('id')->paginate($data['per_page'] ?? 20, $columns);
