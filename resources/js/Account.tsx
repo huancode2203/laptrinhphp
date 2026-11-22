@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { api, ApiError, key, useHub } from "./hub";
 import UserName, { membershipTone, ShuttleMark } from "./MembershipBadge";
+import MembershipHeading from "./MembershipHeading";
 import { money, stamp, statusText, type Row } from "./data";
 import { Card, Confirm, Editor, Empty, Modal, Table, cell } from "./ui";
 export function BookingDetail({
@@ -891,29 +892,30 @@ export default function Account({
     const currentCouponPage = Math.min(couponPage, couponPages);
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
-            <div className="page-heading">
-                <div>
-                    <p className="eyebrow text-[#16a34a]">GÓC CỦA BẠN</p>
-                    <h1 className="font-display text-3xl font-bold">
+            <MembershipHeading
+                eyebrow="GÓC CỦA BẠN"
+                title={
+                    <>
                         Xin chào, <UserName user={user} />
-                    </h1>
-                    <p className="mt-2 text-[#6d8474]">
-                        {user.membership_badge
-                            ? (user.membership_badge.kind === "paid"
-                                  ? "Hội viên "
-                                  : "") +
-                              user.membership_badge.label +
-                              (identityMembership
-                                  ? " đến " +
-                                    stamp(identityMembership.expires_at)
-                                  : "")
-                            : "Hẹn bạn trên sân. Cùng tích điểm qua mỗi buổi chơi."}
-                    </p>
-                </div>
-                <button className="btn h-fit" onClick={book}>
-                    + Đặt sân mới
-                </button>
-            </div>
+                    </>
+                }
+                description={
+                    user.membership_badge
+                        ? (user.membership_badge.kind === "paid"
+                              ? "Hội viên "
+                              : "") +
+                          user.membership_badge.label +
+                          (identityMembership
+                              ? " đến " + stamp(identityMembership.expires_at)
+                              : "")
+                        : "Hẹn bạn trên sân. Cùng tích điểm qua mỗi buổi chơi."
+                }
+                action={
+                    <button className="btn h-fit" onClick={book}>
+                        + Đặt sân mới
+                    </button>
+                }
+            />
             <div className="page-tabs">
                 {[
                     ["bookings", "Lịch của tôi"],

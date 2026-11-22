@@ -12,7 +12,7 @@ export default function MembershipHeading({
     action,
 }: {
     eyebrow: string;
-    title: string;
+    title: ReactNode;
     description: string;
     icon?: IconName;
     action?: ReactNode;
