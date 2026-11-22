@@ -2,6 +2,7 @@ import UsageGuide from "./UsageGuide";
 import OperationsWorkspace from "./OperationsWorkspace";
 import PosCheckout from "./PosCheckout";
 import PayosCheckout from "./PayosCheckout";
+import UserName from "./MembershipBadge";
 import ManagedCourts from "./ManagedCourts";
 import CourtMatrix from "./CourtMatrix";
 import QuickBooking from "./QuickBooking";
@@ -478,12 +479,15 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
             text("court_ids_text", "Mã sân, ngăn bằng dấu phẩy"),
         ],
         topup: [
-            num("amount", "Số tiền đã thu", 1000, 50000000),
+            num("amount", "Số tiền nạp", 1000, 50000000),
             {
                 name: "method",
                 label: "Phương thức",
                 required: true,
-                options: opts(["cash", "bank"]),
+                options: [
+                    { value: "cash", label: "Đã thu tiền mặt tại quầy" },
+                    { value: "bank", label: "Chuyển khoản PayOS (tạo mã QR)" },
+                ],
             },
         ],
         membership: [
@@ -628,7 +632,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                 }));
         }
         const r = await api(path, method, d);
-        if (kind === "membership" && r.checkout_required) {
+        if (["membership", "topup"].includes(kind) && r.checkout_required) {
             setPayosCheckout(r.data);
             return;
         }
@@ -1227,8 +1231,10 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                     {b.reference}
                                                 </button>
                                                 <p className="text-xs">
-                                                    {b.customer?.name} ·{" "}
-                                                    {b.customer?.phone}
+                                                    <UserName
+                                                        user={b.customer}
+                                                    />{" "}
+                                                    · {b.customer?.phone}
                                                 </p>
                                             </td>
                                             <td className={cell}>
@@ -1633,7 +1639,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                     {customers.map((c) => (
                                         <tr key={c.id}>
                                             <td className={cell}>{c.id}</td>
-                                            <td className={cell}>{c.name}</td>
+                                            <td className={cell}>
+                                                <UserName user={c} />
+                                            </td>
                                             <td className={cell}>
                                                 {c.email}
                                                 <p>{c.phone}</p>
@@ -1669,10 +1677,28 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                                 <button
                                                     className="btn-outline mr-2 text-xs"
                                                     onClick={() =>
-                                                        edit("topup", {
-                                                            id: c.id,
-                                                            amount: 100000,
-                                                            method: "cash",
+                                                        run(async () => {
+                                                            const pending =
+                                                                await api(
+                                                                    "manage/users/" +
+                                                                        c.id +
+                                                                        "/wallet-payments?branch_id=" +
+                                                                        branch,
+                                                                );
+                                                            if (
+                                                                pending.data
+                                                                    .length
+                                                            )
+                                                                setPayosCheckout(
+                                                                    pending
+                                                                        .data[0],
+                                                                );
+                                                            else
+                                                                edit("topup", {
+                                                                    id: c.id,
+                                                                    amount: 100000,
+                                                                    method: "cash",
+                                                                });
                                                         })
                                                     }
                                                 >
@@ -2008,7 +2034,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                     {adminData?.reviews.map((r: Row) => (
                                         <tr key={r.id}>
                                             <td className={cell}>
-                                                {r.user?.name}
+                                                <UserName user={r.user} />
                                             </td>
                                             <td className={cell}>
                                                 {r.rating}★ · {r.content}

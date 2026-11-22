@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import UsageGuide from "./UsageGuide";
 import OperationsWorkspace from "./OperationsWorkspace";
 import BackupPanel from "./BackupPanel";
@@ -604,7 +605,13 @@ export default function AdminWorkspace({ logout }: { logout: () => void }) {
                                             <tr key={row.id}>
                                                 <td className={cell}>
                                                     <b>
-                                                        {row.name || row.code}
+                                                        {tab === "users" ? (
+                                                            <UserName
+                                                                user={row}
+                                                            />
+                                                        ) : (
+                                                            row.name || row.code
+                                                        )}
                                                     </b>
                                                     <p className="text-xs">
                                                         {row.ward ||

@@ -4,12 +4,87 @@ import {
     Children,
     useEffect,
     useId,
+    useLayoutEffect,
     useRef,
     useState,
     type ReactNode,
+    type InputHTMLAttributes,
 } from "react";
 import { ApiError, key, useHub } from "./hub";
 import type { Row } from "./data";
+import { formatMoneyInput, isMoneyField, parseMoneyInput } from "./currency";
+
+export function MoneyInput({
+    value,
+    onValueChange,
+    min,
+    max,
+    ...props
+}: Omit<
+    InputHTMLAttributes<HTMLInputElement>,
+    "value" | "onChange" | "type" | "min" | "max"
+> & {
+    value: unknown;
+    onValueChange: (value: string) => void;
+    min?: number | string;
+    max?: number | string;
+}) {
+    const input = useRef<HTMLInputElement>(null);
+    const caret = useRef<number | null>(null);
+    const displayed = formatMoneyInput(value);
+    useLayoutEffect(() => {
+        if (caret.current == null || document.activeElement !== input.current)
+            return;
+        let digits = 0,
+            position = 0;
+        while (position < displayed.length && digits < caret.current) {
+            if (/\d/.test(displayed[position])) digits++;
+            position++;
+        }
+        input.current?.setSelectionRange(position, position);
+        caret.current = null;
+    }, [displayed]);
+    return (
+        <input
+            {...props}
+            ref={input}
+            type="text"
+            inputMode="numeric"
+            data-money="true"
+            data-money-min={min}
+            data-money-max={max}
+            value={displayed}
+            onChange={(event) => {
+                caret.current = (
+                    event.target.value
+                        .slice(0, event.target.selectionStart ?? 0)
+                        .match(/\d/g) ?? []
+                ).length;
+                const raw = event.target.value;
+                onValueChange(
+                    /^[\d.,\s]*$/.test(raw)
+                        ? raw.replace(/[.,\s]/g, "").replace(/^0+(?=\d)/, "")
+                        : raw,
+                );
+            }}
+            onPaste={(event) => {
+                event.preventDefault();
+                const text = event.clipboardData.getData("text").trim();
+                const parsed = parseMoneyInput(text);
+                const field = event.currentTarget;
+                const raw =
+                    field.value.slice(0, field.selectionStart ?? 0) +
+                    (parsed === null ? text : String(parsed)) +
+                    field.value.slice(field.selectionEnd ?? field.value.length);
+                onValueChange(
+                    parsed === null
+                        ? raw
+                        : raw.replace(/[.,\s]/g, "").replace(/^0+(?=\d)/, ""),
+                );
+            }}
+        />
+    );
+}
 export function Modal({
     title,
     children,
@@ -195,6 +270,35 @@ export function formErrors(form: HTMLFormElement): Record<string, string[]> {
                     input.minLength +
                     " ký tự.",
             ];
+        if (
+            input instanceof HTMLInputElement &&
+            input.dataset.money &&
+            input.value
+        ) {
+            const amount = parseMoneyInput(input.value);
+            if (amount === null)
+                errors[input.name] = [
+                    "Số tiền phải là số nguyên không âm hợp lệ.",
+                ];
+            else if (
+                input.dataset.moneyMin !== undefined &&
+                amount < Number(input.dataset.moneyMin)
+            )
+                errors[input.name] = [
+                    "Số tiền cần từ " +
+                        formatMoneyInput(input.dataset.moneyMin) +
+                        " đồng trở lên.",
+                ];
+            else if (
+                input.dataset.moneyMax !== undefined &&
+                amount > Number(input.dataset.moneyMax)
+            )
+                errors[input.name] = [
+                    "Số tiền không được vượt quá " +
+                        formatMoneyInput(input.dataset.moneyMax) +
+                        " đồng.",
+                ];
+        }
     }
     const first = form.elements.namedItem(Object.keys(errors)[0] ?? "");
     if (first instanceof HTMLElement) first.focus();
@@ -360,6 +464,17 @@ export function Editor({
                             </option>
                         ))}
                     </select>
+                ) : isMoneyField(f, d) ? (
+                    <MoneyInput
+                        {...shared}
+                        className="input"
+                        required={f.required}
+                        min={f.min}
+                        max={f.max}
+                        placeholder={f.placeholder ?? "0"}
+                        value={d[f.name] ?? ""}
+                        onValueChange={(value) => change(f.name, value)}
+                    />
                 ) : f.type === "textarea" ? (
                     <>
                         <textarea
@@ -481,7 +596,9 @@ export function Editor({
                             request_key: transactionKey,
                         };
                         for (const f of fields.filter(
-                            (field) => field.type === "number",
+                            (field) =>
+                                field.type === "number" ||
+                                isMoneyField(field, displayed),
                         )) {
                             if (
                                 displayed[f.name] === "" ||
@@ -490,7 +607,9 @@ export function Editor({
                                 normalized[f.name] = null;
                                 continue;
                             }
-                            const value = Number(displayed[f.name]);
+                            const value = isMoneyField(f, displayed)
+                                ? (parseMoneyInput(displayed[f.name]) ?? NaN)
+                                : Number(displayed[f.name]);
                             if (
                                 !Number.isFinite(value) ||
                                 (!(f.step !== undefined && f.step < 1) &&

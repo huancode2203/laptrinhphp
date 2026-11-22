@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import Icon from "./Icon";
 import SearchAlternatives from "./SearchAlternatives";
+import { MoneyInput } from "./ui";
+import { parseMoneyInput } from "./currency";
 import { api, useHub } from "./hub";
 import { BRANCHES, day, money, type Row } from "./data";
 export default function SearchAssistant({
@@ -31,6 +33,20 @@ export default function SearchAssistant({
         const keepSelection = useFilters || manualEdited || page > 0;
         const selectedFilters =
             page > 0 ? (result?.filters ?? filters) : filters;
+        const budget =
+            selectedFilters.max_budget === "" ||
+            selectedFilters.max_budget == null
+                ? null
+                : parseMoneyInput(selectedFilters.max_budget);
+        if (
+            keepSelection &&
+            selectedFilters.max_budget !== "" &&
+            selectedFilters.max_budget != null &&
+            (budget === null || budget < 1 || budget > 100000000)
+        ) {
+            setError("Ngân sách cần là số nguyên từ 1 đến 100.000.000 đồng.");
+            return;
+        }
         const version = filterVersion.current;
         setBusy(true);
         setError("");
@@ -43,9 +59,7 @@ export default function SearchAssistant({
                     ? {
                           filters: {
                               ...selectedFilters,
-                              max_budget: selectedFilters.max_budget
-                                  ? Number(selectedFilters.max_budget)
-                                  : null,
+                              max_budget: budget,
                           },
                       }
                     : {}),
@@ -195,15 +209,14 @@ export default function SearchAssistant({
                     </label>
                     <label className="text-sm">
                         Ngân sách buổi chơi
-                        <input
+                        <MoneyInput
                             className="input mt-1 w-full"
-                            type="number"
                             min={1}
                             max={100000000}
                             placeholder="Không giới hạn"
                             value={filters.max_budget}
-                            onChange={(e) =>
-                                changeFilter("max_budget", e.target.value)
+                            onValueChange={(value) =>
+                                changeFilter("max_budget", value)
                             }
                         />
                     </label>

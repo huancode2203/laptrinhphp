@@ -1,18 +1,32 @@
 import { appPath } from "./urls";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { Row } from "./data";
 import { upload, useHub } from "./hub";
 export default function MediaPicker({
     value = [],
     onChange,
     files = false,
     max = 4,
+    onBusyChange,
+    onUploaded,
 }: {
     value?: number[];
     onChange: (v: number[]) => void;
     files?: boolean;
     max?: number;
+    onBusyChange?: (busy: boolean) => void;
+    onUploaded?: (file: Row) => void;
 }) {
     const [busy, setBusy] = useState(false);
+    const live = useRef(true);
+    useEffect(() => {
+        live.current = true;
+        onBusyChange?.(false);
+        return () => {
+            live.current = false;
+            onBusyChange?.(false);
+        };
+    }, []);
     const { toast } = useHub();
     return (
         <div className="mt-2">
@@ -70,14 +84,22 @@ export default function MediaPicker({
                             const f = e.target.files?.[0];
                             if (!f) return;
                             setBusy(true);
+                            onBusyChange?.(true);
                             try {
                                 const r = await upload(f);
-                                onChange([...value, r.data.id]);
+                                if (live.current) {
+                                    onUploaded?.(r.data);
+                                    onChange([...value, r.data.id]);
+                                }
                             } catch (error) {
-                                toast((error as Error).message);
+                                if (live.current)
+                                    toast((error as Error).message);
                             } finally {
-                                setBusy(false);
-                                e.target.value = "";
+                                if (live.current) {
+                                    setBusy(false);
+                                    onBusyChange?.(false);
+                                    e.target.value = "";
+                                }
                             }
                         }}
                     />

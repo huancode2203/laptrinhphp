@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { type Row } from "./data";
@@ -71,7 +72,7 @@ export default function CustomerPicker({
             </label>
             {chosen && (
                 <p className="my-2 rounded-lg bg-green-50 p-3 text-sm">
-                    ✓ {chosen.name} · {chosen.phone}
+                    ✓ <UserName user={chosen} /> · {chosen.phone}
                 </p>
             )}
             <div className="my-2 max-h-36 overflow-auto">
@@ -87,7 +88,7 @@ export default function CustomerPicker({
                                 setChosen(c);
                             }}
                         >
-                            {c.name} · {c.phone}
+                            <UserName user={c} /> · {c.phone}
                         </button>
                     ))}
             </div>

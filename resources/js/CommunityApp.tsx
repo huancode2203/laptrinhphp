@@ -1,6 +1,8 @@
 import { appPath } from "./urls";
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
+import UserName from "./MembershipBadge";
+import { useChatDelivery } from "./chatDelivery";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
 import {
@@ -46,10 +48,33 @@ export default function CommunityApp({
         [loadingOlder, setLoadingOlder] = useState(false);
     const commentInput = useRef<HTMLInputElement>(null);
     const [deletingChat, setDeletingChat] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const typingAt = useRef(0);
+    const delivery = useChatDelivery(
+        data!.user ?? {},
+        conversation?.id ?? null,
+        (rows) => {
+            setMessages((old) => [
+                ...old.filter(
+                    (message) => !rows.some((row) => row.id === message.id),
+                ),
+                ...rows,
+            ]);
+        },
+    );
+    const visibleMessages = [
+        ...messages,
+        ...delivery.outbox.filter(
+            (draft) =>
+                !messages.some(
+                    (message) => message.request_key === draft.request_key,
+                ),
+        ),
+    ];
     useEffect(() => {
         const list = messageEnd.current?.parentElement;
         if (list) list.scrollTo({ top: list.scrollHeight });
-    }, [messages.at(-1)?.id]);
+    }, [messages.at(-1)?.id, delivery.outbox.at(-1)?.id]);
     useLayoutEffect(() => {
         const list = messageEnd.current?.parentElement;
         if (list && scrollBeforeOlder.current) {
@@ -148,7 +173,15 @@ export default function CommunityApp({
             let live = true;
             api("ai/chat")
                 .then((r) => {
-                    if (live) setMessages(r.data);
+                    if (live)
+                        setMessages((old) => [
+                            ...new Map(
+                                [...r.data, ...old].map((message) => [
+                                    message.id,
+                                    message,
+                                ]),
+                            ).values(),
+                        ]);
                 })
                 .catch((e) => toast(e.message));
             return () => {
@@ -264,7 +297,9 @@ export default function CommunityApp({
                     }
                     style={{ marginLeft: Math.min(depth, 4) * 12 }}
                 >
-                    <b>{c.user.name}</b>
+                    <b>
+                        <UserName user={c.user} />
+                    </b>
                     {parent && (
                         <p className="mt-1 text-xs font-semibold text-[#168449]">
                             ↳ Trả lời{" "}
@@ -512,7 +547,8 @@ export default function CommunityApp({
                                 ))}
                                 <div className="flex justify-between text-xs text-[#6d8474]">
                                     <span>
-                                        {p.user.name} · {p.skill_level}
+                                        <UserName user={p.user} /> ·{" "}
+                                        {p.skill_level}
                                     </span>
                                     <span className="badge badge-green">
                                         {p.type}
@@ -610,7 +646,9 @@ export default function CommunityApp({
                             <div className="mb-3 grid size-12 place-items-center rounded-full bg-[#e9fbd7] text-xl font-bold">
                                 {p.name.charAt(0)}
                             </div>
-                            <h2 className="font-bold">{p.name}</h2>
+                            <h2 className="font-bold">
+                                <UserName user={p} />
+                            </h2>
                             <p className="my-3 text-sm text-[#6d8474]">
                                 {p.skill_level}
                             </p>
@@ -663,7 +701,19 @@ export default function CommunityApp({
                                     }}
                                 >
                                     <b>
-                                        {c.type === "ai" ? "✦ HUB AI" : c.title}
+                                        {c.type === "ai" ? (
+                                            "✦ HUB AI"
+                                        ) : c.direct_key ? (
+                                            <UserName
+                                                user={c.members?.find(
+                                                    (member: Row) =>
+                                                        member.id !== user.id,
+                                                )}
+                                                fallback={c.title}
+                                            />
+                                        ) : (
+                                            c.title
+                                        )}
                                     </b>
                                     {c.type === "ai" && (
                                         <span className="float-right text-xs text-green-700">
@@ -698,7 +748,22 @@ export default function CommunityApp({
                                             />
                                         </span>
                                         <div>
-                                            <h2>{conversation.title}</h2>
+                                            <h2>
+                                                {conversation.direct_key ? (
+                                                    <UserName
+                                                        user={members.find(
+                                                            (member) =>
+                                                                member.id !==
+                                                                user.id,
+                                                        )}
+                                                        fallback={
+                                                            conversation.title
+                                                        }
+                                                    />
+                                                ) : (
+                                                    conversation.title
+                                                )}
+                                            </h2>
                                             <p>
                                                 {conversation.type === "ai"
                                                     ? "Cùng bạn tìm sân cho trận cầu tiếp theo"
@@ -780,7 +845,7 @@ export default function CommunityApp({
                                                         : "Xem tin nhắn cũ hơn"}
                                                 </button>
                                             )}
-                                        {messages.map((m) => (
+                                        {visibleMessages.map((m) => (
                                             <div
                                                 className={
                                                     "chat-bubble " +
@@ -791,7 +856,7 @@ export default function CommunityApp({
                                                 key={m.id}
                                             >
                                                 <small className="text-[#6d8474]">
-                                                    {m.user?.name} ·{" "}
+                                                    <UserName user={m.user} /> ·{" "}
                                                     {stamp(m.created_at)}
                                                 </small>
                                                 <p className="mt-1 whitespace-pre-wrap break-words">
@@ -907,23 +972,49 @@ export default function CommunityApp({
                                                 )}
                                                 {m.user_id === user.id && (
                                                     <p className="mt-2 text-xs text-slate-500">
-                                                        {members.some(
-                                                            (p) =>
-                                                                p.id !==
-                                                                    user.id &&
-                                                                p.pivot
-                                                                    ?.read_at &&
-                                                                new Date(
-                                                                    p.pivot
-                                                                        .read_at,
-                                                                ) >=
-                                                                    new Date(
-                                                                        m.created_at,
-                                                                    ),
-                                                        )
-                                                            ? "Đã xem"
-                                                            : "Đã gửi"}
+                                                        {m.delivery ===
+                                                        "sending"
+                                                            ? "Đang gửi…"
+                                                            : m.delivery ===
+                                                                "failed"
+                                                              ? "Chưa gửi được"
+                                                              : members.some(
+                                                                      (p) =>
+                                                                          p.id !==
+                                                                              user.id &&
+                                                                          p
+                                                                              .pivot
+                                                                              ?.read_at &&
+                                                                          new Date(
+                                                                              p
+                                                                                  .pivot
+                                                                                  .read_at,
+                                                                          ) >=
+                                                                              new Date(
+                                                                                  m.created_at,
+                                                                              ),
+                                                                  )
+                                                                ? "Đã xem"
+                                                                : "Đã gửi"}
                                                     </p>
+                                                )}
+                                                {m.delivery === "failed" && (
+                                                    <div
+                                                        role="alert"
+                                                        className="chat-send-error"
+                                                    >
+                                                        <p>{m.error}</p>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                delivery.retry(
+                                                                    m,
+                                                                )
+                                                            }
+                                                        >
+                                                            Gửi lại
+                                                        </button>
+                                                    </div>
                                                 )}
                                                 {m.user_id === user.id &&
                                                     !m.deleted && (
@@ -956,62 +1047,58 @@ export default function CommunityApp({
                                                     )}
                                             </div>
                                         ))}
+                                        {conversation.id === "hub-ai" &&
+                                            delivery.sending && (
+                                                <div
+                                                    className="chat-typing"
+                                                    role="status"
+                                                >
+                                                    <span aria-hidden="true">
+                                                        ● ● ●
+                                                    </span>{" "}
+                                                    HUB AI đang đọc yêu cầu…
+                                                </div>
+                                            )}
                                         <div ref={messageEnd} />
                                     </div>
                                     {conversation.id !== "hub-ai" && (
                                         <MediaPicker
+                                            key={conversation.id}
                                             files
                                             value={attachments}
                                             onChange={setAttachments}
+                                            onBusyChange={setUploading}
+                                            onUploaded={(file) =>
+                                                setFiles((old) => [
+                                                    ...old.filter(
+                                                        (item) =>
+                                                            item.id !== file.id,
+                                                    ),
+                                                    file,
+                                                ])
+                                            }
                                         />
                                     )}
                                     <form
                                         className="hub-form chat-composer flex gap-2"
                                         onSubmit={(e) => {
                                             e.preventDefault();
-                                            run(async () => {
-                                                if (
-                                                    conversation.id === "hub-ai"
-                                                ) {
-                                                    const r = await api(
-                                                        "ai/chat",
-                                                        "POST",
-                                                        {
-                                                            request_key: key(),
-                                                            message: text,
-                                                        },
-                                                    );
-                                                    setMessages((old) => [
-                                                        ...old,
-                                                        ...r.data,
-                                                    ]);
-                                                    setText("");
-                                                    return;
-                                                }
-                                                await api(
-                                                    "conversations/" +
-                                                        conversation.id +
-                                                        "/messages",
-                                                    "POST",
-                                                    {
-                                                        request_key: key(),
-                                                        content: text,
-                                                        attachments,
-                                                    },
-                                                );
-                                                setText("");
-                                                setReply(null);
-                                                setAttachments([]);
-                                                setMessages(
-                                                    (
-                                                        await api(
-                                                            "conversations/" +
-                                                                conversation.id +
-                                                                "/messages",
-                                                        )
-                                                    ).data,
-                                                );
-                                            });
+                                            if (
+                                                uploading ||
+                                                delivery.sending ||
+                                                (!text.trim() &&
+                                                    !attachments.length)
+                                            )
+                                                return;
+                                            delivery.send(
+                                                text,
+                                                conversation.id === "hub-ai"
+                                                    ? []
+                                                    : attachments,
+                                            );
+                                            setText("");
+                                            setReply(null);
+                                            setAttachments([]);
                                         }}
                                     >
                                         <input
@@ -1031,21 +1118,37 @@ export default function CommunityApp({
                                                 setText(e.target.value);
                                                 if (
                                                     conversation &&
-                                                    conversation.id !== "hub-ai"
-                                                )
+                                                    conversation.id !==
+                                                        "hub-ai" &&
+                                                    Date.now() -
+                                                        typingAt.current >
+                                                        2500
+                                                ) {
+                                                    typingAt.current =
+                                                        Date.now();
                                                     api(
                                                         "conversations/" +
                                                             conversation.id +
                                                             "/typing",
                                                         "POST",
                                                     ).catch(() => {});
+                                                }
                                             }}
                                         />
                                         <button
                                             className="btn"
-                                            disabled={loading}
+                                            disabled={
+                                                uploading ||
+                                                delivery.sending ||
+                                                (!text.trim() &&
+                                                    !attachments.length)
+                                            }
                                         >
-                                            {loading ? "Đang gửi…" : "Gửi"}
+                                            {uploading
+                                                ? "Đang tải ảnh…"
+                                                : delivery.sending
+                                                  ? "Đang gửi…"
+                                                  : "Gửi"}
                                         </button>
                                     </form>
                                 </>
@@ -1081,15 +1184,17 @@ export default function CommunityApp({
                                 {post.user?.name?.split(" ").at(-1)?.[0]}
                             </span>
                             <div>
-                                <b>{post.user?.name}</b>
+                                <b>
+                                    <UserName user={post.user} />
+                                </b>
                                 <p className="text-xs text-slate-500">
                                     Đăng {stamp(post.created_at)}
                                 </p>
                             </div>
                         </div>
                         <p className="mb-3 text-sm text-[#6d8474]">
-                            {post.user?.name} · {stamp(post.starts_at)} ·{" "}
-                            {statusText(post.status)}
+                            <UserName user={post.user} /> ·{" "}
+                            {stamp(post.starts_at)} · {statusText(post.status)}
                         </p>
                         <div className="post-session-summary">
                             <div>
@@ -1238,7 +1343,8 @@ export default function CommunityApp({
                             key={j.id}
                         >
                             <span>
-                                {j.user.name} · {statusText(j.status)}
+                                <UserName user={j.user} /> ·{" "}
+                                {statusText(j.status)}
                             </span>
                             {post.user_id === user?.id &&
                                 j.status === "pending" && (
@@ -1275,7 +1381,7 @@ export default function CommunityApp({
                     {renderComments(null)}
                     {reply && (
                         <p className="mt-3 text-sm">
-                            Đang trả lời {reply.user.name}{" "}
+                            Đang trả lời <UserName user={reply.user} />{" "}
                             <button
                                 className="font-bold text-[#168449]"
                                 onClick={() => setReply(null)}

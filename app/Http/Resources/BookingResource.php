@@ -13,7 +13,7 @@ class BookingResource extends JsonResource
             'id' => $this->id,
             'reference' => $this->reference,
             'user_id' => $this->user_id,
-            'customer' => $this->whenLoaded('user', fn () => ['name' => $this->user->name, 'phone' => $this->user->phone]),
+            'customer' => $this->whenLoaded('user', fn () => ['name' => $this->user->name, 'phone' => $this->user->phone, 'membership_badge' => $this->user->membership_badge]),
             'court_id' => $this->court_id,
             'court' => $this->whenLoaded('court'),
             'starts_at' => $this->starts_at->toIso8601String(),

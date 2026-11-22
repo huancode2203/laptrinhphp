@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
@@ -161,8 +162,8 @@ export default function AdminModeration({
                                 {post.title}
                             </h3>
                             <p className="mt-2 text-sm text-slate-500">
-                                {post.user?.name} · {post.branch?.name} ·{" "}
-                                {stamp(post.created_at)}
+                                <UserName user={post.user} /> ·{" "}
+                                {post.branch?.name} · {stamp(post.created_at)}
                             </p>
                         </div>
                         <button

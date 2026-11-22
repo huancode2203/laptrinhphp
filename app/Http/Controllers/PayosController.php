@@ -59,6 +59,19 @@ class PayosController extends Controller
         return response()->json(['data' => $resumed]);
     }
 
+    public function resume(Request $request, PaymentAttempt $attempt, PayosService $payos): JsonResponse
+    {
+        if ($attempt->purpose === 'membership') {
+            return $this->resumeMembership($request, $attempt, $payos);
+        }
+        $this->authorizeAttempt($request, $attempt);
+        abort_unless($attempt->purpose === 'wallet' && $attempt->status === 'pending' && $attempt->expires_at->isFuture(), 422, 'Giao dịch không còn chờ thanh toán. Kiểm tra trạng thái hoặc tạo giao dịch mới.');
+        $extra = json_decode(base64_decode($attempt->extra_data), true) ?: [];
+        $data = ['purpose' => 'wallet', 'request_key' => $attempt->request_key, 'amount' => $attempt->amount] + array_intersect_key($extra, array_flip(['branch_id', 'actor_id']));
+
+        return response()->json(['data' => $payos->create($attempt->user, $data)]);
+    }
+
     public function webhook(Request $request, PayosService $payos): JsonResponse
     {
         $data = $request->validate(['code' => 'required|string', 'success' => 'required|boolean', 'data' => 'required|array', 'data.orderCode' => 'required|integer|min:1', 'data.amount' => 'required|integer|min:0', 'signature' => 'required|string|size:64']);
@@ -93,7 +106,7 @@ class PayosController extends Controller
             $request->session()->flash('auth_notice', 'Chưa kiểm tra được kết quả chuyển khoản. Mở lịch thanh toán và chọn kiểm tra trạng thái để cập nhật.');
         }
         if ($request->user()->role !== 'customer') {
-            return redirect()->away(rtrim(config('app.url'), '/').'/#'.($request->user()->role === 'admin' ? 'admin/payments' : ($attempt->purpose === 'membership' ? 'manage/customers' : 'manage/bookings')));
+            return redirect()->away(rtrim(config('app.url'), '/').'/#'.($request->user()->role === 'admin' ? 'admin/payments' : (in_array($attempt->purpose, ['membership', 'wallet'], true) ? 'manage/customers' : 'manage/bookings')));
         }
 
         return redirect()->away(rtrim(config('app.url'), '/').'/#account/'.($attempt->booking_id ? 'bookings/'.$attempt->booking_id : ($attempt->purpose === 'membership' ? 'membership' : 'wallet')));
@@ -102,6 +115,13 @@ class PayosController extends Controller
     private function authorizeAttempt(Request $request, PaymentAttempt $attempt): void
     {
         if ($attempt->user_id === $request->user()->id) {
+            return;
+        }
+        if ($attempt->purpose === 'wallet' && $request->user()->role !== 'customer') {
+            $branch = json_decode(base64_decode($attempt->extra_data), true)['branch_id'] ?? null;
+            abort_unless(is_int($branch) && $branch > 0, 403);
+            app(BookingService::class)->assertManage($request->user(), $branch, 'payments.write');
+
             return;
         }
         if ($attempt->purpose === 'membership' && $request->user()->role !== 'customer') {

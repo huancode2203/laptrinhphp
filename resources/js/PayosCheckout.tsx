@@ -31,12 +31,17 @@ export default function PayosCheckout({
     }, [attempt.qr_code]);
     const paid = attempt.status === "paid";
     const failed = attempt.status === "failed";
+    const wallet = attempt.purpose === "wallet";
     return (
         <Modal
             title={
                 paid
-                    ? "Đã thanh toán hội viên"
-                    : "Thanh toán hội viên qua PayOS"
+                    ? wallet
+                        ? "Đã nạp ví HUB"
+                        : "Đã thanh toán hội viên"
+                    : wallet
+                      ? "Nạp ví HUB qua PayOS"
+                      : "Thanh toán hội viên qua PayOS"
             }
             close={close}
         >
@@ -52,32 +57,38 @@ export default function PayosCheckout({
                 </div>
                 {paid ? (
                     <p role="status" className="font-bold text-green-700">
-                        Ngân hàng đã xác nhận thanh toán. Hội viên của khách đã
-                        được kích hoạt.
+                        {wallet
+                            ? "Ngân hàng đã xác nhận. Số tiền đã được cộng vào ví HUB của khách."
+                            : "Ngân hàng đã xác nhận thanh toán. Hội viên của khách đã được kích hoạt."}
                     </p>
                 ) : failed ? (
                     <p role="status">
-                        Thanh toán đã hủy hoặc hết hạn. Hội viên chưa được kích
-                        hoạt.
+                        {wallet
+                            ? "Thanh toán đã hủy hoặc hết hạn. Ví HUB chưa được cộng tiền."
+                            : "Thanh toán đã hủy hoặc hết hạn. Hội viên chưa được kích hoạt."}
                     </p>
                 ) : attempt.status === "credited" ||
                   attempt.status === "partial" ? (
                     <p role="status">
-                        Khoản tiền đã được chi nhánh đối chiếu và lưu vào ví
-                        HUB. Kiểm tra số dư của khách trước khi mua lại gói hội
-                        viên.
+                        {wallet
+                            ? "Khoản tiền đã được đối chiếu và lưu vào ví HUB. Kiểm tra số dư và lịch sử nạp tiền của khách."
+                            : "Khoản tiền đã được chi nhánh đối chiếu và lưu vào ví HUB. Kiểm tra số dư của khách trước khi mua lại gói hội viên."}
                     </p>
                 ) : (
                     <>
                         <p>
-                            Khách quét mã bằng ứng dụng ngân hàng và thanh toán
-                            đúng số tiền. Hội viên chỉ được kích hoạt sau khi
-                            ngân hàng xác nhận đủ tiền.
+                            {wallet
+                                ? "Khách quét mã bằng ứng dụng ngân hàng để nạp tiền. Ví HUB chỉ được cộng sau khi ngân hàng xác nhận thanh toán."
+                                : "Khách quét mã bằng ứng dụng ngân hàng và thanh toán đúng số tiền. Hội viên chỉ được kích hoạt sau khi ngân hàng xác nhận đủ tiền."}
                         </p>
                         {image && (
                             <img
                                 src={image}
-                                alt="Mã QR chuyển khoản ngân hàng cho gói hội viên"
+                                alt={
+                                    wallet
+                                        ? "Mã QR chuyển khoản nạp ví HUB"
+                                        : "Mã QR chuyển khoản ngân hàng cho gói hội viên"
+                                }
                                 className="mx-auto w-64 rounded-xl border border-slate-200"
                             />
                         )}
@@ -121,7 +132,7 @@ export default function PayosCheckout({
                                             attempt.id +
                                             (attempt.pay_url
                                                 ? "/sync"
-                                                : "/resume-membership"),
+                                                : "/resume"),
                                         "POST",
                                     );
                                     setAttempt(response.data);
@@ -158,8 +169,9 @@ export default function PayosCheckout({
                 </div>
                 {!paid && !failed && (
                     <p className="text-xs text-slate-500">
-                        Đóng cửa sổ không hủy giao dịch. Bấm “Mua hội viên” ở
-                        khách hàng này để mở lại thanh toán đang chờ.
+                        Đóng cửa sổ không hủy giao dịch. Bấm “
+                        {wallet ? "Nạp ví" : "Mua hội viên"}” ở khách hàng này
+                        để mở lại thanh toán đang chờ.
                     </p>
                 )}
             </div>

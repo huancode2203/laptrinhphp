@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import IntegrationPanel from "./IntegrationPanel";
@@ -535,7 +536,8 @@ export default function AdvancedManagement({
                     {reviews.map((v) => (
                         <Card key={v.id}>
                             <b>
-                                {v.user?.name} · {"★".repeat(v.rating)}
+                                <UserName user={v.user} /> ·{" "}
+                                {"★".repeat(v.rating)}
                             </b>
                             <p className="my-3">{v.content}</p>
                             {v.reply && (
@@ -577,8 +579,8 @@ export default function AdvancedManagement({
                             <Card key={v.id}>
                                 <b>{v.title}</b>
                                 <p className="mt-2 text-xs text-slate-500">
-                                    {v.user?.name} · {v.branch?.name} ·{" "}
-                                    {stamp(v.created_at)}
+                                    <UserName user={v.user} /> ·{" "}
+                                    {v.branch?.name} · {stamp(v.created_at)}
                                 </p>
                                 <p className="my-4 whitespace-pre-wrap">
                                     {v.content}

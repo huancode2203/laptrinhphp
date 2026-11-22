@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { day, localDateTime, stamp, type Row } from "./data";
@@ -92,7 +93,7 @@ export default function CalendarBoard({
                     {localDateTime(b.ends_at).slice(11)}
                 </strong>
                 <span>
-                    {b.court?.name} · {b.customer?.name}
+                    {b.court?.name} · <UserName user={b.customer} />
                 </span>
                 <small>
                     {b.reference}

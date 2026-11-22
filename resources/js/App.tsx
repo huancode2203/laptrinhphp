@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { appPath } from "./urls";
 import BookingResume from "./BookingResume";
 import CourtMatrix from "./CourtMatrix";
@@ -150,7 +151,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                 reviews.map((r) => (
                     <Card key={r.id} className="mb-3">
                         <b>
-                            {r.user?.name} · {r.rating}★ ·{" "}
+                            <UserName user={r.user} /> · {r.rating}★ ·{" "}
                             {r.booking?.court?.name}
                         </b>
                         <p className="mt-2 whitespace-pre-wrap">{r.content}</p>
@@ -395,6 +396,7 @@ export default function App() {
                 go={(p) => (p === "auth" ? auth() : go(p))}
                 book={() => book()}
                 userName={user?.name}
+                user={user}
                 manage={!!manager}
                 logout={() =>
                     run(async () => {

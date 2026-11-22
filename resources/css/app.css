@@ -1,6 +1,146 @@
 @import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
 @import "tailwindcss";
 
+.tone-silver {
+    --medal-light: #ffffff;
+    --medal-main: #aab9ca;
+    --medal-dark: #4b6076;
+}
+.tone-gold {
+    --medal-light: #fff5c4;
+    --medal-main: #e6b63c;
+    --medal-dark: #896119;
+}
+.tone-bronze {
+    --medal-light: #ffe8d5;
+    --medal-main: #cf946c;
+    --medal-dark: #925734;
+}
+.tone-vip {
+    --medal-light: #fff0bd;
+    --medal-main: #a68bed;
+    --medal-dark: #6440a4;
+}
+.tone-emerald {
+    --medal-light: #e6ffe9;
+    --medal-main: #57b58a;
+    --medal-dark: #17553d;
+}
+.member-name {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    gap: 5px;
+    max-width: 100%;
+}
+.member-name > span:first-child {
+    min-width: 0;
+}
+.membership-badge {
+    display: inline-flex;
+    flex: none;
+    width: 23px;
+    height: 23px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--medal-main) 17%, white);
+    box-shadow: inset 0 0 0 1px
+        color-mix(in srgb, var(--medal-dark) 18%, transparent);
+}
+.shuttle-mark {
+    display: block;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    filter: drop-shadow(0 1px 1px #0002);
+}
+.app-card.membership-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: color-mix(in srgb, var(--medal-main) 42%, white);
+    background: linear-gradient(
+        145deg,
+        #fff 5%,
+        color-mix(in srgb, var(--medal-main) 42%, white) 49%,
+        #fff 64%,
+        color-mix(in srgb, var(--medal-main) 65%, white)
+    );
+    box-shadow: 0 10px 30px #173f2b0a;
+}
+.membership-card::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        155deg,
+        transparent 0 55px,
+        #ffffff80 56px 58px,
+        transparent 60px 82px
+    );
+    opacity: 0.55;
+}
+.membership-card.tone-vip {
+    background:
+        radial-gradient(ellipse at 90% 0, #c8efff 0, transparent 55%),
+        linear-gradient(135deg, #fff6cf, #efe7ff 46%, #e0eaff 78%, #e8fff0);
+}
+.membership-card .shuttle-mark.is-large {
+    position: absolute;
+    width: 94px;
+    height: 94px;
+    right: 18px;
+    top: 22px;
+    opacity: 0.9;
+    transform: rotate(8deg);
+}
+.membership-card h2,
+.membership-card-kicker {
+    position: relative;
+    max-width: calc(100% - 80px);
+}
+.membership-card h2 {
+    color: #193e31;
+}
+.membership-card-kicker {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: #446351;
+}
+.membership-card.is-current {
+    outline: 2px solid var(--medal-dark);
+    outline-offset: 2px;
+}
+.chat-send-error {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #a13232;
+}
+.chat-send-error button {
+    margin-top: 5px;
+    padding: 5px 10px;
+    border: 1px solid #d9aaa5;
+    border-radius: 8px;
+    font-weight: 700;
+    background: white;
+}
+.chat-typing {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #52695d;
+}
+.chat-typing span {
+    display: inline-block;
+    margin-right: 8px;
+    letter-spacing: 2px;
+    color: #2a875b;
+}
+
 .workspace-topbar {
     display: flex;
     align-items: center;

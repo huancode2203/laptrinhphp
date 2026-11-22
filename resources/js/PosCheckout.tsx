@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { useEffect, useState } from "react";
 import CustomerPicker from "./CustomerPicker";
 import { api, key, useHub } from "./hub";
@@ -159,8 +160,10 @@ export default function PosCheckout({
                                             .map((b) => (
                                                 <option key={b.id} value={b.id}>
                                                     {b.court?.name} ·{" "}
-                                                    {b.customer?.name} ·{" "}
-                                                    {stamp(b.starts_at)} ·{" "}
+                                                    <UserName
+                                                        user={b.customer}
+                                                    />{" "}
+                                                    · {stamp(b.starts_at)} ·{" "}
                                                     {b.reference}
                                                 </option>
                                             ))}
@@ -238,7 +241,7 @@ export default function PosCheckout({
                             <div className="rounded-xl bg-[#f3f6f4] p-4 text-sm">
                                 <b>
                                     {booking.court?.name} ·{" "}
-                                    {booking.customer?.name}
+                                    <UserName user={booking.customer} />
                                 </b>
                                 <p className="mt-2">
                                     {booking.status_label ||

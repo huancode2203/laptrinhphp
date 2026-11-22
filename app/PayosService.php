@@ -50,9 +50,15 @@ class PayosService
                 if ($existing) {
                     $extra = json_decode(base64_decode($existing->extra_data), true);
                     $sameMembership = $existing->purpose === 'membership' && DB::table('membership_payment_orders')->where('payment_attempt_id', $existing->id)->where('membership_plan_id', $data['membership_plan_id'] ?? 0)->where('branch_id', $data['branch_id'] ?? 0)->where('initiated_by', $data['actor_id'] ?? 0)->exists();
+                    if ($existing->purpose === 'wallet') {
+                        abort_unless(($extra['branch_id'] ?? null) === (isset($data['branch_id']) ? (int) $data['branch_id'] : null) && ($extra['actor_id'] ?? null) === (isset($data['actor_id']) ? (int) $data['actor_id'] : null), 409, 'Giao dịch này được tạo trong một phạm vi khác. Vui lòng mở lại đúng giao dịch.');
+                    }
                     abort_unless($existing->partner_code === 'PAYOS' && $existing->user_id === $user->id && $existing->purpose === $data['purpose'] && $existing->booking_id === (isset($data['booking_id']) ? (int) $data['booking_id'] : null) && ($extra['deposit_only'] ?? false) === (bool) ($data['deposit_only'] ?? false) && (in_array($existing->purpose, ['booking', 'series'], true) || $sameMembership || ($existing->purpose === 'wallet' && $existing->amount === (int) ($data['amount'] ?? 0))), 409, 'Yêu cầu này đã dùng cho một giao dịch khác.');
 
                     return $existing;
+                }
+                if ($data['purpose'] === 'wallet') {
+                    abort_if(DB::table('wallet_entries')->where('request_key', $data['request_key'])->exists(), 409, 'Yêu cầu này đã cập nhật ví trước đó. Vui lòng kiểm tra lịch sử nạp tiền.');
                 }
                 $booking = null;
                 $allocations = [];
@@ -93,6 +99,12 @@ class PayosService
                 }
 
                 $attempt = PaymentAttempt::create(['request_key' => $data['request_key'], 'order_id' => (string) random_int(1000000000000, 900000000000000), 'user_id' => $user->id, 'booking_id' => $booking?->id, 'purpose' => $data['purpose'], 'partner_code' => 'PAYOS', 'amount' => $amount, 'order_info' => $data['purpose'] === 'series' ? 'Thanh toán '.count($allocations).' buổi cố định' : ($booking ? 'BH '.$booking->reference : 'BH NAP VI'), 'extra_data' => base64_encode(json_encode(['deposit_only' => (bool) ($data['deposit_only'] ?? false)])), 'status' => 'pending', 'expires_at' => $expires]);
+                if ($data['purpose'] === 'wallet' && isset($data['branch_id'], $data['actor_id'])) {
+                    $actor = User::findOrFail($data['actor_id']);
+                    app(BookingService::class)->assertManage($actor, (int) $data['branch_id'], 'payments.write');
+                    $attempt->update(['extra_data' => base64_encode(json_encode(['deposit_only' => false, 'branch_id' => (int) $data['branch_id'], 'actor_id' => (int) $data['actor_id']]))]);
+                    app(BookingService::class)->audit($actor, 'payos.checkout_created', $attempt->id, ['purpose' => 'wallet', 'user_id' => $owner->id, 'branch_id' => (int) $data['branch_id'], 'amount' => $amount], 'payment_attempt');
+                }
                 foreach ($allocations as $id => $due) {
                     DB::table('payment_attempt_bookings')->insert(['payment_attempt_id' => $attempt->id, 'booking_id' => $id, 'amount' => $due]);
                 }

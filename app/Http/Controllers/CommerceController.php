@@ -86,10 +86,25 @@ class CommerceController extends Controller
     public function topup(Request $request, User $user, CommerceService $commerce, BookingService $engine): JsonResponse
     {
         $data = $request->validate(['request_key' => ['required', 'uuid'], 'branch_id' => ['required', 'integer', 'exists:branches,id'], 'amount' => ['required', 'integer', 'min:1000', 'max:50000000'], 'method' => ['required', Rule::in(['cash', 'bank'])]]);
-        $engine->assertManage($request->user(), (int) $data['branch_id']);
+        $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
         abort_unless($user->role === 'customer', 422);
 
-        return response()->json(['data' => $commerce->wallet($request->user(), $user, (int) $data['amount'], 'topup', $data['request_key'], 'Nạp tiền tại quầy · '.$data['method'], (int) $data['branch_id'])]);
+        if ($data['method'] === 'bank') {
+            $attempt = app(PayosService::class)->create($user, ['purpose' => 'wallet', 'request_key' => $data['request_key'], 'amount' => $data['amount'], 'branch_id' => $data['branch_id'], 'actor_id' => $request->user()->id]);
+
+            return response()->json(['data' => $attempt, 'checkout_required' => true]);
+        }
+
+        $entry = DB::transaction(function () use ($request, $user, $data, $commerce) {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            abort_if(PaymentAttempt::where('request_key', $data['request_key'])->exists(), 409, 'Yêu cầu này đã tạo giao dịch ngân hàng. Hãy kiểm tra giao dịch trước khi thu tiền mặt.');
+            $existing = DB::table('wallet_entries')->where('request_key', $data['request_key'])->first();
+            abort_if($existing && $existing->branch_id !== (int) $data['branch_id'], 409, 'Yêu cầu này đã được xử lý tại một chi nhánh khác.');
+
+            return $commerce->wallet($request->user(), $user, (int) $data['amount'], 'topup', $data['request_key'], 'Nạp tiền tại quầy · cash', (int) $data['branch_id']);
+        }, 5);
+
+        return response()->json(['data' => $entry]);
     }
 
     public function buyMembership(Request $request, MembershipPlan $plan, CommerceService $commerce): JsonResponse
@@ -124,6 +139,15 @@ class CommerceController extends Controller
         $data = $request->validate(['branch_id' => 'required|integer|exists:branches,id']);
         $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
         $attempts = PaymentAttempt::where('user_id', $user->id)->where('purpose', 'membership')->where('status', 'pending')->where(fn ($q) => $q->where('expires_at', '>', now())->orWhereNotNull('review_reason'))->whereIn('id', DB::table('membership_payment_orders')->where('branch_id', $data['branch_id'])->select('payment_attempt_id'))->latest('id')->limit(10)->get();
+
+        return response()->json(['data' => $attempts]);
+    }
+
+    public function walletPayments(Request $request, User $user, BookingService $engine): JsonResponse
+    {
+        $data = $request->validate(['branch_id' => 'required|integer|exists:branches,id']);
+        $engine->assertManage($request->user(), (int) $data['branch_id'], 'payments.write');
+        $attempts = PaymentAttempt::where('user_id', $user->id)->where('partner_code', 'PAYOS')->where('purpose', 'wallet')->where('status', 'pending')->where(fn ($q) => $q->where('expires_at', '>', now())->orWhereNotNull('review_reason'))->latest('id')->get()->filter(fn ($attempt) => (json_decode(base64_decode($attempt->extra_data), true)['branch_id'] ?? null) === (int) $data['branch_id'])->take(10)->values();
 
         return response()->json(['data' => $attempts]);
     }

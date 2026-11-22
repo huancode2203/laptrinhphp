@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { api, key, useHub } from "./hub";
+import { useEffect, useState } from "react";
+import { api, useHub } from "./hub";
+import UserName from "./MembershipBadge";
+import { useChatDelivery } from "./chatDelivery";
 import { stamp, type Row } from "./data";
 import { appPath } from "./urls";
 import { Card, Empty } from "./ui";
@@ -13,8 +15,25 @@ export default function SupportInbox({ branch }: { branch: number }) {
     const [text, setText] = useState("");
     const [attachments, setAttachments] = useState<number[]>([]);
     const [error, setError] = useState("");
-    const [busy, setBusy] = useState(false);
-    const requestKey = useRef(key());
+    const [uploading, setUploading] = useState(false);
+    const delivery = useChatDelivery(data!.user, selected, (rows) =>
+        setMessages((old) => [
+            ...old.filter(
+                (message) => !rows.some((row) => row.id === message.id),
+            ),
+            ...rows,
+        ]),
+    );
+    const busy = uploading || delivery.sending;
+    const visibleMessages = [
+        ...messages,
+        ...delivery.outbox.filter(
+            (draft) =>
+                !messages.some(
+                    (message) => message.request_key === draft.request_key,
+                ),
+        ),
+    ];
     useEffect(() => {
         let live = true;
         setSelected(null);
@@ -43,7 +62,6 @@ export default function SupportInbox({ branch }: { branch: number }) {
         setMessages([]);
         setText("");
         setAttachments([]);
-        requestKey.current = key();
         if (!selected) return;
         const load = async () => {
             try {
@@ -105,7 +123,7 @@ export default function SupportInbox({ branch }: { branch: number }) {
                     <div>
                         <h3 className="mb-3 font-bold">{room.title}</h3>
                         <div className="mb-4 max-h-80 space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-3">
-                            {messages.map((message) => (
+                            {visibleMessages.map((message) => (
                                 <div
                                     key={message.id}
                                     className={
@@ -116,7 +134,7 @@ export default function SupportInbox({ branch }: { branch: number }) {
                                     }
                                 >
                                     <p className="mb-1 text-xs text-slate-500">
-                                        {message.user?.name} ·{" "}
+                                        <UserName user={message.user} /> ·{" "}
                                         {stamp(message.created_at)}
                                     </p>
                                     <p className="whitespace-pre-wrap">
@@ -135,6 +153,30 @@ export default function SupportInbox({ branch }: { branch: number }) {
                                             Xem tệp đính kèm ↗
                                         </a>
                                     ))}
+                                    {message.delivery === "sending" && (
+                                        <p
+                                            className="mt-2 text-xs"
+                                            role="status"
+                                        >
+                                            Đang gửi…
+                                        </p>
+                                    )}
+                                    {message.delivery === "failed" && (
+                                        <div
+                                            className="chat-send-error"
+                                            role="alert"
+                                        >
+                                            <p>{message.error}</p>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    delivery.retry(message)
+                                                }
+                                            >
+                                                Gửi lại
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {!messages.length && (
@@ -146,11 +188,10 @@ export default function SupportInbox({ branch }: { branch: number }) {
                         </div>
                         <fieldset disabled={busy}>
                             <MediaPicker
+                                key={selected}
                                 value={attachments}
-                                onChange={(value) => {
-                                    setAttachments(value);
-                                    requestKey.current = key();
-                                }}
+                                onChange={setAttachments}
+                                onBusyChange={setUploading}
                                 files
                             />
                             <form
@@ -162,34 +203,10 @@ export default function SupportInbox({ branch }: { branch: number }) {
                                         (!text.trim() && !attachments.length)
                                     )
                                         return;
-                                    setBusy(true);
                                     setError("");
-                                    try {
-                                        await api(
-                                            "conversations/" +
-                                                selected +
-                                                "/messages",
-                                            "POST",
-                                            {
-                                                request_key: requestKey.current,
-                                                content: text,
-                                                attachments,
-                                            },
-                                        );
-                                        requestKey.current = key();
-                                        setText("");
-                                        setAttachments([]);
-                                        const response = await api(
-                                            "conversations/" +
-                                                selected +
-                                                "/messages",
-                                        );
-                                        setMessages(response.data);
-                                    } catch (failure) {
-                                        setError((failure as Error).message);
-                                    } finally {
-                                        setBusy(false);
-                                    }
+                                    delivery.send(text, attachments);
+                                    setText("");
+                                    setAttachments([]);
                                 }}
                             >
                                 <input
@@ -201,7 +218,6 @@ export default function SupportInbox({ branch }: { branch: number }) {
                                     disabled={busy}
                                     onChange={(event) => {
                                         setText(event.target.value);
-                                        requestKey.current = key();
                                     }}
                                 />
                                 <button
@@ -209,7 +225,7 @@ export default function SupportInbox({ branch }: { branch: number }) {
                                     className="btn"
                                     disabled={busy}
                                 >
-                                    Gửi phản hồi
+                                    {busy ? "Đang gửi…" : "Gửi phản hồi"}
                                 </button>
                             </form>
                         </fieldset>

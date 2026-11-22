@@ -14,10 +14,32 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'skill_level', 'public_profile', 'avatar_path', 'email_reminders', 'sms_reminders'])]
-#[Hidden(['password', 'remember_token', 'google_sub', 'firebase_uid', 'phone_normalized'])]
+#[Hidden(['password', 'remember_token', 'google_sub', 'firebase_uid', 'phone_normalized', 'badgeMemberships'])]
 class User extends Authenticatable
 {
-    protected $appends = ['google_connected'];
+    protected $appends = ['google_connected', 'membership_badge'];
+
+    protected $with = ['badgeMemberships.plan'];
+
+    public function badgeMemberships(): HasMany
+    {
+        return $this->hasMany(Membership::class)->where('starts_at', '<=', now())->where('expires_at', '>', now())->whereIn('user_id', static::select('id')->where('role', 'customer'));
+    }
+
+    public function getMembershipBadgeAttribute(): ?array
+    {
+        $membership = $this->activeMembershipForDisplay();
+        if (! $membership) {
+            return null;
+        }
+
+        return ['label' => $membership->plan->name, 'tone' => $membership->plan->badge_tone, 'kind' => $membership->plan->price > 0 ? 'paid' : 'loyalty'];
+    }
+
+    public function activeMembershipForDisplay(): ?Membership
+    {
+        return $this->badgeMemberships->filter(fn ($member) => $member->plan !== null)->sortByDesc(fn ($member) => [$member->plan->discount_percent, $member->plan->price, $member->expires_at->timestamp])->first();
+    }
 
     public function getGoogleConnectedAttribute(): bool
     {

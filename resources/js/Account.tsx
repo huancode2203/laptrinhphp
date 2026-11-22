@@ -8,6 +8,7 @@ import { AccountExtras } from "./FeaturePages";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { api, ApiError, key, useHub } from "./hub";
+import UserName, { membershipTone, ShuttleMark } from "./MembershipBadge";
 import { money, stamp, statusText, type Row } from "./data";
 import { Card, Confirm, Editor, Empty, Modal, Table, cell } from "./ui";
 export function BookingDetail({
@@ -559,7 +560,8 @@ export function BookingDetail({
                 <div className="print-receipt space-y-2 border-t border-[#dce4dc] pt-4">
                     <h3 className="font-bold">Hóa đơn · {receipt.reference}</h3>
                     <p>
-                        {receipt.customer?.name} · {receipt.customer?.phone}
+                        <UserName user={receipt.customer} /> ·{" "}
+                        {receipt.customer?.phone}
                     </p>
                     {booking.services?.map((s: Row) => (
                         <p className="flex justify-between text-sm" key={s.id}>
@@ -882,7 +884,7 @@ export default function Account({
                 <div>
                     <p className="eyebrow text-[#16a34a]">GÓC CỦA BẠN</p>
                     <h1 className="font-display text-3xl font-bold">
-                        Xin chào, {user.name}
+                        Xin chào, <UserName user={user} />
                     </h1>
                     <p className="mt-2 text-[#6d8474]">
                         {account?.membership
@@ -1247,9 +1249,24 @@ export default function Account({
                 </>
             )}
             {tab === "membership" && (
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="membership-grid grid gap-4 md:grid-cols-3">
                     {data!.plans.map((p: Row) => (
-                        <Card key={p.id}>
+                        <Card
+                            key={p.id}
+                            className={
+                                "membership-card tone-" +
+                                membershipTone(p) +
+                                (user.membership_badge?.label === p.name
+                                    ? " is-current"
+                                    : "")
+                            }
+                        >
+                            <ShuttleMark tone={membershipTone(p)} large />
+                            <p className="membership-card-kicker">
+                                {p.price === 0 && p.points_threshold > 0
+                                    ? "HẠNG THÀNH VIÊN"
+                                    : "GÓI HỘI VIÊN"}
+                            </p>
                             <h2 className="font-display text-2xl font-bold">
                                 {p.name}
                             </h2>
@@ -1273,7 +1290,9 @@ export default function Account({
                                     className="btn mt-5"
                                     onClick={() => setForm("plan:" + p.id)}
                                 >
-                                    Mua bằng ví
+                                    {user.membership_badge?.label === p.name
+                                        ? "Gia hạn bằng ví"
+                                        : "Mua bằng ví"}
                                 </button>
                             )}
                         </Card>

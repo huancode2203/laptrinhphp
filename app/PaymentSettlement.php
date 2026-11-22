@@ -75,7 +75,9 @@ class PaymentSettlement
                     $received < $a->amount => 'Tiền chuyển thiếu cho gói hội viên đã được chi nhánh kiểm tra và cộng vào ví HUB',
                     default => 'Tiền chuyển bổ sung của giao dịch hội viên đã được cộng vào ví HUB',
                 };
-                app(CommerceService::class)->wallet($owner, $owner, $extra, 'payos_topup', $walletKey, $description, null, 'payment_attempt', $a->id);
+                $source = $a->purpose === 'wallet' ? (json_decode(base64_decode($a->extra_data), true) ?: []) : [];
+                $actor = isset($source['actor_id']) ? (User::find($source['actor_id']) ?? $owner) : $owner;
+                app(CommerceService::class)->wallet($actor, $owner, $extra, 'payos_topup', $walletKey, $description, $source['branch_id'] ?? null, 'payment_attempt', $a->id);
             }
             $a->forceFill(['status' => $received < $a->amount ? 'partial' : ($unfulfilledMembership || ($a->booking_id && $paid === 0 && $previous === 0) ? 'credited' : 'paid'), 'trans_id' => $transId, 'result_code' => 0, 'received_amount' => $received, 'settled_amount' => $received, 'review_reason' => null])->save();
             DB::table('payment_reconciliations')->where('payment_attempt_id', $a->id)->where('status', 'pending')->update(['status' => 'resolved', 'received_amount' => $received, 'resolved_at' => now(), 'updated_at' => now()]);

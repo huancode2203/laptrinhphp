@@ -20,6 +20,11 @@ class CourtSearchService
         if (! $filters) {
             $filters = $this->parseLocal($message);
             $explicit = $filters;
+            $text = $this->normalize($message);
+            $hasDetails = $explicit['start_time'] !== null || $explicit['end_time'] !== null || $explicit['district'] !== null || $explicit['max_budget'] !== null || $explicit['amenities'] !== [];
+            if (! $hasDetails && ! preg_match('/\b(?:san|cau long|danh cau|choi cau|dat|tim|doi|chuyen|sang ngay|ngay mai|hom sau|thu [2-7]|chu nhat)\b|\d{1,2}\/\d{1,2}/', $text)) {
+                return ['needs_clarification' => true, 'message' => 'Mình hỗ trợ tìm sân cầu lông theo lịch trống thực tế. Bạn muốn chơi ngày nào, từ mấy giờ đến mấy giờ và ở khu vực nào?', 'filters' => $context ?? $explicit, 'courts' => [], 'mode' => 'conversation'];
+            }
             if ($context && collect($explicit)->except('clarification')->every(fn ($value) => $value === null || $value === [])) {
                 return ['needs_clarification' => true, 'message' => 'Mình có thể tìm sân theo lịch trống thực tế. Bạn muốn đổi ngày, khung giờ, phường hoặc ngân sách nào? Ví dụ: ngày mai từ 9h đến 10h ở phường Tân Phú.', 'filters' => $context, 'courts' => [], 'mode' => 'conversation'];
             }
@@ -47,6 +52,25 @@ class CourtSearchService
                             $filters[$field] = $explicit[$field];
                         }
                     }
+                    if ($context) {
+                        $mentionsDate = preg_match('/\b(?:hom|ngay|tuan|thang|chu nhat)\b|\bthu\s+(?:[2-7]|hai|ba|tu|nam|sau|bay)\b|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2}/', $text);
+                        $mentionsTime = preg_match('/\bgio\b|\b(?:buoi|vao)\s+(?:sang|chieu|toi|dem)\b|\d{1,2}\s*(?:h|:)|\b(?:tu|luc)\s+\d/', $text);
+                        foreach (['date', 'start_time', 'end_time'] as $field) {
+                            if ($explicit[$field] === null && ! ($field === 'date' ? $mentionsDate : $mentionsTime)) {
+                                $filters[$field] = $context[$field] ?? null;
+                            }
+                        }
+                    }
+                    if ($explicit['district'] === null && ! preg_match('/\b(?:phuong|xa|khu vuc|tai|o)\s/', $text)) {
+                        $filters['district'] = null;
+                    }
+                    if ($filters['district'] !== null && preg_match('/^(?:tp\.?\s*hcm|thanh pho ho chi minh|ho chi minh|sai gon)$/', $this->normalize($filters['district']))) {
+                        $filters['district'] = null;
+                    }
+                    if (! preg_match('/\b(?:duoi|toi da|ngan sach|khong qua)\b/', $text)) {
+                        $filters['max_budget'] = null;
+                    }
+                    $filters['amenities'] = $explicit['amenities'];
                     $mode = 'model';
                 } catch (\Throwable $e) {
                     $mode = 'filters';

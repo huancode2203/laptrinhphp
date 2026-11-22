@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Logo } from "./Brand";
 import Icon, { type IconName } from "./Icon";
+import UserName from "./MembershipBadge";
+import type { Row } from "./data";
 export default function SiteHeader({
     page,
     go,
     book,
     userName,
+    user,
     manage,
     logout,
 }: {
@@ -13,6 +16,7 @@ export default function SiteHeader({
     go: (page: string) => void;
     book: () => void;
     userName?: string;
+    user?: Row | null;
     manage?: boolean;
     logout: () => void;
 }) {
@@ -79,7 +83,11 @@ export default function SiteHeader({
                             }
                         >
                             <Icon name="user" />
-                            {userName ?? "Đăng nhập"}
+                            {userName ? (
+                                <UserName user={user ?? { name: userName }} />
+                            ) : (
+                                "Đăng nhập"
+                            )}
                         </button>
                         {manage && (
                             <button onClick={() => navigate("manage")}>
@@ -112,7 +120,11 @@ export default function SiteHeader({
                                 <span className="avatar-mini">
                                     {userName.split(" ").at(-1)?.slice(0, 1)}
                                 </span>
-                                <span className="profile-name">{userName}</span>
+                                <span className="profile-name">
+                                    <UserName
+                                        user={user ?? { name: userName }}
+                                    />
+                                </span>
                                 <Icon name="chevron" size={15} />
                             </button>
                             {profile && (

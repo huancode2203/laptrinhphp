@@ -5,6 +5,7 @@ import MediaPicker from "./MediaPicker";
 import { api, useHub } from "./hub";
 import { Modal } from "./ui";
 import type { Row } from "./data";
+import UserName from "./MembershipBadge";
 
 export default function Profile({
     account,
@@ -71,7 +72,9 @@ export default function Profile({
                         <p className="eyebrow">
                             {roles[user.role] ?? "Người chơi"}
                         </p>
-                        <h2>{user.name}</h2>
+                        <h2>
+                            <UserName user={user} />
+                        </h2>
                         <p>
                             <Icon name="pin" size={14} /> TP. Hồ Chí Minh{" "}
                             <span>·</span> {user.skill_level}
@@ -181,7 +184,9 @@ export default function Profile({
                     <dl className="profile-info">
                         <div>
                             <dt>Họ và tên</dt>
-                            <dd>{user.name}</dd>
+                            <dd>
+                                <UserName user={user} />
+                            </dd>
                         </div>
                         <div>
                             <dt>Email</dt>

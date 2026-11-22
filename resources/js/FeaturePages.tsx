@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import Icon from "./Icon";
 import { useEffect, useState } from "react";
 import HistoryBrowser from "./HistoryBrowser";
@@ -141,7 +142,7 @@ export function AccountExtras() {
                     <Card key={v.id}>
                         <h3 className="font-bold">{v.title}</h3>
                         <p className="my-2 text-sm">
-                            {v.user?.name} · {v.branch?.name}
+                            <UserName user={v.user} /> · {v.branch?.name}
                         </p>
                         <a
                             className="text-sm font-bold text-[#168449]"
@@ -182,7 +183,7 @@ export function AccountExtras() {
                             )
                         }
                     >
-                        {v.name} · Bỏ chặn
+                        <UserName user={v} /> · Bỏ chặn
                     </button>
                 ))}
                 {!extras.blocked.length && (

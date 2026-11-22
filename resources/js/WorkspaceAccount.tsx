@@ -1,3 +1,4 @@
+import UserName from "./MembershipBadge";
 import { useState } from "react";
 import { api, useHub } from "./hub";
 import { statusText } from "./data";
@@ -34,7 +35,7 @@ export default function WorkspaceAccount() {
                             TÀI KHOẢN LÀM VIỆC
                         </p>
                         <h2 className="mt-2 break-words font-display text-3xl font-bold">
-                            {user.name}
+                            <UserName user={user} />
                         </h2>
                         <p className="mt-2 text-sm text-white/75">
                             {statusText(user.role)} · Badminton Hub
