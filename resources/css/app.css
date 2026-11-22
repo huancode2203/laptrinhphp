@@ -49,7 +49,7 @@
     box-shadow: inset 0 0 0 1px
         color-mix(in srgb, var(--medal-dark) 18%, transparent);
 }
-.membership-badge::after {
+.membership-badge.is-premium::after {
     content: "";
     position: absolute;
     width: 7px;
@@ -104,14 +104,14 @@
         transform 0.25s ease,
         box-shadow 0.25s ease;
 }
-.app-card.membership-card:hover,
-.app-card.membership-card:focus-within {
+.app-card.membership-card.is-premium:hover,
+.app-card.membership-card.is-premium:focus-within {
     transform: translateY(-4px);
     box-shadow:
         0 18px 40px color-mix(in srgb, var(--medal-main) 38%, transparent),
         inset 0 1px 0 white;
 }
-.membership-card::after {
+.membership-card.is-premium::after {
     content: "";
     position: absolute;
     z-index: -1;
@@ -129,13 +129,13 @@
     transform: translateX(-65%);
     animation: membership-sheen 8s ease-in-out infinite;
 }
-.membership-card:nth-child(2n)::after {
+.membership-card.is-premium:nth-child(2n)::after {
     animation-delay: -2.5s;
 }
-.membership-card:nth-child(3n)::after {
+.membership-card.is-premium:nth-child(3n)::after {
     animation-delay: -5s;
 }
-.membership-card::before {
+.membership-card.is-premium::before {
     content: "";
     position: absolute;
     z-index: -1;
@@ -3636,6 +3636,605 @@ input[type="radio"] {
     }
     .metric-card {
         min-height: 130px;
+    }
+}
+.membership-sections {
+    display: grid;
+    gap: 38px;
+}
+.membership-section-heading {
+    margin-bottom: 18px;
+}
+.membership-section-heading h2 {
+    margin: 5px 0 7px;
+    font: 800 27px/1.2 var(--font-display);
+    letter-spacing: -0.03em;
+}
+.membership-section-heading > p:last-child {
+    color: #6d7d73;
+    font-size: 13px;
+    line-height: 1.7;
+}
+.app-card.membership-card.is-earned {
+    background: color-mix(in srgb, var(--medal-main) 9%, white);
+    box-shadow: none;
+}
+.membership-card.is-earned .shuttle-mark {
+    filter: none;
+    opacity: 0.8;
+}
+.membership-badge.is-earned {
+    box-shadow: none;
+    background: color-mix(in srgb, var(--medal-main) 12%, white);
+}
+.membership-badge.is-premium {
+    box-shadow:
+        0 0 9px color-mix(in srgb, var(--medal-main) 38%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--medal-dark) 20%, transparent);
+}
+
+.profile-hero {
+    --cover-base: #0b2e26;
+    --cover-mid: #174b3a;
+    --cover-accent: #baff68;
+    --cover-glow: #58ac83;
+    --cover-second: #74c7a3;
+}
+.profile-hero.tone-silver {
+    --cover-base: #101c31;
+    --cover-mid: #304b6b;
+    --cover-accent: #e3f2ff;
+    --cover-glow: #9ec7ff;
+    --cover-second: #a8e5f5;
+}
+.profile-hero.tone-gold {
+    --cover-base: #2b180e;
+    --cover-mid: #6b431e;
+    --cover-accent: #ffe4a1;
+    --cover-glow: #ffb849;
+    --cover-second: #ffcfa1;
+}
+.profile-hero.tone-vip {
+    --cover-base: #160f30;
+    --cover-mid: #482966;
+    --cover-accent: #f4d4ff;
+    --cover-glow: #b985ff;
+    --cover-second: #6be8f7;
+}
+.profile-hero.tone-bronze {
+    --cover-base: #402b23;
+    --cover-mid: #745440;
+    --cover-accent: #f7dfcc;
+    --cover-glow: #c79775;
+    --cover-second: #e3be95;
+}
+.profile-hero.is-premium {
+    border-color: color-mix(in srgb, var(--cover-glow) 38%, white);
+    box-shadow: 0 14px 48px
+        color-mix(in srgb, var(--cover-glow) 14%, transparent);
+}
+.profile-hero .profile-cover {
+    height: 172px;
+    padding: 24px 42px 34px;
+    isolation: isolate;
+    background: linear-gradient(
+        120deg,
+        var(--cover-mid),
+        var(--cover-base) 75%
+    );
+    color: var(--cover-accent);
+}
+.profile-hero.is-premium .profile-cover {
+    height: 236px;
+}
+.member-cover-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+.member-cover-backdrop .court-lines {
+    inset: -150px -30px -100px 42%;
+    transform: rotate(-24deg);
+    opacity: 0.17;
+    color: var(--cover-accent);
+}
+.member-cover-copy {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+}
+.member-cover-kicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 9px;
+    line-height: 1.8;
+    letter-spacing: 0.24em;
+    font-weight: 800;
+}
+.member-cover-kicker > i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 12px currentColor;
+}
+.member-cover-copy h3 {
+    color: white;
+    font: 800 clamp(27px, 3.4vw, 48px)/1.14 var(--font-display);
+    margin: 8px 0;
+    letter-spacing: -0.045em;
+}
+.profile-hero.is-premium .member-cover-copy h3 {
+    font-size: clamp(45px, 5.5vw, 70px);
+    background: linear-gradient(120deg, #fff, var(--cover-accent) 65%, #fff);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.member-cover-copy > p {
+    color: #ffffffb5;
+    font-size: 12px;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+}
+.member-aurora {
+    position: absolute;
+    border-radius: 50%;
+    width: 58%;
+    height: 200%;
+    top: -70%;
+    filter: blur(42px);
+    mix-blend-mode: screen;
+    opacity: 0.55;
+    will-change: transform;
+}
+.member-aurora-one {
+    right: -7%;
+    background: radial-gradient(ellipse, var(--cover-glow), transparent 62%);
+    animation: cover-aurora 13s ease-in-out infinite alternate;
+}
+.member-aurora-two {
+    right: 15%;
+    top: -130%;
+    background: radial-gradient(ellipse, var(--cover-second), transparent 63%);
+    opacity: 0.4;
+    animation: cover-aurora 17s -7s ease-in-out infinite alternate-reverse;
+}
+.member-cover-grid {
+    position: absolute;
+    inset: -80% -20%;
+    background-image:
+        linear-gradient(
+            color-mix(in srgb, var(--cover-accent) 10%, transparent) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--cover-accent) 10%, transparent) 1px,
+            transparent 1px
+        );
+    background-size: 65px 65px;
+    transform: perspective(450px) rotateX(55deg) rotateZ(-22deg);
+    mask-image: linear-gradient(90deg, transparent 20%, #000 75%);
+}
+.member-cover-sweep {
+    position: absolute;
+    inset: -100%;
+    opacity: 0;
+    background: linear-gradient(
+        110deg,
+        transparent 42%,
+        #ffffff08 46%,
+        #ffffff24 50%,
+        #ffffff08 54%,
+        transparent 58%
+    );
+    animation: cover-light-pass 8s -1s ease-in-out infinite;
+}
+.member-cover-stars {
+    position: absolute;
+    inset: 0;
+}
+.member-cover-stars > i {
+    position: absolute;
+    display: block;
+    width: var(--star-size);
+    height: var(--star-size);
+    background: #fff8ed;
+    box-shadow: 0 0 9px var(--cover-accent);
+    border-radius: 50%;
+    animation: cover-star 5s var(--star-delay) ease-in-out infinite;
+}
+.member-cover-stars > i:nth-child(3n) {
+    clip-path: polygon(
+        50% 0,
+        61% 39%,
+        100% 50%,
+        61% 61%,
+        50% 100%,
+        39% 61%,
+        0 50%,
+        39% 39%
+    );
+    width: calc(var(--star-size) + 6px);
+    height: calc(var(--star-size) + 6px);
+    border-radius: 0;
+}
+.member-cover-ghost {
+    position: absolute;
+    top: -12%;
+    right: 4%;
+    font: 900 clamp(120px, 19vw, 260px)/1 var(--font-display);
+    letter-spacing: -0.07em;
+    color: #ffffff08;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform: rotate(-9deg);
+}
+.member-cover-emblem {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 174px;
+    height: 174px;
+    flex-shrink: 0;
+    margin-right: 3.5%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffffff13, transparent 67%);
+    animation: cover-emblem-arrive 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.member-cover-emblem > .shuttle-mark {
+    width: 108px;
+    height: 108px;
+    filter: drop-shadow(0 5px 12px #0005)
+        drop-shadow(
+            0 0 18px color-mix(in srgb, var(--cover-glow) 45%, transparent)
+        );
+    animation: cover-shuttle-float 5s ease-in-out infinite;
+}
+.member-emblem-label {
+    color: #ffffffe0;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.35em;
+}
+.member-emblem-caption {
+    color: var(--cover-accent);
+    font-size: 5px;
+    letter-spacing: 0.17em;
+    font-weight: 700;
+}
+.member-orbit {
+    position: absolute;
+    inset: -5px;
+    border: 1px solid color-mix(in srgb, var(--cover-accent) 42%, transparent);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: cover-orbit 22s linear infinite;
+}
+.member-orbit::before {
+    content: "";
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    left: calc(50% - 3px);
+    top: -3px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 0 16px var(--cover-accent),
+        0 0 5px white;
+}
+.member-orbit-inner {
+    inset: 6px;
+    border-style: dashed;
+    border-color: color-mix(in srgb, var(--cover-accent) 30%, transparent);
+    animation-duration: 35s;
+    animation-direction: reverse;
+}
+.member-orbit-inner::before {
+    width: 3px;
+    height: 3px;
+}
+.profile-hero.is-premium .profile-avatar {
+    isolation: isolate;
+    background: color-mix(in srgb, var(--cover-glow) 18%, white);
+    color: var(--medal-dark);
+}
+.profile-hero.is-premium .profile-avatar::before {
+    content: "";
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    padding: 3px;
+    background: conic-gradient(
+        from 30deg,
+        var(--cover-glow),
+        var(--cover-accent),
+        var(--cover-second),
+        #fff,
+        var(--cover-glow)
+    );
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: cover-orbit 12s linear infinite;
+}
+.profile-hero.is-premium .profile-avatar > i {
+    background: var(--medal-dark);
+}
+.profile-hero.is-premium .player-profile-name h2 {
+    color: var(--medal-dark);
+}
+.profile-hero .profile-badges > span:first-child {
+    color: var(--medal-dark);
+    background: color-mix(in srgb, var(--medal-main) 14%, white);
+    border-color: color-mix(in srgb, var(--medal-main) 30%, white);
+}
+.profile-hero.is-premium .profile-stats svg {
+    color: var(--medal-dark);
+}
+.profile-hero.is-earned .profile-cover {
+    background: linear-gradient(
+        120deg,
+        color-mix(in srgb, var(--cover-mid) 70%, #66726b),
+        var(--cover-base)
+    );
+}
+@keyframes cover-aurora {
+    from {
+        transform: translate3d(-10%, 5%, 0) rotate(-18deg) scale(0.9);
+    }
+    to {
+        transform: translate3d(18%, 18%, 0) rotate(24deg) scale(1.2);
+    }
+}
+@keyframes cover-light-pass {
+    0%,
+    10% {
+        opacity: 0;
+        transform: translateX(-35%);
+    }
+    20% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    60%,
+    100% {
+        opacity: 0;
+        transform: translateX(40%);
+    }
+}
+@keyframes cover-star {
+    0%,
+    100% {
+        opacity: 0.15;
+        transform: translateY(7px) scale(0.65);
+    }
+    50% {
+        opacity: 0.95;
+        transform: translateY(-10px) scale(1.15);
+    }
+}
+@keyframes cover-orbit {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@keyframes cover-shuttle-float {
+    0%,
+    100% {
+        transform: translateY(3px) rotate(-9deg);
+    }
+    50% {
+        transform: translateY(-7px) rotate(3deg);
+    }
+}
+@keyframes cover-emblem-arrive {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+@media (max-width: 767px) {
+    .profile-hero .profile-cover {
+        height: 155px;
+        padding: 22px 24px 32px;
+    }
+    .profile-hero.is-premium .profile-cover {
+        height: 208px;
+    }
+    .member-cover-emblem {
+        width: 112px;
+        height: 112px;
+        margin-right: 0;
+        margin-left: 16px;
+    }
+    .member-cover-emblem > .shuttle-mark {
+        width: 72px;
+        height: 72px;
+    }
+    .member-emblem-label {
+        font-size: 6px;
+        letter-spacing: 0.2em;
+    }
+    .member-emblem-caption {
+        display: none;
+    }
+    .member-cover-kicker {
+        font-size: 7px;
+        letter-spacing: 0.12em;
+        gap: 6px;
+    }
+    .member-cover-copy > p {
+        max-width: 180px;
+        font-size: 10px;
+    }
+    .profile-hero.is-premium .member-cover-copy h3 {
+        font-size: 43px;
+    }
+    .member-cover-copy h3 {
+        font-size: 24px;
+    }
+    .member-aurora {
+        width: 90%;
+        filter: blur(30px);
+    }
+    .membership-section-heading h2 {
+        font-size: 24px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-hero .member-aurora,
+    .profile-hero .member-cover-sweep,
+    .profile-hero .member-cover-stars > i,
+    .profile-hero .member-orbit,
+    .profile-hero .member-cover-emblem,
+    .profile-hero .member-cover-emblem > .shuttle-mark,
+    .profile-hero .profile-avatar::before {
+        animation: none;
+    }
+    .member-cover-sweep {
+        opacity: 0.3;
+    }
+    .member-cover-stars > i {
+        opacity: 0.7;
+    }
+}
+.profile-hero.tone-vip {
+    --cover-base: #111c2f;
+    --cover-mid: #1b3b4d;
+    --cover-accent: #fff1bf;
+    --cover-glow: #ff98ca;
+    --cover-second: #7af7d4;
+}
+.member-rainbow {
+    position: absolute;
+    inset: -180% -50%;
+    background: conic-gradient(
+        from 30deg,
+        #ff749b,
+        #ffb760,
+        #ffe687,
+        #74e3b0,
+        #64c9f7,
+        #9e9af8,
+        #ed8ed7,
+        #ff749b
+    );
+    opacity: 0.64;
+    filter: blur(34px);
+    animation: vip-rainbow-orbit 22s linear infinite;
+}
+.profile-hero.tone-vip .member-aurora {
+    opacity: 0.22;
+}
+.profile-hero.tone-vip.is-premium .member-cover-copy h3 {
+    background-image: linear-gradient(
+        100deg,
+        #fff2bc,
+        #ffbcdf,
+        #dcc5ff,
+        #a5e8ff,
+        #aaffd5,
+        #fff2bc
+    );
+    background-size: 220% 100%;
+    animation: vip-spectrum 7s ease-in-out infinite alternate;
+}
+.profile-hero.tone-vip.is-premium .profile-avatar::before {
+    background: conic-gradient(
+        #ff8da9,
+        #ffcb76,
+        #fff1a3,
+        #8be9bb,
+        #86d8ff,
+        #b8a4ff,
+        #f5a2de,
+        #ff8da9
+    );
+}
+.profile-hero.tone-vip.is-premium
+    .player-profile-name
+    h2
+    .member-name
+    > span:first-child {
+    background: linear-gradient(
+        100deg,
+        #a32e65,
+        #94601b,
+        #2e7550,
+        #276d9c,
+        #7044a8,
+        #a32e65
+    );
+    background-size: 220% 100%;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: vip-spectrum 9s ease-in-out infinite alternate;
+}
+.app-card.membership-card.is-premium.tone-vip {
+    background: linear-gradient(
+        120deg,
+        #fff1d4,
+        #ffe3ef,
+        #e6dfff,
+        #d9f2ff,
+        #dcf9e6,
+        #fff4cf
+    );
+    background-size: 240% 240%;
+    animation: vip-spectrum 12s ease-in-out infinite alternate;
+    box-shadow:
+        -5px 8px 28px #ffb4d02e,
+        5px 8px 28px #7ddbcf2e;
+}
+.membership-badge.is-premium.tone-vip {
+    background: conic-gradient(
+        #ffeaa4,
+        #ffc2d7,
+        #d0b7ff,
+        #9ee4ff,
+        #a4edcb,
+        #ffeaa4
+    );
+}
+@keyframes vip-rainbow-orbit {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@keyframes vip-spectrum {
+    from {
+        background-position: 0% 50%;
+    }
+    to {
+        background-position: 100% 50%;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-hero .member-rainbow,
+    .profile-hero.tone-vip.is-premium .member-cover-copy h3,
+    .profile-hero.tone-vip.is-premium
+        .player-profile-name
+        h2
+        .member-name
+        > span:first-child,
+    .app-card.membership-card.is-premium.tone-vip {
+        animation: none;
     }
 }
 .profile-layout {

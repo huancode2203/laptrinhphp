@@ -87,7 +87,7 @@ class CompleteFeaturesTest extends TestCase
             'https://api.openai.com/v1/responses' => Http::response(['output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => json_encode(['date' => '2026-10-12', 'start_time' => '13:00', 'end_time' => '15:00', 'district' => null, 'max_budget' => null, 'amenities' => [], 'clarification' => null])]]]]]),
             'http://127.0.0.1:11434/api/chat' => Http::response(['message' => ['content' => json_encode(['decision' => 'review', 'reason' => 'Cần người duyệt kiểm tra ngôn từ.', 'categories' => ['language'], 'confidence' => 0.9])]]),
         ]);
-        $this->postJson('/api/v1/ai/courts', ['message' => 'Giúp tôi tìm giờ phù hợp'])->assertOk()->assertJsonPath('data.mode', 'model')->assertJsonPath('data.courts.0.court_id', $this->court->id);
+        $this->postJson('/api/v1/ai/courts', ['message' => 'Hôm nay tôi muốn đánh cầu từ một giờ đến ba giờ chiều'])->assertOk()->assertJsonPath('data.mode', 'model')->assertJsonPath('data.courts.0.court_id', $this->court->id);
         $this->actingAs($this->customer)->postJson('/api/v1/community/posts', $this->postData())->assertCreated()->assertJsonPath('data.moderation_status', 'pending');
         Http::assertSent(fn ($r) => $r->url() === 'https://api.openai.com/v1/responses' && $r['model'] === 'search-test' && $r['store'] === false && $r['text']['format']['strict'] === true);
         Http::assertSent(fn ($r) => str_ends_with($r->url(), '/api/chat') && $r['model'] === 'moderation-test' && $r['stream'] === false && $r['format']['additionalProperties'] === false);

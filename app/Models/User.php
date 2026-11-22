@@ -28,7 +28,7 @@ class User extends Authenticatable
 
     public function getMembershipBadgeAttribute(): ?array
     {
-        $membership = $this->activeMembershipForDisplay();
+        $membership = $this->badgeMemberships->filter(fn ($member) => $member->plan?->price > 0)->sortByDesc(fn ($member) => [$member->plan->discount_percent, $member->plan->price, $member->expires_at->timestamp])->first() ?? $this->activeMembershipForDisplay();
         if (! $membership) {
             return null;
         }

@@ -18,14 +18,23 @@ class CourtSearchService
         $mode = 'filters';
         $modelIssue = null;
         if (! $filters) {
-            $filters = $this->parseLocal($message);
+            $filters = $this->parseLocal($message, $context);
             $explicit = $filters;
             $text = $this->normalize($message);
-            $hasDetails = $explicit['start_time'] !== null || $explicit['end_time'] !== null || $explicit['district'] !== null || $explicit['max_budget'] !== null || $explicit['amenities'] !== [];
-            if (! $hasDetails && ! preg_match('/\b(?:san|cau long|danh cau|choi cau|dat|tim|doi|chuyen|sang ngay|ngay mai|hom sau|thu [2-7]|chu nhat)\b|\d{1,2}\/\d{1,2}/', $text)) {
-                return ['needs_clarification' => true, 'message' => 'Mình hỗ trợ tìm sân cầu lông theo lịch trống thực tế. Bạn muốn chơi ngày nào, từ mấy giờ đến mấy giờ và ở khu vực nào?', 'filters' => $context ?? $explicit, 'courts' => [], 'mode' => 'conversation'];
+            $hasDetails = $explicit['start_time'] !== null || $explicit['end_time'] !== null || $explicit['district'] !== null || $explicit['max_budget'] !== null || $explicit['amenities'] !== [] || $explicit['duration_minutes'] !== null;
+            $hasDetails = $hasDetails || ($explicit['date'] !== null && preg_match('/^(?:hom nay|ngay mai|hom sau|ngay kia|ngay mot|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(?:\/\d{4})?)(?:\s+(?:nhe|nha|di))?[.!?]*$/', $text));
+            if (! $hasDetails && ! preg_match('/\b(?:san|cau long|danh cau|choi cau|dat|tim|doi|chuyen|sang ngay|ngay mai|hom sau|cuoi tuan|tuan sau|chu nhat)\b|thu\s+(?:[2-7]|hai|ba|tu|nam|sau|bay)|\d{1,2}\/\d{1,2}/', $text)) {
+                return $this->clarify($context ?? $explicit, 'Bạn có muốn đánh cầu lông không? Nếu có, cho mình biết ngày chơi, giờ bắt đầu và thời lượng hoặc giờ kết thúc nhé.');
             }
-            if ($context && collect($explicit)->except('clarification')->every(fn ($value) => $value === null || $value === [])) {
+            if ($explicit['clarification']) {
+                $pending = array_replace($context ?? [], array_filter($explicit, fn ($value) => $value !== null && $value !== []));
+                if ($explicit['date_options']) {
+                    $pending['date'] = null;
+                }
+
+                return $this->clarify(! empty($explicit['invalid_input']) ? ($context ?? $explicit) : $pending, $explicit['clarification']);
+            }
+            if ($context && collect($explicit)->only(['date', 'start_time', 'end_time', 'district', 'max_budget', 'amenities'])->every(fn ($value) => $value === null || $value === [])) {
                 return ['needs_clarification' => true, 'message' => 'Mình có thể tìm sân theo lịch trống thực tế. Bạn muốn đổi ngày, khung giờ, phường hoặc ngân sách nào? Ví dụ: ngày mai từ 9h đến 10h ở phường Tân Phú.', 'filters' => $context, 'courts' => [], 'mode' => 'conversation'];
             }
             if (in_array(config('ai.search.provider'), ['openai', 'ollama'], true)) {
@@ -71,6 +80,17 @@ class CourtSearchService
                         $filters['max_budget'] = null;
                     }
                     $filters['amenities'] = $explicit['amenities'];
+                    if ($explicit['date'] === null && ! preg_match('/\b(?:hom|ngay|thu|tuan|thang|chu nhat)\b|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2}/', $text)) {
+                        $filters['date'] = $context['date'] ?? null;
+                    }
+                    if ($explicit['start_time'] === null && ! preg_match('/(?:\d|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)\s*(?:h\b|gio\b|:)/', $text)) {
+                        $filters['start_time'] = $context['start_time'] ?? null;
+                        $filters['end_time'] = $context['end_time'] ?? null;
+                    }
+                    if ($explicit['start_time'] !== null && $explicit['end_time'] === null) {
+                        $filters['end_time'] = null;
+                    }
+                    $filters += array_intersect_key($explicit, array_flip(['date_options', 'duration_minutes', 'end_day_offset']));
                     $mode = 'model';
                 } catch (\Throwable $e) {
                     $mode = 'filters';
@@ -84,17 +104,38 @@ class CourtSearchService
                 $filters['district'] = null;
             }
         }
+        if (isset($explicit)) {
+            if ($explicit['date'] !== null) {
+                $filters['date_options'] = [];
+            }
+            if ($explicit['start_time'] !== null) {
+                $filters['end_day_offset'] = $explicit['end_day_offset'];
+            }
+        }
         if (empty($filters['date']) || empty($filters['start_time']) || empty($filters['end_time'])) {
-            return ['needs_clarification' => true, 'message' => $filters['clarification'] ?? 'Bạn muốn chơi ngày nào, từ mấy giờ đến mấy giờ?', 'filters' => $filters, 'courts' => [], 'mode' => $mode];
+            $missing = empty($filters['date']) ? (empty($filters['start_time']) ? 'Bạn muốn chơi ngày nào và bắt đầu lúc mấy giờ?' : 'Bạn muốn chơi ngày nào? Mình đã ghi nhận khung giờ bạn vừa nêu.') : (empty($filters['start_time']) ? 'Bạn muốn bắt đầu chơi lúc mấy giờ?' : 'Bạn muốn chơi bao lâu hoặc kết thúc lúc mấy giờ?');
+
+            return $this->clarify($filters, $missing, $mode);
         }
         Validator::make($filters, ['date' => 'required|date_format:Y-m-d', 'start_time' => 'required|date_format:H:i', 'end_time' => 'required|date_format:H:i', 'max_budget' => 'nullable|integer|min:1|max:100000000', 'ward' => 'nullable|string|max:100', 'district' => 'nullable|string|max:100', 'amenities' => 'sometimes|array|max:10', 'amenities.*' => 'string|max:60'])->validate();
         $start = CarbonImmutable::parse($filters['date'].' '.$filters['start_time'], config('app.timezone'));
         $end = CarbonImmutable::parse($filters['date'].' '.$filters['end_time'], config('app.timezone'));
+        if (! empty($filters['end_day_offset']) || ($end->lte($start) && $start->hour >= 18 && $end->hour <= 6)) {
+            $area = app(LocationService::class)->normalize($filters['district'] ?? '');
+            $closing = Branch::where('active', true)->get()->filter(fn ($branch) => ! $area || app(LocationService::class)->normalize($branch->ward ?: $branch->district) === $area)->max('closes_minute');
+            $reason = $closing && $closing < 1440 ? 'Các chi nhánh'.($area ? ' trong khu vực bạn chọn' : '').' đóng cửa muộn nhất lúc '.sprintf('%02d:%02d', intdiv($closing, 60), $closing % 60).'.' : 'Các buổi đặt sân hiện cần bắt đầu và kết thúc trong cùng một ngày.';
+
+            return $this->clarify($filters, 'Mình hiểu bạn muốn chơi từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày hôm sau. '.$reason.' Bạn có muốn bắt đầu sớm hơn hoặc rút ngắn thời lượng không?', $mode);
+        }
         if ($start->lt(now())) {
-            return ['needs_clarification' => true, 'message' => 'Khung giờ này đã qua. Bạn muốn tìm cùng giờ vào ngày khác?', 'filters' => $filters, 'courts' => [], 'mode' => $mode];
+            return $this->clarify($filters, 'Bạn đang chọn '.$start->format('H:i').'–'.$end->format('H:i').' ngày '.$start->format('d/m/Y').', trước thời điểm hiện tại ('.now()->format('H:i d/m/Y').'). Bạn muốn đổi sang ngày nào hoặc chọn giờ muộn hơn?', $mode);
         }
         $engine = app(BookingService::class);
-        [$start,$end] = $engine->window($start->toIso8601String(), $end->toIso8601String());
+        try {
+            [$start,$end] = $engine->window($start->toIso8601String(), $end->toIso8601String());
+        } catch (ValidationException $exception) {
+            return $this->clarify($filters, collect($exception->errors())->flatten()->implode(' ').' Bạn muốn điều chỉnh khung giờ thế nào?', $mode);
+        }
         app(FeatureService::class)->expireBookings();
         $district = app(LocationService::class)->normalize($filters['ward'] ?? $filters['district'] ?? '');
         $courts = Court::where('status', 'active')->whereHas('branch', fn ($q) => $q->where('active', true))->with('branch')->get();
@@ -156,35 +197,124 @@ class CourtSearchService
         return Str::lower(Str::ascii($value, 'vi'));
     }
 
-    private function parseLocal(string $message): array
+    private function clarify(array $filters, string $message, string $mode = 'conversation'): array
     {
-        $text = $this->normalize($message);
-        $date = null;
-        $district = null;
-        $max = null;
-        if (str_contains($text, 'hom nay')) {
-            $date = now()->toDateString();
-        } elseif (str_contains($text, 'ngay mai') || str_contains($text, 'hom sau')) {
-            $date = now()->addDay()->toDateString();
-        } elseif (preg_match('/\b(\d{4}-\d{2}-\d{2})\b/', $text, $m)) {
-            $date = $m[1];
-        } elseif (preg_match('~(?:ngay\s*)?(\d{1,2})/(\d{1,2})(?:/(\d{4}))?~', $text, $m)) {
-            $year = $m[3] ?? now()->year;
-            if (checkdate((int) $m[2], (int) $m[1], (int) $year)) {
-                $date = sprintf('%04d-%02d-%02d', $year, $m[2], $m[1]);
+        return ['needs_clarification' => true, 'message' => $message, 'filters' => $filters, 'courts' => [], 'mode' => $mode];
+    }
+
+    private function parseDate(string $text, ?array $context): array
+    {
+        $today = CarbonImmutable::today(config('app.timezone'));
+        if (preg_match('~\b(\d{4})-(\d{2})-(\d{2})\b~', $text, $m)) {
+            return checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? [$m[0], [], null] : [null, [], 'Ngày bạn nhập không hợp lệ. Bạn có muốn đánh cầu lông không? Nếu có, chọn lại một ngày có trên lịch nhé.'];
+        }
+        if (preg_match('~(?:ngay\s*)?(\d{1,2})/(\d{1,2})(?:/(\d{4}))?~', $text, $m)) {
+            $year = (int) ($m[3] ?? $today->year);
+
+            return checkdate((int) $m[2], (int) $m[1], $year) ? [sprintf('%04d-%02d-%02d', $year, $m[2], $m[1]), [], null] : [null, [], 'Ngày '.$m[0].' không hợp lệ. Bạn có muốn đánh cầu lông không? Nếu có, chọn lại ngày chơi nhé.'];
+        }
+        foreach (['hom nay' => 0, 'ngay mai' => 1, 'hom sau' => 1, 'ngay kia' => 2, 'ngay mot' => 2] as $phrase => $days) {
+            if (str_contains($text, $phrase)) {
+                return [$today->addDays($days)->toDateString(), [], null];
             }
         }
-        preg_match_all('/\b(\d{1,2})\s*(?:h|gio|:)\s*(\d{2})?(?:\s*(sang|chieu|toi|dem))?/', $text, $times, PREG_SET_ORDER);
-        $periods = array_values(array_unique(array_filter(array_column($times, 3))));
-        $hours = array_map(function ($match) use ($periods): string {
+        if (preg_match('/\b(\d{1,2})\s*ngay\s*(?:nua|sau)\b/', $text, $m)) {
+            return [$today->addDays((int) $m[1])->toDateString(), [], null];
+        }
+        $week = $today->startOfWeek(CarbonImmutable::MONDAY);
+        $nextWeek = (bool) preg_match('/\btuan\s+(?:sau|toi)\b/', $text);
+        if (preg_match('/\bthu\s*(hai|ba|tu|nam|sau|bay|[2-7])\b|\bchu\s*nhat\b/', $text, $m)) {
+            $key = ($m[1] ?? '') ?: 'chunhat';
+            $offset = ['hai' => 0, '2' => 0, 'ba' => 1, '3' => 1, 'tu' => 2, '4' => 2, 'nam' => 3, '5' => 3, 'sau' => 4, '6' => 4, 'bay' => 5, '7' => 5, 'chunhat' => 6][$key];
+            foreach ($context['date_options'] ?? [] as $option) {
+                if (! str_contains($text, 'tuan') && CarbonImmutable::parse($option)->dayOfWeekIso === $offset + 1) {
+                    return [$option, [], null];
+                }
+            }
+            $date = ($nextWeek ? $week->addWeek() : $week)->addDays($offset);
+            if (! $nextWeek && ! str_contains($text, 'tuan nay') && $date->lt($today)) {
+                $date = $date->addWeek();
+            }
+
+            return [$date->toDateString(), [], null];
+        }
+        $options = $context['date_options'] ?? [];
+        if (str_contains($text, 'cuoi tuan') || $nextWeek) {
+            $base = $nextWeek ? $week->addWeek() : $week;
+            $options = collect(str_contains($text, 'cuoi tuan') ? [5, 6] : range(0, 6))->map(fn ($day) => $base->addDays($day))->filter(fn ($date) => $date->gte($today))->map->toDateString()->values()->all();
+        }
+        if (count($options) === 1) {
+            return [$options[0], [], null];
+        }
+        if (count($options) > 1) {
+            $question = count($options) === 2 ? 'Bạn muốn chơi thứ Bảy ('.CarbonImmutable::parse($options[0])->format('d/m').') hay Chủ nhật ('.CarbonImmutable::parse($options[1])->format('d/m').')?' : 'Bạn muốn chơi ngày nào trong tuần từ '.CarbonImmutable::parse($options[0])->format('d/m').' đến '.CarbonImmutable::parse(end($options))->format('d/m').'?';
+
+            return [null, $options, $question];
+        }
+
+        return [null, [], null];
+    }
+
+    private function parseLocal(string $message, ?array $context = null): array
+    {
+        $text = $this->normalize($message);
+        [$date, $dateOptions, $question] = $this->parseDate($text, $context);
+        $invalid = $question !== null && $dateOptions === [];
+        $district = null;
+        $max = null;
+        $duration = null;
+        $timeText = $text;
+        if (preg_match('/\b(?:(?:danh|choi|trong|keo dai)\s+(\d+(?:[.,]\d+)?)\s*(tieng|gio|phut)\b(?!\s*(?:sang|chieu|toi|dem))|(\d+(?:[.,]\d+)?)\s*(tieng)\b)(?:\s*(ruoi))?/', $text, $m)) {
+            $number = (float) str_replace(',', '.', ($m[1] ?? '') !== '' ? $m[1] : $m[3]);
+            $unit = ($m[2] ?? '') !== '' ? $m[2] : $m[4];
+            $duration = (int) round(($number + (! empty($m[5]) ? .5 : 0)) * ($unit === 'phut' ? 1 : 60));
+            $timeText = str_replace($m[0], ' ', $text);
+        }
+        preg_match_all('/\b(\d{1,2})\s*(?:h|gio|:)\s*(\d{2})?(?:\s*(ruoi))?(?:\s*(sang|chieu|toi|dem))?/', $timeText, $times, PREG_SET_ORDER);
+        $periods = array_values(array_unique(array_filter(array_column($times, 4))));
+        $hours = [];
+        $endDayOffset = 0;
+        foreach ($times as $index => $match) {
             $hour = (int) $match[1];
-            $period = $match[3] ?? (count($periods) === 1 ? $periods[0] : null);
+            $minute = ! empty($match[3]) ? 30 : (int) ($match[2] ?? 0);
+            $period = ($match[4] ?? '') ?: (count($periods) === 1 ? $periods[0] : null);
+            if ($hour > 23 || $minute > 59) {
+                if ($hour === 24 && $minute === 0 && $index > 0) {
+                    $hour = 0;
+                    $endDayOffset = 1;
+                } else {
+                    $invalid = true;
+                    $question = 'Giờ bạn nhập chưa hợp lệ. Bạn có muốn đánh cầu lông không? Nếu có, chọn giờ từ 00:00 đến 23:30, theo mốc giờ tròn hoặc giờ rưỡi nhé.';
+
+                    continue;
+                }
+            }
             if (($period === 'chieu' || $period === 'toi') && $hour < 12) {
                 $hour += 12;
             }
 
-            return sprintf('%02d:%02d', $hour, (int) ($match[2] ?? 0));
-        }, $times);
+            $hours[] = sprintf('%02d:%02d', $hour, $minute);
+        }
+        if (count($hours) < 2 && ($duration !== null || (count($hours) === 1 && ! empty($context['duration_minutes'])))) {
+            $duration ??= $context['duration_minutes'];
+            $startTime = $hours[0] ?? $context['start_time'] ?? null;
+            if ($duration < 30 || $duration > 360 || $duration % 30 !== 0) {
+                $invalid = true;
+                $question = 'Mỗi buổi chơi cần từ 30 phút đến 6 giờ, theo bước 30 phút. Bạn muốn chơi bao lâu?';
+            } elseif ($startTime) {
+                $begin = CarbonImmutable::parse('2000-01-01 '.$startTime);
+                $finish = $begin->addMinutes($duration);
+                $hours = [$startTime, $finish->format('H:i')];
+                $endDayOffset = $begin->isSameDay($finish) ? 0 : 1;
+            }
+        }
+        if (count($hours) >= 2 && $duration === null) {
+            $minutes = (int) CarbonImmutable::parse('2000-01-01 '.$hours[0])->diffInMinutes(CarbonImmutable::parse('2000-01-01 '.$hours[1]), false);
+            $duration = $minutes > 0 ? $minutes : null;
+        }
+        if ($dateOptions && count($hours) >= 2) {
+            $question = 'Mình hiểu bạn muốn chơi từ '.$hours[0].' đến '.$hours[1].($endDayOffset ? ' ngày hôm sau' : '').'. '.$question;
+        }
         $areas = Branch::where('active', true)->get()->map(fn ($branch) => $branch->ward ?: $branch->district)->unique()->sortByDesc(fn ($area) => mb_strlen($area));
         if (preg_match('/(?:phuong|xa)\s+([^,.;!?]+)/', $text, $match)) {
             $district = trim(preg_split('/\s+(?:(?:luc|tu|vao|ngay|hom|thi|co|khong|voi|duoi|ngan|can|de|di|nhe|nha|giup|cho)\b|\d)/', $match[1], 2)[0]);
@@ -214,6 +344,6 @@ class CourtSearchService
             }
         }
 
-        return ['date' => $date, 'start_time' => $hours[0] ?? null, 'end_time' => $hours[1] ?? null, 'district' => $district, 'max_budget' => $max, 'amenities' => $amenities, 'clarification' => null];
+        return ['date' => $date, 'start_time' => $hours[0] ?? null, 'end_time' => $hours[1] ?? null, 'district' => $district, 'max_budget' => $max, 'amenities' => $amenities, 'clarification' => $question, 'date_options' => $dateOptions, 'duration_minutes' => $duration, 'end_day_offset' => $endDayOffset, 'invalid_input' => $invalid];
     }
 }

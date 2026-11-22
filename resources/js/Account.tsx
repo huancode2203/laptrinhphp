@@ -878,6 +878,12 @@ export default function Account({
         await load();
     }
     const user = data!.user;
+    const identityMembership = account?.memberships?.find(
+        (member: Row) =>
+            member.plan?.name === user.membership_badge?.label &&
+            Date.parse(member.expires_at) > Date.now() &&
+            Date.parse(member.starts_at) <= Date.now(),
+    );
     const couponPages = Math.max(
         1,
         Math.ceil((account?.coupons?.length ?? 0) / 6),
@@ -892,12 +898,16 @@ export default function Account({
                         Xin chào, <UserName user={user} />
                     </h1>
                     <p className="mt-2 text-[#6d8474]">
-                        {account?.membership
-                            ? "Hội viên " +
-                              account.membership.plan.name +
-                              " đến " +
-                              stamp(account.membership.expires_at)
-                            : "Hội viên Basic"}
+                        {user.membership_badge
+                            ? (user.membership_badge.kind === "paid"
+                                  ? "Hội viên "
+                                  : "") +
+                              user.membership_badge.label +
+                              (identityMembership
+                                  ? " đến " +
+                                    stamp(identityMembership.expires_at)
+                                  : "")
+                            : "Hẹn bạn trên sân. Cùng tích điểm qua mỗi buổi chơi."}
                     </p>
                 </div>
                 <button className="btn h-fit" onClick={book}>
@@ -1259,54 +1269,109 @@ export default function Account({
                 </>
             )}
             {tab === "membership" && (
-                <div className="membership-grid grid gap-4 md:grid-cols-3">
-                    {data!.plans.map((p: Row) => (
-                        <Card
-                            key={p.id}
-                            className={
-                                "membership-card tone-" +
-                                membershipTone(p) +
-                                (user.membership_badge?.label === p.name
-                                    ? " is-current"
-                                    : "")
-                            }
-                        >
-                            <ShuttleMark tone={membershipTone(p)} large />
-                            <p className="membership-card-kicker">
-                                {p.price === 0 && p.points_threshold > 0
-                                    ? "HẠNG THÀNH VIÊN"
-                                    : "GÓI HỘI VIÊN"}
-                            </p>
-                            <h2 className="font-display text-2xl font-bold">
-                                {p.name}
-                            </h2>
-                            <p className="my-4 text-2xl font-bold text-[#16a34a]">
-                                {p.price === 0 && p.points_threshold > 0
-                                    ? "Hạng tích điểm"
-                                    : money(p.price)}
-                            </p>
-                            <p>
-                                Giảm {p.discount_percent}% phí sân ·{" "}
-                                {p.duration_days} ngày
-                            </p>
-                            {p.price === 0 && p.points_threshold > 0 ? (
-                                <p className="mt-5 text-sm text-slate-600">
-                                    Tự động nhận khi tích lũy{" "}
-                                    {p.points_threshold} điểm. Bạn đã tích{" "}
-                                    {data!.user.earned_points ?? 0} điểm.
-                                </p>
-                            ) : (
-                                <button
-                                    className="btn mt-5"
-                                    onClick={() => setForm("plan:" + p.id)}
-                                >
-                                    {user.membership_badge?.label === p.name
-                                        ? "Gia hạn bằng ví"
-                                        : "Mua bằng ví"}
-                                </button>
-                            )}
-                        </Card>
-                    ))}
+                <div className="membership-sections">
+                    {[true, false]
+                        .filter((paid) =>
+                            data!.plans.some((p: Row) => p.price > 0 === paid),
+                        )
+                        .map((paid) => (
+                            <section
+                                key={String(paid)}
+                                className="membership-section"
+                            >
+                                <header className="membership-section-heading">
+                                    <p className="eyebrow">
+                                        {paid
+                                            ? "DẤU ẤN CỦA BẠN"
+                                            : "CHƠI ĐỀU, TIẾN XA"}
+                                    </p>
+                                    <h2>
+                                        {paid
+                                            ? "Gói hội viên"
+                                            : "Hạng tích lũy"}
+                                    </h2>
+                                    <p>
+                                        {paid
+                                            ? "Ưu đãi phí sân cùng diện mạo riêng cho hồ sơ của bạn."
+                                            : "Tự động nhận khi đủ điểm. Mỗi buổi chơi là một bước tiến."}
+                                    </p>
+                                </header>
+                                <div className="membership-grid grid gap-4 md:grid-cols-3">
+                                    {data!.plans
+                                        .filter(
+                                            (p: Row) => p.price > 0 === paid,
+                                        )
+                                        .map((p: Row) => (
+                                            <Card
+                                                key={p.id}
+                                                className={
+                                                    "membership-card tone-" +
+                                                    membershipTone(p) +
+                                                    (paid
+                                                        ? " is-premium"
+                                                        : " is-earned") +
+                                                    (user.membership_badge
+                                                        ?.label === p.name
+                                                        ? " is-current"
+                                                        : "")
+                                                }
+                                            >
+                                                <ShuttleMark
+                                                    tone={membershipTone(p)}
+                                                    large
+                                                    sparkle={paid}
+                                                />
+                                                <p className="membership-card-kicker">
+                                                    {p.price === 0 &&
+                                                    p.points_threshold > 0
+                                                        ? "HẠNG THÀNH VIÊN"
+                                                        : "GÓI HỘI VIÊN"}
+                                                </p>
+                                                <h2 className="font-display text-2xl font-bold">
+                                                    {p.name}
+                                                </h2>
+                                                <p className="my-4 text-2xl font-bold text-[#16a34a]">
+                                                    {p.price === 0 &&
+                                                    p.points_threshold > 0
+                                                        ? "Hạng tích điểm"
+                                                        : money(p.price)}
+                                                </p>
+                                                <p>
+                                                    Giảm {p.discount_percent}%
+                                                    phí sân · {p.duration_days}{" "}
+                                                    ngày
+                                                </p>
+                                                {p.price === 0 &&
+                                                p.points_threshold > 0 ? (
+                                                    <p className="mt-5 text-sm text-slate-600">
+                                                        Tự động nhận khi tích
+                                                        lũy {p.points_threshold}{" "}
+                                                        điểm. Bạn đã tích{" "}
+                                                        {data!.user
+                                                            .earned_points ??
+                                                            0}{" "}
+                                                        điểm.
+                                                    </p>
+                                                ) : (
+                                                    <button
+                                                        className="btn mt-5"
+                                                        onClick={() =>
+                                                            setForm(
+                                                                "plan:" + p.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        {user.membership_badge
+                                                            ?.label === p.name
+                                                            ? "Gia hạn bằng ví"
+                                                            : "Mua bằng ví"}
+                                                    </button>
+                                                )}
+                                            </Card>
+                                        ))}
+                                </div>
+                            </section>
+                        ))}
                 </div>
             )}
             {tab === "notifications" && (

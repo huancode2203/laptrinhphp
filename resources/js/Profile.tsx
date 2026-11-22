@@ -6,6 +6,7 @@ import { api, useHub } from "./hub";
 import { Modal } from "./ui";
 import type { Row } from "./data";
 import UserName from "./MembershipBadge";
+import MembershipCover from "./MembershipCover";
 
 export default function Profile({
     account,
@@ -34,7 +35,16 @@ export default function Profile({
         .slice(-2)
         .map((v: string) => v[0])
         .join("");
-    const member = account?.membership?.plan?.name ?? "Basic";
+    const badge = user.membership_badge;
+    const member = badge?.label ?? "Thành viên";
+    const appearance =
+        "tone-" +
+        (badge?.tone ?? "emerald") +
+        (badge?.kind === "paid"
+            ? " is-premium"
+            : badge
+              ? " is-earned"
+              : " is-basic");
     const roles: Record<string, string> = {
         admin: "Quản trị viên",
         manager: "Quản lý sân",
@@ -44,12 +54,8 @@ export default function Profile({
     };
     return (
         <div className="profile-layout">
-            <section className="profile-hero">
-                <div className="profile-cover">
-                    <div className="court-lines" />
-                    <span>YOUR NEXT RALLY STARTS HERE</span>
-                    <Icon name="racket" size={58} />
-                </div>
+            <section className={"profile-hero " + appearance}>
+                <MembershipCover badge={badge} />
                 <div className="profile-identity">
                     <button
                         className="profile-avatar"
@@ -86,7 +92,11 @@ export default function Profile({
                 </div>
                 <div className="profile-badges">
                     <span>
-                        <Icon name="trophy" size={15} /> Hội viên {member}
+                        <Icon name="trophy" size={15} />{" "}
+                        {badge
+                            ? (badge.kind === "paid" ? "Hội viên " : "") +
+                              member
+                            : member}
                     </span>
                     <span>
                         <Icon name="people" size={15} />{" "}

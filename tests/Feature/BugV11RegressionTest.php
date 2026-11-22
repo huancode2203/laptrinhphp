@@ -174,6 +174,18 @@ class BugV11RegressionTest extends TestCase
         $this->getJson('/api/v1/community/players')->assertOk()->assertJsonPath('data.0.membership_badge', null);
     }
 
+    public function test_paid_identity_stays_visible_with_a_higher_loyalty_discount_and_expires_normally(): void
+    {
+        $customer = User::factory()->create(['public_profile' => true]);
+        $silver = MembershipPlan::factory()->create(['name' => 'Silver', 'price' => 199000, 'discount_percent' => 5]);
+        $gold = MembershipPlan::factory()->create(['name' => 'Hạng Vàng', 'price' => 0, 'points_threshold' => 1500, 'discount_percent' => 8]);
+        $paid = Membership::factory()->create(['user_id' => $customer->id, 'membership_plan_id' => $silver->id]);
+        Membership::factory()->create(['user_id' => $customer->id, 'membership_plan_id' => $gold->id]);
+        $this->actingAs($customer)->getJson('/api/v1/hub')->assertOk()->assertJsonPath('data.user.membership_badge.label', 'Silver')->assertJsonPath('data.user.membership_badge.kind', 'paid')->assertJsonPath('data.membership.plan.discount_percent', 8);
+        $paid->update(['expires_at' => now()->subMinute()]);
+        $this->actingAs($customer->fresh())->getJson('/api/v1/hub')->assertOk()->assertJsonPath('data.user.membership_badge.label', 'Hạng Vàng')->assertJsonPath('data.user.membership_badge.kind', 'loyalty');
+    }
+
     public function test_public_payment_return_does_not_use_a_stale_localhost_url(): void
     {
         config(['app.url' => 'http://localhost/badminton']);

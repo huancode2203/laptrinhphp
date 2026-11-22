@@ -29,10 +29,10 @@ export default function SearchAssistant({
         max_budget: "",
         amenities: [],
     });
-    async function search(useFilters = false, page = 0) {
+    async function search(useFilters = false, page = 0, override?: Row) {
         const keepSelection = useFilters || manualEdited || page > 0;
         const selectedFilters =
-            page > 0 ? (result?.filters ?? filters) : filters;
+            override ?? (page > 0 ? (result?.filters ?? filters) : filters);
         const budget =
             selectedFilters.max_budget === "" ||
             selectedFilters.max_budget == null
@@ -85,7 +85,20 @@ export default function SearchAssistant({
     function changeFilter(name: string, value: any) {
         filterVersion.current++;
         setManualEdited(true);
-        setFilters((previous) => ({ ...previous, [name]: value }));
+        setFilters((previous) => ({
+            ...previous,
+            [name]: value,
+            ...(["start_time", "end_time"].includes(name)
+                ? {
+                      end_day_offset: 0,
+                      duration_minutes: null,
+                      clarification: null,
+                  }
+                : {}),
+            ...(name === "date"
+                ? { date_options: [], clarification: null }
+                : {}),
+        }));
     }
     return (
         <section
@@ -126,7 +139,10 @@ export default function SearchAssistant({
                     maxLength={1000}
                     required
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={(e) => {
+                        setMessage(e.target.value);
+                        setManualEdited(false);
+                    }}
                     placeholder="Hôm nay từ 13h đến 15h ở TP.HCM, dưới 300k…"
                 />
                 <button className="btn" disabled={busy}>
@@ -148,7 +164,10 @@ export default function SearchAssistant({
                     <button
                         key={s}
                         className="search-chip"
-                        onClick={() => setMessage(s)}
+                        onClick={() => {
+                            setMessage(s);
+                            setManualEdited(false);
+                        }}
                     >
                         {s}
                     </button>
@@ -233,6 +252,41 @@ export default function SearchAssistant({
             {result && (
                 <div className="mt-5" aria-live="polite">
                     <p className="font-bold">{result.message}</p>
+                    {result.needs_clarification &&
+                        result.filters?.date_options?.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {result.filters.date_options.map(
+                                    (date: string) => (
+                                        <button
+                                            key={date}
+                                            type="button"
+                                            className="btn-outline"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                const selected = {
+                                                    ...filters,
+                                                    ...result.filters,
+                                                    date,
+                                                    date_options: [],
+                                                    clarification: null,
+                                                };
+                                                setFilters(selected);
+                                                setManualEdited(true);
+                                                void search(true, 0, selected);
+                                            }}
+                                        >
+                                            {new Date(
+                                                date + "T12:00:00+07:00",
+                                            ).toLocaleDateString("vi-VN", {
+                                                weekday: "long",
+                                                day: "2-digit",
+                                                month: "2-digit",
+                                            })}
+                                        </button>
+                                    ),
+                                )}
+                            </div>
+                        )}
                     <SearchAlternatives
                         rows={result.alternatives}
                         book={book}
