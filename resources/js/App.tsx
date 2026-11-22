@@ -1,3 +1,4 @@
+import { DateInput } from "./DateInput";
 import UserName from "./MembershipBadge";
 import { appPath } from "./urls";
 import BookingResume from "./BookingResume";
@@ -111,7 +112,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                 <h2 className="font-display text-2xl font-bold">
                     Lịch sân trực tiếp
                 </h2>
-                <input
+                <DateInput
                     aria-label="Ngày xem lịch sân"
                     className="input"
                     type="date"

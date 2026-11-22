@@ -93,7 +93,7 @@ class BookingService
                 $this->assertAvailable($court, $begin, $finish, null, $actor?->id);
                 $quote = $this->quote($court, $begin, $finish, $services, $owner, null, true);
             } catch (ValidationException $exception) {
-                throw ValidationException::withMessages(collect($exception->errors())->map(fn (array $messages) => array_map(fn (string $message) => 'Buổi thứ '.($week + 1).' ('.$begin->format('d/m/Y').'): '.$message, $messages))->all());
+                throw ValidationException::withMessages(collect($exception->errors())->map(fn (array $messages) => array_map(fn (string $message) => 'Buổi thứ '.($week + 1).' ('.$begin->format('d-m-Y').'): '.$message, $messages))->all());
             }
             unset($quote['items']);
             $sessions[] = $quote + ['starts_at' => $begin->toIso8601String(), 'ends_at' => $finish->toIso8601String(), 'deposit_amount' => $actor?->role === 'customer' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0];
@@ -124,7 +124,7 @@ class BookingService
         }
         $lastDay = now()->addDays($branch->booking_days + ($early ?? 0))->endOfDay();
         if ($start->gt($lastDay)) {
-            throw ValidationException::withMessages(['starts_at' => 'Cơ sở đang nhận lịch đến ngày '.$lastDay->format('d/m/Y').'. Chọn ngày sớm hơn hoặc giảm số tuần.']);
+            throw ValidationException::withMessages(['starts_at' => 'Cơ sở đang nhận lịch đến ngày '.$lastDay->format('d-m-Y').'. Chọn ngày sớm hơn hoặc giảm số tuần.']);
         }
     }
 
@@ -187,7 +187,7 @@ class BookingService
                     'notes' => $data['notes'] ?? null,
                     'source' => $actor->role === 'customer' ? 'online' : 'counter',
                     'deposit_amount' => $actor->role === 'customer' ? (int) ceil($quote['total_amount'] * $court->branch->deposit_percent / 100) : 0,
-                    'payment_expires_at' => $actor->role === 'customer' && $court->branch->deposit_percent > 0 ? ($start->lt(now()->addMinutes($court->branch->payment_minutes)) ? $start : now()->addMinutes($court->branch->payment_minutes)) : null,
+                    'payment_expires_at' => $actor->role === 'customer' && $quote['total_amount'] > 0 ? ($start->lt(now()->addMinutes($court->branch->payment_minutes)) ? $start : now()->addMinutes($court->branch->payment_minutes)) : null,
                 ]);
                 $booking->services()->attach($quote['items']);
                 CourtHold::where('user_id', $actor->id)->where('court_id', $court->id)->where('released', false)->update(['released' => true]);
@@ -437,7 +437,7 @@ class BookingService
             } catch (ValidationException) {
                 continue;
             }
-            $entry->user->notify(new HubNotification(['type' => 'waitlist.available', 'title' => 'Sân trong danh sách chờ vừa trống', 'body' => $court->name.' · '.$entry->starts_at->format('d/m H:i').'. Bạn có thể kiểm tra và đặt sân.', 'court_id' => $court->id]));
+            $entry->user->notify(new HubNotification(['type' => 'waitlist.available', 'title' => 'Sân trong danh sách chờ vừa trống', 'body' => $court->name.' · '.$entry->starts_at->format('d-m-Y H:i').'. Bạn có thể kiểm tra và đặt sân.', 'court_id' => $court->id]));
             $entry->update(['status' => 'notified']);
         }
     }

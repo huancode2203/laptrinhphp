@@ -1,4 +1,5 @@
 import { money, type Row } from "./data";
+import { formatDate } from "./dates";
 
 export default function AiChatCriteria({
     result,
@@ -20,7 +21,7 @@ export default function AiChatCriteria({
         Shower: "Phòng tắm",
         Cafe: "Cà phê",
     };
-    const dateLabel = (date: string) => date.split("-").reverse().join("/");
+    const dateLabel = formatDate;
     const criteria = [
         filters.date && dateLabel(filters.date),
         filters.start_time &&

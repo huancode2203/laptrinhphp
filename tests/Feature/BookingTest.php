@@ -10,10 +10,12 @@ use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\FakesBankCheckout;
 use Tests\TestCase;
 
 class BookingTest extends TestCase
 {
+    use FakesBankCheckout;
     use RefreshDatabase;
 
     private User $customer;
@@ -45,6 +47,7 @@ class BookingTest extends TestCase
 
     public function test_server_calculates_peak_boundary_and_service_prices(): void
     {
+        $this->fakeBankCheckout();
         $service = Service::factory()->create(['branch_id' => $this->court->branch_id, 'price' => 10000]);
         $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload([
             'starts_at' => '2026-10-12 15:30', 'ends_at' => '2026-10-12 16:30',
@@ -57,6 +60,7 @@ class BookingTest extends TestCase
 
     public function test_weekend_rate_is_used(): void
     {
+        $this->fakeBankCheckout();
         $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload([
             'starts_at' => '2026-10-17 10:00', 'ends_at' => '2026-10-17 12:00',
         ]))->assertCreated()->assertJsonPath('data.court_amount', 400000);
@@ -64,6 +68,7 @@ class BookingTest extends TestCase
 
     public function test_overlapping_bookings_are_rejected_and_adjacent_slots_are_allowed(): void
     {
+        $this->fakeBankCheckout();
         $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload())->assertCreated();
         $this->postJson('/api/v1/bookings', $this->payload(['starts_at' => '2026-10-12 10:30', 'ends_at' => '2026-10-12 11:30']))->assertUnprocessable()->assertJsonValidationErrors('starts_at');
         $this->postJson('/api/v1/bookings', $this->payload(['starts_at' => '2026-10-12 11:00', 'ends_at' => '2026-10-12 12:00']))->assertCreated();
@@ -72,6 +77,7 @@ class BookingTest extends TestCase
 
     public function test_same_request_is_idempotent_and_changed_payload_is_rejected(): void
     {
+        $this->fakeBankCheckout();
         $data = $this->payload();
         $first = $this->actingAs($this->customer)->postJson('/api/v1/bookings', $data)->assertCreated();
         $this->postJson('/api/v1/bookings', $data)->assertOk()->assertJsonPath('data.id', $first->json('data.id'));
@@ -107,6 +113,7 @@ class BookingTest extends TestCase
 
     public function test_cancellation_releases_slot_and_cannot_change_paid_or_checked_in_bookings(): void
     {
+        $this->fakeBankCheckout();
         $created = $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload())->json('data.id');
         $this->patchJson('/api/v1/bookings/'.$created.'/status', ['status' => 'cancelled'])->assertOk();
         $this->postJson('/api/v1/bookings', $this->payload())->assertCreated();

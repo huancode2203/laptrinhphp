@@ -1,4 +1,5 @@
 import MediaPicker from "./MediaPicker";
+import { DateInput } from "./DateInput";
 import Icon from "./Icon";
 import {
     Children,
@@ -497,7 +498,7 @@ export function Editor({
                         </small>
                     </>
                 ) : (
-                    <input
+                    <DateInput
                         {...shared}
                         className="input"
                         type={f.type ?? "text"}

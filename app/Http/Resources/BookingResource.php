@@ -34,7 +34,7 @@ class BookingResource extends JsonResource
             'paid_amount' => $this->paid_amount,
             'source' => $this->source, 'deposit_amount' => $this->deposit_amount,
             'deposit_remaining' => max(0, $this->deposit_amount - $this->paid_amount),
-            'payment_expires_at' => $this->paid_amount < $this->deposit_amount ? $this->payment_expires_at?->toIso8601String() : null,
+            'payment_expires_at' => $this->paid_amount < max(1, $this->deposit_amount) && $this->total_amount > 0 ? $this->payment_expires_at?->toIso8601String() : null,
             'remaining_amount' => $this->status === 'cancelled' ? 0 : max(0, $this->total_amount - $this->paid_amount),
             'refund_pending' => $this->status === 'cancelled' && $this->paid_amount > 0,
             'notes' => $this->notes,

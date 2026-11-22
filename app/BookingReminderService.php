@@ -40,7 +40,7 @@ class BookingReminderService
                     }
                     DB::table('booking_deliveries')->where('id', $delivery->id)->increment('attempts');
                     try {
-                        $text = 'Badminton Hub · '.$booking->reference.' sắp đến giờ: '.$booking->starts_at->format('d/m/Y H:i').' – '.$booking->ends_at->format('H:i').', '.$booking->court->name.', '.$booking->court->branch->name.'. Xem lịch tại '.rtrim(config('app.url'), '/').'/#account/bookings/'.$booking->id;
+                        $text = 'Badminton Hub · '.$booking->reference.' sắp đến giờ: '.$booking->starts_at->format('d-m-Y H:i').' – '.$booking->ends_at->format('H:i').', '.$booking->court->name.', '.$booking->court->branch->name.'. Xem lịch tại '.rtrim(config('app.url'), '/').'/#account/bookings/'.$booking->id;
                         if ($channel === 'email') {
                             abort_unless(app(EmailSettings::class)->apply(), 503);
                             Mail::raw($text, fn ($message) => $message->to($user->email)->subject('Nhắc lịch ra sân · '.$booking->reference));

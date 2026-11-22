@@ -1,3 +1,4 @@
+import { DateInput } from "./DateInput";
 import { useState } from "react";
 import { BRANCHES, day, money } from "./data";
 import { useHub } from "./hub";
@@ -203,7 +204,7 @@ export default function CustomerHome(p: Props) {
                             <label>
                                 <Icon name="calendar" size={17} />
                                 <span>Ngày chơi</span>
-                                <input
+                                <DateInput
                                     type="date"
                                     aria-label="Ngày chơi tại chi nhánh"
                                     min={day()}

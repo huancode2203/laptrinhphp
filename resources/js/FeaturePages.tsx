@@ -1,3 +1,4 @@
+import { DateInput } from "./DateInput";
 import UserName from "./MembershipBadge";
 import MembershipHeading from "./MembershipHeading";
 import Icon from "./Icon";
@@ -610,7 +611,7 @@ export function Coaching() {
                     >
                         <label className="text-sm">
                             Ngày
-                            <input
+                            <DateInput
                                 type="date"
                                 className="input mt-1 w-full"
                                 min={day()}

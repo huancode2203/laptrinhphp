@@ -6,15 +6,18 @@ use App\Models\Booking;
 use App\Models\Court;
 use App\Models\Membership;
 use App\Models\MembershipPlan;
+use App\Models\PaymentAttempt;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\FakesBankCheckout;
 use Tests\TestCase;
 
 class FixedSeriesQuoteTest extends TestCase
 {
+    use FakesBankCheckout;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -30,6 +33,7 @@ class FixedSeriesQuoteTest extends TestCase
 
     public function test_series_total_services_discount_and_deposit_match_all_created_bookings(): void
     {
+        $this->fakeBankCheckout();
         $court = Court::factory()->create();
         $customer = User::factory()->create();
         $service = Service::factory()->create(['branch_id' => $court->branch_id, 'price' => 10000]);
@@ -48,17 +52,19 @@ class FixedSeriesQuoteTest extends TestCase
 
     public function test_date_specific_rates_and_per_booking_deposit_rounding_are_not_multiplied_from_first_week(): void
     {
+        $this->fakeBankCheckout();
         $court = Court::factory()->create(['hourly_rate' => 100001]);
         $customer = User::factory()->create(['wallet_balance' => 1000000]);
         DB::table('pricing_rules')->insert(['branch_id' => $court->branch_id, 'court_id' => $court->id, 'name' => 'Giá buổi thứ hai', 'date' => '2026-10-20', 'from_minute' => 780, 'to_minute' => 900, 'hourly_rate' => 200001, 'priority' => 10, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
-        $data = $this->payload($court, ['ends_at' => '2026-10-13 14:30', 'occurrences' => 2, 'pay_with_wallet' => true, 'deposit_only' => true]);
+        $data = $this->payload($court, ['ends_at' => '2026-10-13 14:30', 'occurrences' => 2, 'deposit_only' => true]);
         $quote = $this->actingAs($customer)->postJson('/api/v1/courts/'.$court->id.'/quote', $data)->assertOk()
             ->assertJsonPath('data.sessions.0.total_amount', 127503)->assertJsonPath('data.sessions.1.total_amount', 255003)
             ->assertJsonPath('data.total_amount', 382506)->assertJsonPath('data.deposit_amount', 191254)->json('data');
-        $this->postJson('/api/v1/bookings/series', $data)->assertCreated();
+        $result = $this->postJson('/api/v1/bookings/series', $data)->assertCreated();
+        $this->settleBankCheckout(PaymentAttempt::findOrFail($result->json('checkout.id')));
         $this->assertEquals($quote['total_amount'], Booking::sum('total_amount'));
         $this->assertEquals($quote['deposit_amount'], DB::table('payments')->sum('amount'));
-        $this->assertEquals(1000000 - $quote['deposit_amount'], $customer->refresh()->wallet_balance);
+        $this->assertEquals(1000000, $customer->refresh()->wallet_balance);
     }
 
     public function test_membership_and_fixed_discounts_are_shown_separately_and_counter_deposit_is_zero(): void
@@ -87,7 +93,7 @@ class FixedSeriesQuoteTest extends TestCase
         $data = $this->payload($court);
         foreach (['courts/'.$court->id.'/quote', 'bookings/series'] as $path) {
             $error = $this->postJson('/api/v1/'.$path, $data)->assertUnprocessable()->json('errors.starts_at.0');
-            $this->assertStringContainsString('Buổi thứ 3 (27/10/2026)', $error);
+            $this->assertStringContainsString('Buổi thứ 3 (27-10-2026)', $error);
         }
         $this->assertDatabaseCount('bookings', 1);
     }
@@ -99,7 +105,7 @@ class FixedSeriesQuoteTest extends TestCase
         $this->actingAs(User::factory()->create());
         $error = $this->postJson('/api/v1/courts/'.$court->id.'/quote', $this->payload($court))->assertUnprocessable()->json('errors.starts_at.0');
         $this->assertStringContainsString('Buổi thứ 3', $error);
-        $this->assertStringContainsString('26/10/2026', $error);
+        $this->assertStringContainsString('26-10-2026', $error);
         foreach ([1, 13, 2.5, [], 'abc'] as $weeks) {
             $this->postJson('/api/v1/courts/'.$court->id.'/quote', $this->payload($court, ['occurrences' => $weeks]))->assertUnprocessable()->assertJsonValidationErrors('occurrences');
         }

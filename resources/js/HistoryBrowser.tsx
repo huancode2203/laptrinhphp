@@ -1,3 +1,4 @@
+import { DateInput } from "./DateInput";
 import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import { api } from "./hub";
@@ -164,7 +165,7 @@ export default function HistoryBrowser({
             <div className="mb-4 flex flex-wrap items-end gap-3 text-sm">
                 <label>
                     Từ ngày
-                    <input
+                    <DateInput
                         className="input mt-1 block"
                         type="date"
                         value={from}
@@ -176,7 +177,7 @@ export default function HistoryBrowser({
                 </label>
                 <label>
                     Đến ngày
-                    <input
+                    <DateInput
                         className="input mt-1 block"
                         type="date"
                         min={from || undefined}

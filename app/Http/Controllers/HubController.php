@@ -6,6 +6,7 @@ use App\AccessService;
 use App\BankSettings;
 use App\BookingReminderService;
 use App\BookingService;
+use App\DateDisplay;
 use App\DemoService;
 use App\FeatureService;
 use App\FirebaseAuthService;
@@ -133,7 +134,7 @@ class HubController extends Controller
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, ['Ngày', 'Doanh thu ròng (VND)']);
             foreach ($data['daily'] as $row) {
-                fputcsv($out, [$row['date'], $row['revenue']]);
+                fputcsv($out, [DateDisplay::value($row['date']), $row['revenue']]);
             }fclose($out);
         }, 'bao-cao.csv', ['Content-Type' => 'text/csv; charset=utf-8']);
     }

@@ -40,12 +40,17 @@ class BookingController extends Controller
     {
         return DB::transaction(function () use ($request, $engine): BookingResource {
             $booking = $engine->create($request->user(), $request->validated());
+            if ($request->user()->role === 'customer') {
+                $checkout = $this->onlineCheckout($request, $booking);
+
+                return (new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments', 'sales.items'])))->additional(['checkout' => $checkout]);
+            }
             if ($request->boolean('pay_with_wallet')) {
                 app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($request->input('request_key'), 'wallet-payment'), $request->boolean('deposit_only'));
             }
 
             return new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments', 'sales.items']));
-        }, 5);
+        });
     }
 
     public function series(StoreBookingRequest $request, BookingService $engine): JsonResponse
@@ -56,7 +61,7 @@ class BookingController extends Controller
         [$start, $end] = $engine->window($data['starts_at'], $data['ends_at']);
         $existingCount = Booking::where('series_key', $data['request_key'])->count();
         abort_if($existingCount > 0 && $existingCount !== (int) $extra['occurrences'], 409, 'Không thay đổi số tuần của yêu cầu đã tạo.');
-        $rows = DB::transaction(function () use ($engine, $request, $data, $extra, $start, $end): array {
+        $result = DB::transaction(function () use ($engine, $request, $data, $extra, $start, $end): array {
             $rows = [];
             for ($i = 0; $i < $extra['occurrences']; $i++) {
                 $item = $data;
@@ -70,7 +75,7 @@ class BookingController extends Controller
                 try {
                     $booking = $engine->create($request->user(), $item);
                 } catch (ValidationException $exception) {
-                    throw ValidationException::withMessages(collect($exception->errors())->map(fn (array $messages) => array_map(fn (string $message) => 'Buổi thứ '.($i + 1).' ('.$start->addWeeks($i)->format('d/m/Y').'): '.$message, $messages))->all());
+                    throw ValidationException::withMessages(collect($exception->errors())->map(fn (array $messages) => array_map(fn (string $message) => 'Buổi thứ '.($i + 1).' ('.$start->addWeeks($i)->format('d-m-Y').'): '.$message, $messages))->all());
                 }
                 if ($request->boolean('pay_with_wallet')) {
                     app(CommerceService::class)->payBooking($request->user(), $booking, (string) Uuid::uuid5($data['request_key'], 'wallet-payment-'.$i), $request->boolean('deposit_only'));
@@ -78,10 +83,22 @@ class BookingController extends Controller
                 $rows[] = new BookingResource($booking->refresh()->load(['court.branch', 'services', 'payments', 'sales.items']));
             }
 
-            return $rows;
-        }, 5);
+            $checkout = $request->user()->role === 'customer' ? $this->onlineCheckout($request, $rows[0]->resource, true) : null;
 
-        return response()->json(['data' => $rows], 201);
+            return ['data' => $rows, 'checkout' => $checkout];
+        });
+
+        return response()->json($result, 201);
+    }
+
+    private function onlineCheckout(Request $request, Booking $booking, bool $series = false): PaymentAttempt
+    {
+        return app(PayosService::class)->create($request->user(), [
+            'request_key' => (string) Uuid::uuid5($request->input('request_key'), 'online-bank-checkout'),
+            'purpose' => $series ? 'series' : 'booking', 'booking_id' => $booking->id,
+            'deposit_only' => $request->boolean('deposit_only') && $booking->deposit_amount > 0,
+            'return_role' => 'customer', 'return_to' => '#account/bookings/'.$booking->id,
+        ]);
     }
 
     public function show(Request $request, Booking $booking, BookingService $engine): BookingResource

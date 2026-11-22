@@ -1,3 +1,4 @@
+import { formatDateTime } from "./dates";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { Card, Editor } from "./ui";
@@ -56,9 +57,7 @@ export default function EmailSetup({ after }: { after: () => Promise<void> }) {
                     </p>
                     <p className="mt-2 text-sm">
                         {status?.last_test_at
-                            ? new Date(status.last_test_at).toLocaleString(
-                                  "vi-VN",
-                              )
+                            ? formatDateTime(status.last_test_at)
                             : "Chưa gửi thư thử"}
                     </p>
                 </div>

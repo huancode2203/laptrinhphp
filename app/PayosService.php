@@ -93,7 +93,7 @@ class PayosService
 
                 $expires = now()->addMinutes(15)->toImmutable();
                 foreach ($booking ? $members : [] as $member) {
-                    if (isset($allocations[$member->id]) && $member->payment_expires_at && $member->paid_amount < $member->deposit_amount) {
+                    if (isset($allocations[$member->id]) && $member->payment_expires_at && $member->paid_amount < max(1, $member->deposit_amount)) {
                         $expires = $expires->min($member->payment_expires_at);
                     }
                 }

@@ -1,3 +1,5 @@
+import { formatDate } from "./dates";
+import { DateInput } from "./DateInput";
 import UserName from "./MembershipBadge";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
@@ -132,7 +134,7 @@ export default function CalendarBoard({
                     >
                         ←
                     </button>
-                    <input
+                    <DateInput
                         className="input"
                         aria-label="Ngày xem lịch"
                         type="date"
@@ -207,13 +209,7 @@ export default function CalendarBoard({
                                 <th className="w-24 p-3">Sân</th>
                                 {dates.map((d) => (
                                     <th className="p-3 text-sm" key={d}>
-                                        {new Date(
-                                            d + "T12:00:00",
-                                        ).toLocaleDateString("vi-VN", {
-                                            weekday: "short",
-                                            day: "numeric",
-                                            month: "numeric",
-                                        })}
+                                        {formatDate(d + "T12:00:00")}
                                     </th>
                                 ))}
                             </tr>

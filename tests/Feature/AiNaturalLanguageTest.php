@@ -31,6 +31,16 @@ class AiNaturalLanguageTest extends TestCase
         return $this->postJson('/api/v1/ai/chat', ['request_key' => (string) Str::uuid(), 'message' => $message])->assertCreated();
     }
 
+    public function test_search_accepts_display_dates_and_keeps_iso_dates_in_api_filters(): void
+    {
+        foreach (['28-11-2026', '28/11/2026', '2026-11-28'] as $date) {
+            $this->postJson('/api/v1/ai/courts', ['message' => 'Tìm sân ngày '.$date.' từ 8h đến 10h'])
+                ->assertOk()->assertJsonPath('data.filters.date', '2026-11-28')->assertJsonPath('data.total_count', 1);
+        }
+        $this->postJson('/api/v1/ai/courts', ['message' => 'Tìm sân ngày 31-11-2026 từ 8h đến 10h'])
+            ->assertOk()->assertJsonPath('data.needs_clarification', true)->assertJsonPath('data.total_count', 0);
+    }
+
     public function test_next_weekend_at_ten_pm_for_two_hours_asks_which_day_in_both_interfaces(): void
     {
         $message = 'Cuối tuần sau 10h tối đánh 2 tiếng';
@@ -39,8 +49,8 @@ class AiNaturalLanguageTest extends TestCase
         $this->assertSame('22:00', $result['filters']['start_time']);
         $this->assertSame('00:00', $result['filters']['end_time']);
         $this->assertSame(['2026-11-28', '2026-11-29'], $result['filters']['date_options']);
-        $this->assertStringContainsString('28/11', $result['message']);
-        $this->assertStringContainsString('29/11', $result['message']);
+        $this->assertStringContainsString('28-11-2026', $result['message']);
+        $this->assertStringContainsString('29-11-2026', $result['message']);
         $this->assertStringNotContainsString('đã qua', $result['message']);
         $this->actingAs(User::factory()->create());
         $this->chat($message)->assertJsonPath('data.1.result.filters.start_time', '22:00')->assertJsonPath('data.1.result.needs_clarification', true);

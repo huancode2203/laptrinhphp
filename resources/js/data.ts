@@ -1,3 +1,4 @@
+import { formatDateTime } from "./dates";
 export type Row = Record<string, any>;
 export let BRANCHES: Row[] = [];
 export let SERVICES: Row[] = [];
@@ -79,11 +80,7 @@ export const money = (v: number = 0) =>
         style: "currency",
         currency: "VND",
     }).format(v);
-export const stamp = (s: string) =>
-    new Date(s).toLocaleString("vi-VN", {
-        timeZone: "Asia/Ho_Chi_Minh",
-        hour12: false,
-    });
+export const stamp = formatDateTime;
 export const day = (delta = 0) => {
     const d = new Date();
     d.setDate(d.getDate() + delta);

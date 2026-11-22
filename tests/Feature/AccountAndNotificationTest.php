@@ -10,10 +10,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Tests\FakesBankCheckout;
 use Tests\TestCase;
 
 class AccountAndNotificationTest extends TestCase
 {
+    use FakesBankCheckout;
     use RefreshDatabase;
 
     public function test_profile_preserves_role_and_requires_password_for_email_change(): void
@@ -84,6 +86,7 @@ class AccountAndNotificationTest extends TestCase
 
     public function test_retrying_booking_and_payment_creates_exactly_one_notification_per_action(): void
     {
+        $this->fakeBankCheckout();
         $this->travelTo(now()->setDate(2026, 10, 12)->setTime(9, 0));
         $court = Court::factory()->create();
         $customer = User::factory()->create();

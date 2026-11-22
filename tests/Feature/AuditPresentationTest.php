@@ -36,7 +36,7 @@ class AuditPresentationTest extends TestCase
     public function test_reschedule_and_catalog_details_explain_dates_prices_and_previous_values(): void
     {
         $row = app(AuditPresenter::class)->present((object) ['action' => 'booking.rescheduled', 'subject_type' => 'booking', 'subject_id' => 8, 'details' => json_encode(['starts_at' => '2026-10-20T13:00:00+07:00', 'total_amount' => 200000, 'previous' => ['starts_at' => '2026-10-19T13:00:00+07:00', 'total_amount' => 180000, 'api_key' => 'private-secret']])]);
-        $this->assertStringContainsString('13:00 20/10/2026', $row->summary);
+        $this->assertStringContainsString('13:00 20-10-2026', $row->summary);
         $this->assertStringContainsString('Trước thay đổi:', $row->summary);
         $this->assertStringContainsString('180.000 đ', $row->summary);
         $this->assertStringNotContainsString('private-secret', $row->summary);

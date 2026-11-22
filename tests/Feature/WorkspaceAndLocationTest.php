@@ -2,18 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\Court;
+use App\Models\PaymentAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Tests\FakesBankCheckout;
 use Tests\TestCase;
 
 class WorkspaceAndLocationTest extends TestCase
 {
-    use RefreshDatabase;
+    use FakesBankCheckout, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -77,14 +80,16 @@ class WorkspaceAndLocationTest extends TestCase
 
     public function test_full_payment_covers_every_week_without_leaving_a_balance(): void
     {
+        $this->fakeBankCheckout();
         $court = Court::factory()->create();
         $customer = User::factory()->create(['wallet_balance' => 1000000]);
-        $result = $this->actingAs($customer)->postJson('/api/v1/bookings/series', ['request_key' => (string) Str::uuid(), 'court_id' => $court->id, 'starts_at' => '2026-10-17 13:00', 'ends_at' => '2026-10-17 14:00', 'occurrences' => 4, 'pay_with_wallet' => true, 'deposit_only' => false])->assertCreated()->assertJsonCount(4, 'data');
-        foreach ($result->json('data') as $booking) {
+        $result = $this->actingAs($customer)->postJson('/api/v1/bookings/series', ['request_key' => (string) Str::uuid(), 'court_id' => $court->id, 'starts_at' => '2026-10-17 13:00', 'ends_at' => '2026-10-17 14:00', 'occurrences' => 4, 'deposit_only' => false])->assertCreated()->assertJsonCount(4, 'data');
+        $this->settleBankCheckout(PaymentAttempt::findOrFail($result->json('checkout.id')));
+        foreach (Booking::all() as $booking) {
             $this->assertSame($booking['total_amount'], $booking['paid_amount']);
-            $this->assertSame(0, $booking['remaining_amount']);
+            $this->assertSame(0, max(0, $booking->total_amount - $booking->paid_amount));
         }
-        $this->assertSame(1000000 - array_sum(array_column($result->json('data'), 'paid_amount')), $customer->fresh()->wallet_balance);
+        $this->assertSame(1000000, $customer->fresh()->wallet_balance);
     }
 
     public function test_directions_use_place_id_coordinates_and_ward_address(): void

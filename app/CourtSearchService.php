@@ -27,8 +27,8 @@ class CourtSearchService
             $filters = $this->parseLocal($message, $context);
             $explicit = $filters;
             $hasDetails = $explicit['start_time'] !== null || $explicit['end_time'] !== null || $explicit['district'] !== null || $explicit['max_budget'] !== null || $explicit['amenities'] !== [] || $explicit['duration_minutes'] !== null;
-            $hasDetails = $hasDetails || ($explicit['date'] !== null && preg_match('/^(?:hom nay|ngay mai|hom sau|ngay kia|ngay mot|(?:ngay\s+)?\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(?:\/\d{4})?)(?:\s+(?:nhe|nha|di))?[.!?]*$/', $text));
-            if (! $hasDetails && ! $allAreas && ! $affirmative && ! preg_match('/\b(?:san|cau long|danh cau|choi cau|dat|tim|doi|chuyen|sang ngay|ngay mai|hom sau|cuoi tuan|tuan sau|chu nhat)\b|thu\s+(?:[2-7]|hai|ba|tu|nam|sau|bay)|\d{1,2}\/\d{1,2}/', $text)) {
+            $hasDetails = $hasDetails || ($explicit['date'] !== null && preg_match('/^(?:hom nay|ngay mai|hom sau|ngay kia|ngay mot|(?:ngay\s+)?\d{4}-\d{2}-\d{2}|\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{4})?)(?:\s+(?:nhe|nha|di))?[.!?]*$/', $text));
+            if (! $hasDetails && ! $allAreas && ! $affirmative && ! preg_match('/\b(?:san|cau long|danh cau|choi cau|dat|tim|doi|chuyen|sang ngay|ngay mai|hom sau|cuoi tuan|tuan sau|chu nhat)\b|thu\s+(?:[2-7]|hai|ba|tu|nam|sau|bay)|\d{1,2}[\/-]\d{1,2}/', $text)) {
                 return $this->clarify($context ?? $explicit, 'Bạn có muốn đánh cầu lông không? Nếu có, cho mình biết ngày chơi, giờ bắt đầu và thời lượng hoặc giờ kết thúc nhé.');
             }
             if ($explicit['clarification']) {
@@ -64,7 +64,7 @@ class CourtSearchService
                         }
                     }
                     if ($context) {
-                        $mentionsDate = preg_match('/\b(?:hom|ngay|tuan|thang|chu nhat)\b|\bthu\s+(?:[2-7]|hai|ba|tu|nam|sau|bay)\b|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2}/', $text);
+                        $mentionsDate = preg_match('/\b(?:hom|ngay|tuan|thang|chu nhat)\b|\bthu\s+(?:[2-7]|hai|ba|tu|nam|sau|bay)\b|\d{1,2}[\/-]\d{1,2}|\d{4}-\d{2}-\d{2}/', $text);
                         $mentionsTime = preg_match('/\bgio\b|\b(?:buoi|vao)\s+(?:sang|chieu|toi|dem)\b|\d{1,2}\s*(?:h|:)|\b(?:tu|luc)\s+\d/', $text);
                         foreach (['date', 'start_time', 'end_time'] as $field) {
                             if ($explicit[$field] === null && ! ($field === 'date' ? $mentionsDate : $mentionsTime)) {
@@ -82,7 +82,7 @@ class CourtSearchService
                         $filters['max_budget'] = null;
                     }
                     $filters['amenities'] = $explicit['amenities'];
-                    if ($explicit['date'] === null && ! preg_match('/\b(?:hom|ngay|thu|tuan|thang|chu nhat)\b|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2}/', $text)) {
+                    if ($explicit['date'] === null && ! preg_match('/\b(?:hom|ngay|thu|tuan|thang|chu nhat)\b|\d{1,2}[\/-]\d{1,2}|\d{4}-\d{2}-\d{2}/', $text)) {
                         $filters['date'] = $context['date'] ?? null;
                     }
                     if ($explicit['start_time'] === null && ! preg_match('/(?:\d|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)\s*(?:h\b|gio\b|:)/', $text)) {
@@ -132,7 +132,7 @@ class CourtSearchService
             return $this->clarify($filters, 'Mình hiểu bạn muốn chơi từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày hôm sau. '.$reason.' Bạn có muốn bắt đầu sớm hơn hoặc rút ngắn thời lượng không?', $mode);
         }
         if ($start->lt(now())) {
-            return $this->clarify($filters, 'Bạn đang chọn '.$start->format('H:i').'–'.$end->format('H:i').' ngày '.$start->format('d/m/Y').', trước thời điểm hiện tại ('.now()->format('H:i d/m/Y').'). Bạn muốn đổi sang ngày nào hoặc chọn giờ muộn hơn?', $mode);
+            return $this->clarify($filters, 'Bạn đang chọn '.$start->format('H:i').'–'.$end->format('H:i').' ngày '.$start->format('d-m-Y').', trước thời điểm hiện tại ('.now()->format('H:i d-m-Y').'). Bạn muốn đổi sang ngày nào hoặc chọn giờ muộn hơn?', $mode);
         }
         $engine = app(BookingService::class);
         try {
@@ -203,7 +203,7 @@ class CourtSearchService
             }
         }
 
-        return ['needs_clarification' => false, 'message' => count($found) ? 'Có '.count($found).' sân phù hợp từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d/m/Y').'.' : 'Chưa có sân trống từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d/m/Y').' theo các điều kiện đang chọn.'.($alternatives ? ' Bạn có thể tham khảo khung giờ khác bên dưới.' : ' Bạn có thể đổi giờ, khu vực hoặc ngân sách.'), 'filters' => $filters, 'courts' => array_slice($found, ($page - 1) * $perPage, $perPage), 'alternatives' => array_slice($alternatives, 0, 4), 'total_count' => count($found), 'current_page' => $page, 'last_page' => $lastPage, 'per_page' => $perPage, 'checked_at' => now()->toIso8601String(), 'mode' => $mode, 'model_issue' => $modelIssue];
+        return ['needs_clarification' => false, 'message' => count($found) ? 'Có '.count($found).' sân phù hợp từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d-m-Y').'.' : 'Chưa có sân trống từ '.$start->format('H:i').' đến '.$end->format('H:i').' ngày '.$start->format('d-m-Y').' theo các điều kiện đang chọn.'.($alternatives ? ' Bạn có thể tham khảo khung giờ khác bên dưới.' : ' Bạn có thể đổi giờ, khu vực hoặc ngân sách.'), 'filters' => $filters, 'courts' => array_slice($found, ($page - 1) * $perPage, $perPage), 'alternatives' => array_slice($alternatives, 0, 4), 'total_count' => count($found), 'current_page' => $page, 'last_page' => $lastPage, 'per_page' => $perPage, 'checked_at' => now()->toIso8601String(), 'mode' => $mode, 'model_issue' => $modelIssue];
     }
 
     private function normalize(string $value): string
@@ -222,7 +222,7 @@ class CourtSearchService
         if (preg_match('~\b(\d{4})-(\d{2})-(\d{2})\b~', $text, $m)) {
             return checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? [$m[0], [], null] : [null, [], 'Ngày bạn nhập không hợp lệ. Bạn có muốn đánh cầu lông không? Nếu có, chọn lại một ngày có trên lịch nhé.'];
         }
-        if (preg_match('~(?:ngay\s*)?(\d{1,2})/(\d{1,2})(?:/(\d{4}))?~', $text, $m)) {
+        if (preg_match('~(?<![\d-])(?:ngay\s*)?(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?(?![\d-])~', $text, $m)) {
             $year = (int) ($m[3] ?? $today->year);
 
             return checkdate((int) $m[2], (int) $m[1], $year) ? [sprintf('%04d-%02d-%02d', $year, $m[2], $m[1]), [], null] : [null, [], 'Ngày '.$m[0].' không hợp lệ. Bạn có muốn đánh cầu lông không? Nếu có, chọn lại ngày chơi nhé.'];
@@ -261,7 +261,7 @@ class CourtSearchService
             return [$options[0], [], null];
         }
         if (count($options) > 1) {
-            $question = count($options) === 2 ? 'Bạn muốn chơi thứ Bảy ('.CarbonImmutable::parse($options[0])->format('d/m').') hay Chủ nhật ('.CarbonImmutable::parse($options[1])->format('d/m').')?' : 'Bạn muốn chơi ngày nào trong tuần từ '.CarbonImmutable::parse($options[0])->format('d/m').' đến '.CarbonImmutable::parse(end($options))->format('d/m').'?';
+            $question = count($options) === 2 ? 'Bạn muốn chơi thứ Bảy ('.CarbonImmutable::parse($options[0])->format('d-m-Y').') hay Chủ nhật ('.CarbonImmutable::parse($options[1])->format('d-m-Y').')?' : 'Bạn muốn chơi ngày nào trong tuần từ '.CarbonImmutable::parse($options[0])->format('d-m-Y').' đến '.CarbonImmutable::parse(end($options))->format('d-m-Y').'?';
 
             return [null, $options, $question];
         }

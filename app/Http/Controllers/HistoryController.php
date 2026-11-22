@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\AccountIdentity;
 use App\AuditPresenter;
+use App\DateDisplay;
 use App\Models\CommunityPost;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,7 +65,7 @@ class HistoryController extends Controller
                 fputcsv($file, ['Thời gian', 'Hoạt động', 'Đối tượng', 'Chi tiết'], ',', '"', '');
                 foreach ($query->orderByDesc('id')->cursor() as $row) {
                     $row = app(AuditPresenter::class)->present($row);
-                    $values = [$row->created_at, $row->action_label, $row->subject_label, $row->summary];
+                    $values = [DateDisplay::value($row->created_at), $row->action_label, $row->subject_label, $row->summary];
                     $values = array_map(fn ($value) => preg_match('/^[=+@-]/', ltrim((string) $value)) ? "'".$value : $value, $values);
                     fputcsv($file, $values, ',', '"', '');
                 }

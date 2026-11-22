@@ -1,4 +1,5 @@
 import { appPath } from "./urls";
+import { formatDateText } from "./dates";
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
 import UserName from "./MembershipBadge";
@@ -857,7 +858,13 @@ export default function CommunityApp({
                                                     {stamp(m.created_at)}
                                                 </small>
                                                 <p className="mt-1 whitespace-pre-wrap break-words">
-                                                    {m.content}
+                                                    {conversation.id ===
+                                                        "hub-ai" &&
+                                                    m.user_id !== user.id
+                                                        ? formatDateText(
+                                                              m.content,
+                                                          )
+                                                        : m.content}
                                                 </p>
                                                 <AiChatCriteria
                                                     result={m.result}

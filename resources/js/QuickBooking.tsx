@@ -1,3 +1,4 @@
+import { formatDate } from "./dates";
 import { useEffect, useState } from "react";
 import CustomerPicker from "./CustomerPicker";
 import { api, key, useHub } from "./hub";
@@ -101,8 +102,7 @@ export default function QuickBooking({
             >
                 <div className="rounded-xl bg-[#0d1f2d] p-4 text-white">
                     <p className="font-bold">
-                        {range.court_name} ·{" "}
-                        {range.date.split("-").reverse().join("/")}
+                        {range.court_name} · {formatDate(range.date)}
                     </p>
                     <p className="mt-2 text-2xl font-extrabold">
                         {range.time} – {end.slice(11, 16)}

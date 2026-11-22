@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -23,10 +24,16 @@ class StoreBookingRequest extends FormRequest
             'coupon_code' => ['nullable', 'string', 'max:30'],
             'hold_id' => ['sometimes', 'integer', 'exists:court_holds,id'],
             'deposit_only' => 'sometimes|boolean',
-            'pay_with_wallet' => ['sometimes', 'boolean'],
+            'pay_with_wallet' => ['sometimes', 'boolean', Rule::when($this->user()?->role === 'customer', ['declined'])],
+            'payment_method' => ['sometimes', Rule::in($this->user()?->role === 'customer' ? ['payos'] : ['cash', 'payos'])],
             'services' => ['sometimes', 'array', 'list', 'max:20'],
             'services.*.id' => ['required', 'integer', 'distinct', 'exists:services,id'],
             'services.*.quantity' => ['required', 'integer', 'min:1', 'max:10'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['pay_with_wallet.declined' => 'Đặt sân online chỉ thanh toán bằng chuyển khoản ngân hàng qua PayOS.', 'payment_method.in' => 'Đặt sân online chỉ thanh toán bằng chuyển khoản ngân hàng qua PayOS.'];
     }
 }

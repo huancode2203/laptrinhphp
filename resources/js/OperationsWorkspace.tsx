@@ -1,3 +1,4 @@
+import { DateInput } from "./DateInput";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { money, stamp, day, type Row } from "./data";
@@ -399,7 +400,7 @@ export default function OperationsWorkspace({ branch }: { branch: number }) {
                 <div className="my-4 flex flex-wrap gap-3">
                     <label>
                         Từ ngày
-                        <input
+                        <DateInput
                             className="input block"
                             type="date"
                             value={from}
@@ -411,7 +412,7 @@ export default function OperationsWorkspace({ branch }: { branch: number }) {
                     </label>
                     <label>
                         Đến ngày
-                        <input
+                        <DateInput
                             className="input block"
                             type="date"
                             value={to}
@@ -614,7 +615,11 @@ export default function OperationsWorkspace({ branch }: { branch: number }) {
                                                     r.name ||
                                                     r.description ||
                                                     (tab === "payroll"
-                                                        ? "Tháng " + r.month
+                                                        ? "Tháng " +
+                                                          r.month
+                                                              .split("-")
+                                                              .reverse()
+                                                              .join("-")
                                                         : "Ca #" + r.id)}
                                             </b>
                                             <p className="text-xs text-slate-500">

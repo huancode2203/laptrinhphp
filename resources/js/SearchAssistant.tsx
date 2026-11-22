@@ -1,3 +1,5 @@
+import { formatDate } from "./dates";
+import { DateInput } from "./DateInput";
 import { useRef, useState } from "react";
 import Icon from "./Icon";
 import SearchAlternatives from "./SearchAlternatives";
@@ -194,7 +196,7 @@ export default function SearchAssistant({
                     ].map(([name, label, type]) => (
                         <label key={name} className="text-sm">
                             {label}
-                            <input
+                            <DateInput
                                 className="input mt-1 w-full"
                                 required
                                 type={type}
@@ -275,13 +277,9 @@ export default function SearchAssistant({
                                                 void search(true, 0, selected);
                                             }}
                                         >
-                                            {new Date(
+                                            {formatDate(
                                                 date + "T12:00:00+07:00",
-                                            ).toLocaleDateString("vi-VN", {
-                                                weekday: "long",
-                                                day: "2-digit",
-                                                month: "2-digit",
-                                            })}
+                                            )}
                                         </button>
                                     ),
                                 )}
@@ -313,10 +311,8 @@ export default function SearchAssistant({
                                     {c.address}
                                 </p>
                                 <p className="mt-3 text-sm">
-                                    {new Date(c.starts_at).toLocaleDateString(
-                                        "vi-VN",
-                                    )}{" "}
-                                    · {c.starts_at.slice(11, 16)}–
+                                    {formatDate(c.starts_at)} ·{" "}
+                                    {c.starts_at.slice(11, 16)}–
                                     {c.ends_at.slice(11, 16)}
                                 </p>
                                 <div className="my-3 flex items-end justify-between gap-2">

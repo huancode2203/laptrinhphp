@@ -1,3 +1,5 @@
+import { formatDateTime } from "./dates";
+import { DateInput } from "./DateInput";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { localDateTime, money, type Row } from "./data";
@@ -154,7 +156,7 @@ export default function RescheduleBooking({
                 )}
                 <label>
                     Giờ bắt đầu
-                    <input
+                    <DateInput
                         className="input mt-2 w-full"
                         type="datetime-local"
                         required
@@ -165,7 +167,7 @@ export default function RescheduleBooking({
                 </label>
                 <label>
                     Giờ kết thúc
-                    <input
+                    <DateInput
                         className="input mt-2 w-full"
                         type="datetime-local"
                         required
@@ -254,9 +256,7 @@ export default function RescheduleBooking({
                                         key={session.id}
                                     >
                                         <span>
-                                            {new Date(
-                                                session.starts_at,
-                                            ).toLocaleString("vi-VN")}{" "}
+                                            {formatDateTime(session.starts_at)}{" "}
                                             · {session.reference}
                                         </span>
                                         <b>{money(session.total_amount)}</b>

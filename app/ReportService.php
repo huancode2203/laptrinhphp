@@ -152,14 +152,14 @@ class ReportService
 
     public function pdf(string $title, array $headers, array $rows): string
     {
-        $html = '<html><meta charset="utf-8"><style>body{font-family:DejaVu Sans;font-size:10px;color:#0d1f2d}h1{font-size:18px}table{border-collapse:collapse;width:100%}th{background:#e9fbd7}td,th{border:1px solid #dce4dc;padding:7px;text-align:left}</style><h1>'.e($title).'</h1><p>Badminton Hub · '.now()->format('d/m/Y H:i').'</p><table><thead><tr>';
+        $html = '<html><meta charset="utf-8"><style>body{font-family:DejaVu Sans;font-size:10px;color:#0d1f2d}h1{font-size:18px}table{border-collapse:collapse;width:100%}th{background:#e9fbd7}td,th{border:1px solid #dce4dc;padding:7px;text-align:left}</style><h1>'.e(DateDisplay::text($title)).'</h1><p>Badminton Hub · '.now()->format('d-m-Y H:i').'</p><table><thead><tr>';
         foreach ($headers as $h) {
             $html .= '<th>'.e($h).'</th>';
         } $html .= '</tr></thead><tbody>';
         foreach ($rows as $row) {
             $html .= '<tr>';
             foreach ($row as $v) {
-                $html .= '<td>'.e((string) $v).'</td>';
+                $html .= '<td>'.e((string) DateDisplay::value($v)).'</td>';
             }$html .= '</tr>';
         }
         $pdf = new Dompdf(['isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans']);
@@ -183,6 +183,7 @@ class ReportService
         foreach ([$headers, ...$rows] as $index => $row) {
             $sheet .= '<row r="'.($index + 1).'">';
             foreach ($row as $v) {
+                $v = DateDisplay::value($v);
                 $sheet .= is_numeric($v) && $index > 0 ? '<c><v>'.$v.'</v></c>' : '<c t="inlineStr"><is><t>'.htmlspecialchars(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u', '', (string) $v), ENT_XML1 | ENT_QUOTES, 'UTF-8').'</t></is></c>';
             }$sheet .= '</row>';
         }

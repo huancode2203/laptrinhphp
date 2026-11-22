@@ -82,6 +82,7 @@ class CommerceService
 
                 return $existing;
             }
+            abort_if($actor->role === 'customer' && $booking->status !== 'checked_in', 422, 'Đặt sân online chỉ thanh toán bằng chuyển khoản ngân hàng qua PayOS.');
             if (! in_array($booking->status, ['confirmed', 'checked_in'], true) || $booking->total_amount <= $booking->paid_amount) {
                 throw ValidationException::withMessages(['booking' => 'Lịch không còn khoản cần thanh toán.']);
             }
@@ -131,7 +132,7 @@ class CommerceService
                 $this->wallet($actor, $owner, -$plan->price, 'membership', $data['request_key'], 'Gói '.$plan->name, $data['branch_id'] ?? null, 'membership', $member->id);
             }
             $this->payment($actor, $owner, 'membership', $member->id, $plan->price, $data['method'], $data['branch_id'] ?? null);
-            $owner->notify(new HubNotification(['type' => 'membership.activated', 'title' => 'Đã kích hoạt hội viên', 'body' => 'Gói '.$plan->name.' có hiệu lực đến '.$member->expires_at->format('d/m/Y').'.']));
+            $owner->notify(new HubNotification(['type' => 'membership.activated', 'title' => 'Đã kích hoạt hội viên', 'body' => 'Gói '.$plan->name.' có hiệu lực đến '.$member->expires_at->format('d-m-Y').'.']));
             app(BookingService::class)->audit($actor, 'membership.activated', $member->id, ['user_id' => $owner->id, 'plan' => $plan->name, 'amount' => $plan->price], 'membership');
 
             return $member->load('plan');

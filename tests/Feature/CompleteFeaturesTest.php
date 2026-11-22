@@ -11,6 +11,7 @@ use App\Models\CommunityPost;
 use App\Models\Court;
 use App\Models\GameEvent;
 use App\Models\MembershipPlan;
+use App\Models\PaymentAttempt;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,10 +20,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\FakesBankCheckout;
 use Tests\TestCase;
 
 class CompleteFeaturesTest extends TestCase
 {
+    use FakesBankCheckout;
     use RefreshDatabase;
 
     private User $customer;
@@ -65,6 +68,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_search_returns_only_available_database_courts_and_current_server_prices(): void
     {
+        $this->fakeBankCheckout();
         $r = $this->postJson('/api/v1/ai/courts', ['message' => 'Hôm nay tôi muốn đánh cầu lúc 13h tới 15 giờ khu vực thành phố Hồ Chí Minh']);
         $r->assertOk()->assertJsonPath('data.total_count', 1)->assertJsonPath('data.courts.0.court_id', $this->court->id)->assertJsonPath('data.courts.0.total_amount', 200000);
         $this->book();
@@ -118,15 +122,16 @@ class CompleteFeaturesTest extends TestCase
         $this->postJson('/api/v1/community/posts/'.$p.'/comments', ['content' => 'đồ ngu'])->assertUnprocessable();
     }
 
-    public function test_deposit_wallet_payment_and_expiry_are_idempotent_and_release_court(): void
+    public function test_deposit_bank_payment_and_expiry_are_idempotent_and_release_court(): void
     {
-        $b = $this->book();
+        $this->fakeBankCheckout();
+        $b = $this->book(['deposit_only' => true]);
         $this->assertSame(100000, $b->deposit_amount);
-        $key = (string) Str::uuid();
+        $attempt = PaymentAttempt::where('booking_id', $b->id)->firstOrFail();
         for ($i = 0; $i < 2; $i++) {
-            $this->postJson('/api/v1/bookings/'.$b->id.'/wallet-payment', ['request_key' => $key, 'deposit_only' => true])->assertOk();
+            $this->settleBankCheckout($attempt);
         }
-        $this->assertSame(900000, $this->customer->fresh()->wallet_balance);
+        $this->assertSame(1000000, $this->customer->fresh()->wallet_balance);
         $this->assertSame(100000, $b->fresh()->paid_amount);
         $this->travel(31)->minutes();
         $this->assertSame(0, app(FeatureService::class)->expireBookings());
@@ -144,6 +149,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_partial_cash_deposit_is_kept_for_counter_handling_without_automatic_cancellation(): void
     {
+        $this->fakeBankCheckout();
         $b = $this->book();
         $this->actingAs($this->manager)->postJson('/api/v1/manage/bookings/'.$b->id.'/payments', ['request_key' => (string) Str::uuid(), 'amount' => 20000, 'kind' => 'payment', 'method' => 'cash'])->assertOk();
         $this->travel(31)->minutes();
@@ -155,6 +161,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_bank_webhook_authentication_deduplication_and_late_money_credit(): void
     {
+        $this->fakeBankCheckout();
         config(['integrations.bank.enabled' => true, 'integrations.bank.key' => 'bank-key', 'integrations.bank.account' => '12345']);
         $b = $this->book();
         $d = ['id' => 401, 'accountNumber' => '12345', 'transferType' => 'in', 'transferAmount' => 100000, 'content' => $b->reference];
@@ -198,13 +205,17 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_hours_pricing_and_court_moves_recalculate_deposit(): void
     {
+        $this->fakeBankCheckout();
         $this->actingAs($this->manager)->putJson('/api/v1/manage/branches/'.$this->court->branch_id.'/policy', ['opens_minute' => 480, 'closes_minute' => 1200, 'peak_minute' => 960, 'booking_days' => 30, 'deposit_percent' => 50, 'payment_minutes' => 30, 'fixed_discount' => 15])->assertOk();
         $this->postJson('/api/v1/courts/'.$this->court->id.'/quote', ['starts_at' => '2026-10-13 06:00', 'ends_at' => '2026-10-13 07:00'])->assertUnprocessable();
         $this->postJson('/api/v1/manage/pricing', ['branch_id' => $this->court->branch_id, 'name' => 'Giá buổi trưa', 'weekday' => 1, 'from_minute' => 780, 'to_minute' => 900, 'hourly_rate' => 50000, 'priority' => 2, 'active' => true])->assertOk();
         $b = $this->book();
         $this->assertSame(100000, $b->total_amount);
         $second = Court::factory()->create(['branch_id' => $this->court->branch_id, 'peak_rate' => 300000]);
-        $this->actingAs($this->customer)->patchJson('/api/v1/bookings/'.$b->id.'/reschedule', ['court_id' => $second->id, 'starts_at' => '2026-10-12 18:00', 'ends_at' => '2026-10-12 20:00'])->assertOk()->assertJsonPath('data.total_amount', 600000)->assertJsonPath('data.deposit_amount', 300000);
+        $move = ['court_id' => $second->id, 'starts_at' => '2026-10-12 18:00', 'ends_at' => '2026-10-12 20:00'];
+        $this->actingAs($this->customer)->patchJson('/api/v1/bookings/'.$b->id.'/reschedule', $move)->assertConflict();
+        PaymentAttempt::where('booking_id', $b->id)->update(['status' => 'cancelled']);
+        $this->patchJson('/api/v1/bookings/'.$b->id.'/reschedule', $move)->assertOk()->assertJsonPath('data.total_amount', 600000)->assertJsonPath('data.deposit_amount', 300000);
         $this->assertSame($second->id, $b->fresh()->court_id);
     }
 
@@ -226,6 +237,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_saved_favorite_support_and_business_chat_are_accessible_and_scoped(): void
     {
+        $this->fakeBankCheckout();
         $b = $this->book();
         $this->putJson('/api/v1/courts/'.$this->court->id.'/favorite', ['active' => true])->assertOk();
         $this->postJson('/api/v1/support', ['subject' => 'Giúp tôi đổi lịch', 'content' => 'Muốn đổi sang buổi tối', 'branch_id' => $this->court->branch_id])->assertCreated();
@@ -284,6 +296,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_xlsx_and_pdf_exports_contain_real_financial_data_and_respect_scope(): void
     {
+        $this->fakeBankCheckout();
         $b = $this->book();
         $this->actingAs($this->manager)->postJson('/api/v1/manage/bookings/'.$b->id.'/payments', ['request_key' => (string) Str::uuid(), 'amount' => 100000, 'method' => 'bank'])->assertOk();
         $query = '?branch_id='.$this->court->branch_id.'&from=2026-10-12&to=2026-10-12';
@@ -340,6 +353,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_unmatched_bank_money_can_only_be_reconciled_once_by_admin(): void
     {
+        $this->fakeBankCheckout();
         config(['integrations.bank.enabled' => true, 'integrations.bank.key' => 'bank-key', 'integrations.bank.account' => '12345']);
         $b = $this->book();
         $d = ['id' => 9001, 'accountNumber' => '12345', 'transferType' => 'in', 'transferAmount' => 100000, 'content' => 'Sai noi dung'];
@@ -354,6 +368,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_revoked_branch_access_removes_support_chat_and_private_attachments(): void
     {
+        $this->fakeBankCheckout();
         Storage::fake('local');
         $b = $this->book();
         $media = $this->postJson('/api/v1/media', ['file' => UploadedFile::fake()->image('chat.jpg')])->assertCreated()->json('data.id');
@@ -368,6 +383,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_reminders_are_sent_once_and_point_tiers_cannot_be_bought_without_earning(): void
     {
+        $this->fakeBankCheckout();
         $b = $this->book();
         $b->update(['deposit_amount' => 0, 'payment_expires_at' => null, 'starts_at' => now()->addMinutes(20), 'ends_at' => now()->addMinutes(80)]);
         $this->artisan('hub:maintain')->assertSuccessful();
@@ -379,6 +395,7 @@ class CompleteFeaturesTest extends TestCase
 
     public function test_pos_only_staff_can_load_management_without_private_booking_data(): void
     {
+        $this->fakeBankCheckout();
         $this->book();
         foreach (AccessService::PERMISSIONS as $permission) {
             DB::table('role_permissions')->insert(['role' => 'manager', 'permission' => $permission, 'allowed' => $permission === 'pos.read']);

@@ -71,7 +71,7 @@ class AuditPresenter
             }
             if (in_array($key, ['starts_at', 'ends_at'], true)) {
                 try {
-                    $display = CarbonImmutable::parse($value)->timezone(config('app.timezone'))->format('H:i d/m/Y');
+                    $display = CarbonImmutable::parse($value)->timezone(config('app.timezone'))->format('H:i d-m-Y');
                 } catch (\Throwable) {
                     $display = 'Dữ liệu thời gian cũ cần kiểm tra';
                 }

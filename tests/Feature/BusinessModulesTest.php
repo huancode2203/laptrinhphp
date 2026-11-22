@@ -12,6 +12,7 @@ use App\Models\Court;
 use App\Models\CourtBlock;
 use App\Models\GameEvent;
 use App\Models\MembershipPlan;
+use App\Models\PaymentAttempt;
 use App\Models\Product;
 use App\Models\TournamentMatch;
 use App\Models\User;
@@ -19,10 +20,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Tests\FakesBankCheckout;
 use Tests\TestCase;
 
 class BusinessModulesTest extends TestCase
 {
+    use FakesBankCheckout;
     use RefreshDatabase;
 
     private User $customer;
@@ -72,6 +75,7 @@ class BusinessModulesTest extends TestCase
 
     public function test_holds_block_other_customers_expire_and_preserve_public_privacy(): void
     {
+        $this->fakeBankCheckout();
         $h = $this->actingAs($this->customer)->postJson('/api/v1/holds', $this->payload())->assertOk();
         $this->postJson('/api/v1/holds', $this->payload())->assertUnprocessable();
         $other = User::factory()->create();
@@ -81,24 +85,27 @@ class BusinessModulesTest extends TestCase
         $this->postJson('/api/v1/bookings', $this->payload())->assertCreated();
     }
 
-    public function test_wallet_topup_and_payment_charge_once_and_paid_cancellation_is_blocked(): void
+    public function test_wallet_topup_and_bank_payment_charge_once_and_paid_cancellation_is_blocked(): void
     {
+        $this->fakeBankCheckout();
         $b = $this->book();
         $d = ['request_key' => (string) Str::uuid(), 'branch_id' => $this->court->branch_id, 'amount' => 200000, 'method' => 'cash'];
         $this->actingAs($this->manager)->postJson('/api/v1/manage/users/'.$this->customer->id.'/topup', $d)->assertOk();
         $this->postJson('/api/v1/manage/users/'.$this->customer->id.'/topup', $d)->assertOk();
-        $pay = ['request_key' => (string) Str::uuid()];
-        $this->actingAs($this->customer)->postJson('/api/v1/bookings/'.$b->id.'/wallet-payment', $pay)->assertOk();
-        $this->postJson('/api/v1/bookings/'.$b->id.'/wallet-payment', $pay)->assertOk();
-        $this->assertEquals(100000, $this->customer->refresh()->wallet_balance);
+        $attempt = PaymentAttempt::where('booking_id', $b->id)->firstOrFail();
+        $this->actingAs($this->customer);
+        $this->settleBankCheckout($attempt);
+        $this->settleBankCheckout($attempt);
+        $this->assertEquals(200000, $this->customer->refresh()->wallet_balance);
         $this->patchJson('/api/v1/bookings/'.$b->id.'/status', ['status' => 'cancelled'])->assertUnprocessable();
         $this->patchJson('/api/v1/bookings/'.$b->id.'/status', ['status' => 'cancelled'])->assertUnprocessable();
-        $this->assertEquals(100000, $this->customer->refresh()->wallet_balance);
-        $this->assertDatabaseCount('wallet_entries', 2);
+        $this->assertEquals(200000, $this->customer->refresh()->wallet_balance);
+        $this->assertDatabaseCount('wallet_entries', 1);
     }
 
     public function test_wallet_insufficient_funds_roll_back_and_cross_branch_staff_cannot_topup(): void
     {
+        $this->fakeBankCheckout();
         $b = $this->book();
         $this->postJson('/api/v1/bookings/'.$b->id.'/wallet-payment', ['request_key' => (string) Str::uuid()])->assertUnprocessable();
         $this->assertDatabaseCount('payments', 0);
@@ -107,6 +114,7 @@ class BusinessModulesTest extends TestCase
 
     public function test_membership_and_coupon_discounts_are_server_calculated_and_once_per_customer(): void
     {
+        $this->fakeBankCheckout();
         $plan = MembershipPlan::factory()->create(['price' => 199000, 'discount_percent' => 10]);
         $this->customer->forceFill(['wallet_balance' => 500000])->save();
         $d = ['request_key' => (string) Str::uuid()];
@@ -120,6 +128,7 @@ class BusinessModulesTest extends TestCase
 
     public function test_recurring_bookings_roll_back_if_one_week_conflicts_and_retry_does_not_duplicate(): void
     {
+        $this->fakeBankCheckout();
         $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload(['starts_at' => '2026-10-20 10:00', 'ends_at' => '2026-10-20 11:00']))->assertCreated();
         $p = $this->payload(['occurrences' => 3]);
         $this->postJson('/api/v1/bookings/series', $p)->assertUnprocessable();
@@ -207,6 +216,7 @@ class BusinessModulesTest extends TestCase
 
     public function test_event_create_rejects_booked_courts_and_draw_advances_byes_and_score_winners(): void
     {
+        $this->fakeBankCheckout();
         $this->book();
         $d = ['branch_id' => $this->court->branch_id, 'title' => 'Mini Cup', 'type' => 'league', 'description' => 'Thi đấu', 'format' => 'Loại trực tiếp đơn', 'skill_level' => 'Mọi trình độ', 'starts_at' => '2026-10-13 10:00', 'ends_at' => '2026-10-13 12:00', 'capacity' => 4, 'fee' => 0, 'court_ids' => [$this->court->id]];
         $this->actingAs($this->manager)->postJson('/api/v1/manage/events', $d)->assertUnprocessable();
@@ -248,7 +258,7 @@ class BusinessModulesTest extends TestCase
         $this->postJson('/api/v1/recovery/verify', ['email' => $this->customer->email, 'code' => '123456'])->assertUnprocessable();
     }
 
-    public function test_wallet_booking_and_series_are_atomic_when_balance_is_insufficient(): void
+    public function test_online_wallet_booking_is_rejected_even_with_sufficient_balance(): void
     {
         $this->actingAs($this->customer)->postJson('/api/v1/bookings', $this->payload(['pay_with_wallet' => true]))->assertUnprocessable();
         $this->assertDatabaseCount('bookings', 0);
@@ -259,11 +269,11 @@ class BusinessModulesTest extends TestCase
         $this->assertEquals(100000, $this->customer->refresh()->wallet_balance);
         $this->customer->forceFill(['wallet_balance' => 300000])->save();
         $d = $this->payload(['pay_with_wallet' => true, 'occurrences' => 2]);
-        $this->postJson('/api/v1/bookings/series', $d)->assertCreated();
-        $this->postJson('/api/v1/bookings/series', $d)->assertCreated();
-        $this->assertDatabaseCount('bookings', 2);
-        $this->assertDatabaseCount('payments', 2);
-        $this->assertEquals(130000, $this->customer->refresh()->wallet_balance);
+        $this->postJson('/api/v1/bookings/series', $d)->assertUnprocessable();
+        $this->postJson('/api/v1/bookings/series', $d)->assertUnprocessable();
+        $this->assertDatabaseCount('bookings', 0);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertEquals(300000, $this->customer->refresh()->wallet_balance);
     }
 
     public function test_admin_can_create_staff_and_customer_cannot_and_password_is_hidden(): void

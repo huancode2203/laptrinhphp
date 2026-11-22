@@ -1,3 +1,5 @@
+import { formatDate } from "./dates";
+import { DateInput } from "./DateInput";
 import UsageGuide from "./UsageGuide";
 import OperationsWorkspace from "./OperationsWorkspace";
 import PosCheckout from "./PosCheckout";
@@ -818,7 +820,7 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                 ))}
                             </select>
                         )}
-                        <input
+                        <DateInput
                             aria-label="Ngày quản lý"
                             className="input"
                             type="date"
@@ -1015,8 +1017,9 @@ export default function Management({ book }: { book: (initial: Row) => void }) {
                                         Lịch sân hôm nay
                                     </h2>
                                     <p className="mb-4 text-sm text-[#6d8474]">
-                                        Doanh thu theo khoảng {from} đến {to}.
-                                        Chọn Báo cáo để đổi kỳ.
+                                        Doanh thu theo khoảng {formatDate(from)}{" "}
+                                        đến {formatDate(to)}. Chọn Báo cáo để
+                                        đổi kỳ.
                                     </p>
                                     {hub.bookings.length > 0 && (
                                         <div className="dashboard-bookings">

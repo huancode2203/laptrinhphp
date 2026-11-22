@@ -1,4 +1,5 @@
 import { appPath } from "./urls";
+import { formatDateText } from "./dates";
 import UsageGuide from "./UsageGuide";
 import RescheduleBooking from "./RescheduleBooking";
 import HistoryBrowser from "./HistoryBrowser";
@@ -496,6 +497,7 @@ export function BookingDetail({
                     Nhắn hỗ trợ chi nhánh
                 </button>
                 {booking.deposit_remaining > 0 &&
+                    data!.user.role !== "customer" &&
                     booking.status === "confirmed" &&
                     data!.user.id === booking.user_id && (
                         <button
@@ -508,16 +510,18 @@ export function BookingDetail({
 
                 {["confirmed", "checked_in"].includes(booking.status) && (
                     <>
-                        {booking.remaining_amount > 0 && (
-                            <>
-                                <button
-                                    className="btn"
-                                    onClick={() => setForm("wallet")}
-                                >
-                                    Trả bằng ví
-                                </button>
-                            </>
-                        )}
+                        {booking.remaining_amount > 0 &&
+                            (data!.user.role !== "customer" ||
+                                booking.status === "checked_in") && (
+                                <>
+                                    <button
+                                        className="btn"
+                                        onClick={() => setForm("wallet")}
+                                    >
+                                        Trả bằng ví
+                                    </button>
+                                </>
+                            )}
                         {booking.status === "confirmed" && (
                             <button
                                 className="btn-outline"
@@ -618,33 +622,37 @@ export function BookingDetail({
                     ))}
                 </div>
             )}
-            {(form === "wallet" || form === "wallet-deposit") && (
-                <Confirm
-                    title="Thanh toán bằng ví"
-                    close={() => setForm("")}
-                    action={(requestKey) =>
-                        update(() =>
-                            api(
-                                "bookings/" + booking.id + "/wallet-payment",
-                                "POST",
-                                {
-                                    request_key: requestKey,
-                                    deposit_only: form === "wallet-deposit",
-                                },
-                            ),
-                        )
-                    }
-                >
-                    Trừ{" "}
-                    {money(
-                        form === "wallet-deposit"
-                            ? booking.deposit_remaining
-                            : booking.remaining_amount,
-                    )}{" "}
-                    từ ví HUB. Số dư hiện tại {money(data!.user.wallet_balance)}
-                    .
-                </Confirm>
-            )}
+            {(data!.user.role !== "customer" ||
+                booking.status === "checked_in") &&
+                (form === "wallet" || form === "wallet-deposit") && (
+                    <Confirm
+                        title="Thanh toán bằng ví"
+                        close={() => setForm("")}
+                        action={(requestKey) =>
+                            update(() =>
+                                api(
+                                    "bookings/" +
+                                        booking.id +
+                                        "/wallet-payment",
+                                    "POST",
+                                    {
+                                        request_key: requestKey,
+                                        deposit_only: form === "wallet-deposit",
+                                    },
+                                ),
+                            )
+                        }
+                    >
+                        Trừ{" "}
+                        {money(
+                            form === "wallet-deposit"
+                                ? booking.deposit_remaining
+                                : booking.remaining_amount,
+                        )}{" "}
+                        từ ví HUB. Số dư hiện tại{" "}
+                        {money(data!.user.wallet_balance)}.
+                    </Confirm>
+                )}
 
             {form === "cancel" && (
                 <Confirm
@@ -1403,7 +1411,9 @@ export default function Account({
                                     <b>{n.data.title}</b>
                                     <small>{stamp(n.created_at)}</small>
                                 </div>
-                                <p className="mt-2 text-sm">{n.data.body}</p>
+                                <p className="mt-2 text-sm">
+                                    {formatDateText(n.data.body ?? "")}
+                                </p>
                                 <div className="mt-3 flex gap-3">
                                     <button
                                         className="text-sm font-bold text-green-700"

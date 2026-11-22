@@ -38,7 +38,7 @@ class MembershipCheckout
         app(CommerceService::class)->payment($actor, $owner, 'membership', $member->id, $attempt->amount, 'payos', $order->branch_id);
         DB::table('membership_payment_orders')->where('id', $order->id)->update(['membership_id' => $member->id, 'updated_at' => now()]);
         app(BookingService::class)->audit($actor, 'membership.activated', $member->id, ['user_id' => $owner->id, 'plan' => $order->plan_name, 'amount' => $attempt->amount, 'method' => 'payos'], 'membership');
-        $owner->notify(new HubNotification(['type' => 'membership.activated', 'title' => 'Đã kích hoạt hội viên', 'body' => 'Đã nhận thanh toán PayOS. Gói '.$order->plan_name.' có hiệu lực đến '.$member->expires_at->format('d/m/Y').'.']));
+        $owner->notify(new HubNotification(['type' => 'membership.activated', 'title' => 'Đã kích hoạt hội viên', 'body' => 'Đã nhận thanh toán PayOS. Gói '.$order->plan_name.' có hiệu lực đến '.$member->expires_at->format('d-m-Y').'.']));
 
         return $attempt->amount;
     }

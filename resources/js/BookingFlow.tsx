@@ -1,3 +1,5 @@
+import { formatDate } from "./dates";
+import { DateInput } from "./DateInput";
 import Icon from "./Icon";
 import CourtMatrix from "./CourtMatrix";
 import CustomerPicker from "./CustomerPicker";
@@ -20,6 +22,7 @@ export default function BookingFlow({
     close: () => void;
 }) {
     const { data, run, toast, loading, refresh } = useHub();
+    const online = data!.user.role === "customer";
     const [draft] = useState(() =>
         Object.values(initial).some((v) => v !== undefined) && !initial.resume
             ? initial
@@ -56,7 +59,9 @@ export default function BookingFlow({
         [seconds, setSeconds] = useState(0),
         [step, setStep] = useState(draft.step > 0 ? 1 : 0),
         [requestKey] = useState(draft.request_key ?? key()),
-        [method, setMethod] = useState<string>(draft.method ?? "cash"),
+        [method, setMethod] = useState<string>(
+            online ? "payos" : (draft.method ?? "cash"),
+        ),
         [depositOnly, setDepositOnly] = useState(draft.deposit_only ?? true),
         [customer, setCustomer] = useState(draft.user_id ?? ""),
         [error, setError] = useState("");
@@ -70,8 +75,9 @@ export default function BookingFlow({
             setMethod((value) => (value === "payos" ? "cash" : value));
     }, [data!.user.role]);
     useEffect(() => {
-        if (method === "payos" && !data!.payos_enabled) setMethod("cash");
-    }, [data!.payos_enabled, method]);
+        if (online) setMethod("payos");
+        else if (method === "payos" && !data!.payos_enabled) setMethod("cash");
+    }, [data!.payos_enabled, method, online]);
     useEffect(() => {
         let live = true;
         api("holds/active")
@@ -319,6 +325,10 @@ export default function BookingFlow({
     }, [hold]);
     async function confirm() {
         if (!court || !quote) return;
+        if (online && !data!.payos_enabled)
+            throw new Error(
+                "Chuyển khoản ngân hàng hiện chưa khả dụng. Vui lòng thử lại sau hoặc liên hệ chi nhánh.",
+            );
         if (invalidServices || invalidWeeks)
             throw new Error(
                 "Kiểm tra số lượng dịch vụ và số tuần trước khi đặt sân.",
@@ -334,6 +344,7 @@ export default function BookingFlow({
             notes,
             coupon_code: coupon || null,
             pay_with_wallet: method === "wallet",
+            payment_method: online ? "payos" : method,
             deposit_only:
                 depositOnly &&
                 data!.user.role === "customer" &&
@@ -346,6 +357,15 @@ export default function BookingFlow({
             ...(fixed ? { occurrences: Number(weeks) } : {}),
         });
         const booked = fixed ? r.data : r.data ? [r.data] : [];
+        if (online) {
+            if (!r.checkout?.pay_url)
+                throw new Error(
+                    "Chưa mở được thanh toán ngân hàng. Vui lòng thử lại; hệ thống chưa xác nhận thanh toán.",
+                );
+            clearBookingDraft(data!.user.id);
+            location.assign(r.checkout.pay_url);
+            return;
+        }
         clearBookingDraft(data!.user.id);
 
         if (method === "payos") {
@@ -379,11 +399,7 @@ export default function BookingFlow({
                 booked.length +
                 " lịch. " +
                 (method === "cash"
-                    ? data!.user.role === "customer" && b.deposit_percent > 0
-                        ? "Thanh toán đặt cọc trong " +
-                          b.payment_minutes +
-                          " phút để giữ lịch."
-                        : "Thanh toán tại quầy trước khi nhận sân."
+                    ? "Thanh toán tại quầy trước khi nhận sân."
                     : ""),
         );
         done(booked[0]);
@@ -453,14 +469,6 @@ export default function BookingFlow({
         </div>
     );
     const depositAmount = quote?.deposit_amount ?? 0;
-    const walletAmount =
-        depositOnly && b?.deposit_percent > 0
-            ? depositAmount
-            : (quote?.total_amount ?? 0);
-    const walletShortage =
-        method === "wallet" && data!.user.role === "customer"
-            ? Math.max(0, walletAmount - data!.user.wallet_balance)
-            : 0;
     if (restoring)
         return (
             <div className="product-page p-10">
@@ -580,7 +588,7 @@ export default function BookingFlow({
                             <div className="grid gap-4 sm:grid-cols-3">
                                 <label>
                                     Ngày chơi
-                                    <input
+                                    <DateInput
                                         className="input mt-1 w-full"
                                         type="date"
                                         value={date}
@@ -668,9 +676,8 @@ export default function BookingFlow({
                             <h2 className="mb-4 text-xl font-bold">Chọn sân</h2>
                             <div className="mb-4 rounded-xl bg-green-50 p-4">
                                 <b>
-                                    {date.split("-").reverse().join("/")} ·{" "}
-                                    {time} – {end.slice(11, 16)} · {duration}{" "}
-                                    giờ
+                                    {formatDate(date)} · {time} –{" "}
+                                    {end.slice(11, 16)} · {duration} giờ
                                 </b>
                                 <p className="mt-1 text-sm text-green-700">
                                     {
@@ -827,16 +834,16 @@ export default function BookingFlow({
                                 trống.
                             </p>
                             {[
-                                {
-                                    id: "cash",
-                                    label:
-                                        data!.user.role === "customer" &&
-                                        b.deposit_percent > 0
-                                            ? "Tạo lịch và thanh toán sau"
-                                            : "Thanh toán tại quầy",
-                                },
+                                ...(!online
+                                    ? [
+                                          {
+                                              id: "cash",
+                                              label: "Thanh toán tại quầy",
+                                          },
+                                      ]
+                                    : []),
 
-                                ...(data!.payos_enabled &&
+                                ...((online || data!.payos_enabled) &&
                                 (data!.user.role === "customer" ||
                                     data!.permissions?.["payments.write"])
                                     ? [
@@ -854,6 +861,9 @@ export default function BookingFlow({
                                     <input
                                         type="radio"
                                         name="payment"
+                                        disabled={
+                                            online && !data!.payos_enabled
+                                        }
                                         checked={method === m.id}
                                         onChange={() => setMethod(m.id)}
                                     />
@@ -878,15 +888,13 @@ export default function BookingFlow({
                                                 <>
                                                     {" "}
                                                     Đây là tổng tiền cọc cho cả{" "}
-                                                    {weeks} buổi. Thanh toán
-                                                    bằng ví được ghi nhận từng
-                                                    buổi trong cùng một lần xác
-                                                    nhận.
+                                                    {weeks} buổi. Thanh toán qua
+                                                    PayOS được phân bổ cho từng
+                                                    buổi trong chuỗi.
                                                 </>
                                             )}
                                         </p>
-                                        {(method === "wallet" ||
-                                            method === "payos") && (
+                                        {method === "payos" && (
                                             <fieldset
                                                 className="mt-4 space-y-2"
                                                 aria-label="Mức thanh toán"
@@ -945,28 +953,15 @@ export default function BookingFlow({
                                                 ))}
                                             </fieldset>
                                         )}
-                                        {method === "cash" && (
-                                            <p className="mt-3 text-sm">
-                                                Bạn có thể thanh toán sau trong
-                                                Lịch của tôi. Muốn trả ngay toàn
-                                                bộ 100%, chọn Ví HUB hoặc chuyển
-                                                khoản ngân hàng ở trên.
-                                            </p>
-                                        )}
                                     </>
                                 ) : (
                                     "Thanh toán đủ trước khi nhận sân."
                                 )}
                             </div>
-                            {walletShortage > 0 && (
+                            {online && !data!.payos_enabled && (
                                 <p role="alert" className="field-error">
-                                    Ví còn thiếu {money(walletShortage)} để{" "}
-                                    {depositOnly ? "đặt cọc" : "thanh toán"}{" "}
-                                    {fixed
-                                        ? "toàn bộ lịch cố định"
-                                        : "buổi chơi này"}
-                                    . Vui lòng nạp thêm hoặc chọn phương thức
-                                    khác.
+                                    Chuyển khoản ngân hàng hiện chưa khả dụng.
+                                    Vui lòng thử lại sau hoặc liên hệ chi nhánh.
                                 </p>
                             )}
                             <p className="text-sm text-[#6d8474]">
@@ -1003,13 +998,15 @@ export default function BookingFlow({
                                         !!error ||
                                         invalidServices ||
                                         invalidWeeks ||
-                                        walletShortage > 0
+                                        (online && !data!.payos_enabled)
                                     }
                                     onClick={() => run(confirm)}
                                 >
-                                    {fixed
-                                        ? "Xác nhận " + weeks + " buổi"
-                                        : "Xác nhận đặt sân"}
+                                    {online
+                                        ? "Tiếp tục chuyển khoản"
+                                        : fixed
+                                          ? "Xác nhận " + weeks + " buổi"
+                                          : "Xác nhận đặt sân"}
                                 </button>
                             </div>
                         </>
@@ -1028,7 +1025,7 @@ export default function BookingFlow({
                     <h2 className="mt-3 text-xl font-bold">{b?.name}</h2>
                     <p className="my-3 text-sm text-[#6d8474]">{b?.address}</p>
                     <p>
-                        {date} · {time} · {duration} giờ
+                        {formatDate(date)} · {time} · {duration} giờ
                     </p>
                     <p className="mt-2">
                         {court?.name ?? hold?.court?.name ?? "Chưa chọn sân"}{" "}
@@ -1119,13 +1116,9 @@ export default function BookingFlow({
                                                 <span>
                                                     <b>Buổi {i + 1}</b>
                                                     <small>
-                                                        {localDateTime(
+                                                        {formatDate(
                                                             session.starts_at,
-                                                        )
-                                                            .slice(0, 10)
-                                                            .split("-")
-                                                            .reverse()
-                                                            .join("/")}
+                                                        )}
                                                     </small>
                                                 </span>
                                                 <span>
@@ -1213,7 +1206,7 @@ export default function BookingFlow({
                                 setNotes("");
                                 setCustomer("");
                                 setFixed(false);
-                                setMethod("cash");
+                                setMethod(online ? "payos" : "cash");
                                 setDepositOnly(true);
                                 setBranch(Number(nextBranch));
                                 setStep(0);

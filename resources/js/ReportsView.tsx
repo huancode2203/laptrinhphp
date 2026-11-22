@@ -1,3 +1,5 @@
+import { DateInput } from "./DateInput";
+import { formatDate } from "./dates";
 import { appPath } from "./urls";
 import { useEffect, useState } from "react";
 import {
@@ -45,7 +47,7 @@ export default function ReportsView({ branch }: { branch: number | null }) {
             <div className="mb-6 flex flex-wrap items-end gap-3">
                 <label className="text-sm">
                     Từ ngày
-                    <input
+                    <DateInput
                         className="input mt-1 block"
                         type="date"
                         value={from}
@@ -54,7 +56,7 @@ export default function ReportsView({ branch }: { branch: number | null }) {
                 </label>
                 <label className="text-sm">
                     Đến ngày
-                    <input
+                    <DateInput
                         className="input mt-1 block"
                         type="date"
                         value={to}
@@ -128,12 +130,15 @@ export default function ReportsView({ branch }: { branch: number | null }) {
                                     />
                                     <XAxis
                                         dataKey="date"
-                                        tickFormatter={(v) => v.slice(5)}
+                                        tickFormatter={(v) => formatDate(v)}
                                     />
                                     <YAxis
                                         tickFormatter={(v) => v / 1000 + "k"}
                                     />
                                     <Tooltip
+                                        labelFormatter={(label) =>
+                                            formatDate(String(label))
+                                        }
                                         formatter={(v) => money(Number(v))}
                                     />
                                     <Bar
