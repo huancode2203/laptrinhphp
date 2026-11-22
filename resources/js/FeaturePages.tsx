@@ -1,4 +1,5 @@
 import UserName from "./MembershipBadge";
+import MembershipHeading from "./MembershipHeading";
 import Icon from "./Icon";
 import { useEffect, useState } from "react";
 import HistoryBrowser from "./HistoryBrowser";
@@ -218,16 +219,12 @@ export function ContentSupport() {
     );
     return (
         <main className="product-page mx-auto max-w-5xl p-5 md:p-10">
-            <div className="page-heading">
-                <div>
-                    <p className="eyebrow">ĐỒNG HÀNH CÙNG BẠN</p>
-                    <h1 className="font-display my-3 text-4xl font-black">
-                        Thông tin & hỗ trợ
-                    </h1>
-                    <p>Mọi điều bạn cần biết để buổi chơi thêm trọn vẹn.</p>
-                </div>
-                <Icon name="help" size={43} />
-            </div>
+            <MembershipHeading
+                eyebrow="ĐỒNG HÀNH CÙNG BẠN"
+                title="Thông tin & hỗ trợ"
+                description="Mọi điều bạn cần biết để buổi chơi thêm trọn vẹn."
+                icon="help"
+            />
             <div className="page-tabs">
                 {[
                     ["faq", "Câu hỏi thường gặp"],
@@ -489,19 +486,12 @@ export function Coaching() {
     }, [time, branch?.id, duration]);
     return (
         <main className="product-page mx-auto max-w-6xl p-5 md:p-10">
-            <div className="page-heading">
-                <div>
-                    <p className="eyebrow">TIẾN BỘ QUA TỪNG BUỔI TẬP</p>
-                    <h1 className="font-display my-3 text-4xl font-black">
-                        Học cầu lông
-                    </h1>
-                    <p className="mb-8 text-slate-500">
-                        Chọn huấn luyện viên, sân và giờ tập. Chi phí sân và
-                        buổi học được hiển thị trước khi đặt.
-                    </p>
-                </div>
-                <Icon name="racket" size={43} />
-            </div>
+            <MembershipHeading
+                eyebrow="TIẾN BỘ QUA TỪNG BUỔI TẬP"
+                title="Học cầu lông"
+                description="Chọn huấn luyện viên, sân và giờ tập. Chi phí sân và buổi học được hiển thị trước khi đặt."
+                icon="racket"
+            />
             <label className="mb-6 block max-w-md text-sm">
                 Chi nhánh huấn luyện
                 <select

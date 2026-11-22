@@ -1330,7 +1330,7 @@ export default function Account({
                                                 <h2 className="font-display text-2xl font-bold">
                                                     {p.name}
                                                 </h2>
-                                                <p className="my-4 text-2xl font-bold text-[#16a34a]">
+                                                <p className="membership-card-price my-4 text-2xl font-bold text-[#16a34a]">
                                                     {p.price === 0 &&
                                                     p.points_threshold > 0
                                                         ? "Hạng tích điểm"

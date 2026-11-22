@@ -10,41 +10,46 @@ const stars = Array.from({ length: 18 }, (_, index) => ({
     delay: -(index * 0.73),
 }));
 
+export function MembershipBackdrop({ badge }: { badge?: Row | null }) {
+    const paid = badge?.kind === "paid";
+    return (
+        <div className="member-cover-backdrop" aria-hidden="true">
+            <div className="court-lines" />
+            {paid && (
+                <>
+                    {badge.tone === "vip" && <div className="member-prism" />}
+                    <div className="member-aurora member-aurora-one" />
+                    <div className="member-aurora member-aurora-two" />
+                    <div className="member-cover-grid" />
+                    <div className="member-cover-sweep" />
+                    <div className="member-cover-stars">
+                        {stars.map((star, index) => (
+                            <i
+                                key={index}
+                                style={
+                                    {
+                                        left: star.left + "%",
+                                        top: star.top + "%",
+                                        "--star-size": star.size + "px",
+                                        "--star-delay": star.delay + "s",
+                                    } as CSSProperties
+                                }
+                            />
+                        ))}
+                    </div>
+                    <span className="member-cover-ghost">{badge.label}</span>
+                </>
+            )}
+        </div>
+    );
+}
+
 export default function MembershipCover({ badge }: { badge?: Row | null }) {
     const paid = badge?.kind === "paid";
     const label = badge?.label ?? "Hẹn nhau trên sân";
     return (
         <div className="profile-cover">
-            <div className="member-cover-backdrop" aria-hidden="true">
-                <div className="court-lines" />
-                {paid && (
-                    <>
-                        {badge.tone === "vip" && (
-                            <div className="member-rainbow" />
-                        )}
-                        <div className="member-aurora member-aurora-one" />
-                        <div className="member-aurora member-aurora-two" />
-                        <div className="member-cover-grid" />
-                        <div className="member-cover-sweep" />
-                        <div className="member-cover-stars">
-                            {stars.map((star, index) => (
-                                <i
-                                    key={index}
-                                    style={
-                                        {
-                                            left: star.left + "%",
-                                            top: star.top + "%",
-                                            "--star-size": star.size + "px",
-                                            "--star-delay": star.delay + "s",
-                                        } as CSSProperties
-                                    }
-                                />
-                            ))}
-                        </div>
-                        <span className="member-cover-ghost">{label}</span>
-                    </>
-                )}
-            </div>
+            <MembershipBackdrop badge={badge} />
             <div className="member-cover-copy">
                 <span className="member-cover-kicker">
                     <i />

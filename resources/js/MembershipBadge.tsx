@@ -41,12 +41,13 @@ export function ShuttleMark({
                 <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
                     {tone === "vip" && sparkle ? (
                         <>
-                            <stop stopColor="#fff1a5" />
-                            <stop offset=".2" stopColor="#ffb1c5" />
-                            <stop offset=".4" stopColor="#c6a7ff" />
-                            <stop offset=".6" stopColor="#92dcff" />
-                            <stop offset=".8" stopColor="#94edca" />
-                            <stop offset="1" stopColor="#ffe29b" />
+                            <stop stopColor="#fff8da" />
+                            <stop offset=".28" stopColor="#d9edf5" />
+                            <stop offset=".43" stopColor="#87d8df" />
+                            <stop offset=".5" stopColor="#cbb5e4" />
+                            <stop offset=".57" stopColor="#eed3b1" />
+                            <stop offset=".75" stopColor="#ffffff" />
+                            <stop offset="1" stopColor="#c0cbd7" />
                         </>
                     ) : (
                         <>

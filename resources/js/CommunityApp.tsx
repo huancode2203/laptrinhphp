@@ -2,6 +2,7 @@ import { appPath } from "./urls";
 import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
 import UserName from "./MembershipBadge";
+import MembershipHeading from "./MembershipHeading";
 import { useChatDelivery } from "./chatDelivery";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, key, useHub } from "./hub";
@@ -447,23 +448,19 @@ export default function CommunityApp({
     ];
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
-            <div className="page-heading">
-                <div>
-                    <p className="eyebrow text-[#16a34a]">CỘNG ĐỒNG CẦU LÔNG</p>
-                    <h1 className="font-display text-4xl font-bold">
-                        Kết nối đồng đội
-                    </h1>
-                    <p className="mt-2 text-[#6d8474]">
-                        Tìm người chơi, tạo đội và trò chuyện cùng cộng đồng.
-                    </p>
-                </div>
-                <button
-                    className="btn"
-                    onClick={() => (user ? setForm("post") : auth())}
-                >
-                    + Tạo bài đăng
-                </button>
-            </div>
+            <MembershipHeading
+                eyebrow="CỘNG ĐỒNG CẦU LÔNG"
+                title="Kết nối đồng đội"
+                description="Tìm người chơi, tạo đội và trò chuyện cùng cộng đồng."
+                action={
+                    <button
+                        className="btn"
+                        onClick={() => (user ? setForm("post") : auth())}
+                    >
+                        + Tạo bài đăng
+                    </button>
+                }
+            />
             <div className="page-tabs">
                 {[
                     ["feed", "Bảng tin"],

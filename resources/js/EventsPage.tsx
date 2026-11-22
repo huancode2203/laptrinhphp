@@ -1,4 +1,5 @@
 import Icon from "./Icon";
+import MembershipHeading from "./MembershipHeading";
 import { useEffect, useState } from "react";
 import { api, useHub } from "./hub";
 import { money, stamp, statusText, type Row } from "./data";
@@ -396,19 +397,12 @@ export default function EventsPage({ auth }: { auth: () => void }) {
     }, [type, page]);
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
-            <div className="page-heading">
-                <div>
-                    <p className="eyebrow">HẸN NHAU CHINH PHỤC THỬ THÁCH MỚI</p>
-                    <h1 className="font-display mt-2 text-4xl font-bold">
-                        Sự kiện & Giải đấu
-                    </h1>
-                    <p>
-                        Giao lưu, thử sức và cùng đồng đội tạo nên những trận
-                        cầu đáng nhớ.
-                    </p>
-                </div>
-                <Icon name="trophy" size={43} />
-            </div>
+            <MembershipHeading
+                eyebrow="HẸN NHAU CHINH PHỤC THỬ THÁCH MỚI"
+                title="Sự kiện & Giải đấu"
+                description="Giao lưu, thử sức và cùng đồng đội tạo nên những trận cầu đáng nhớ."
+                icon="trophy"
+            />
             <div className="page-tabs">
                 {[["", "Tất cả"], ...Object.entries(eventTypes)].map(
                     ([id, label]) => (
