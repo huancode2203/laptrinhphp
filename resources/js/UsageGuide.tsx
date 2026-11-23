@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useHub } from "./hub";
 import { Card } from "./ui";
 import Icon from "./Icon";
+import MembershipBanner from "./MembershipBanner";
 const guides: Record<string, string[][]> = {
     customer: [
         [
@@ -424,19 +425,19 @@ export default function UsageGuide() {
     );
     return (
         <section className="space-y-5">
-            <div className="rounded-3xl bg-[#173e31] p-6 text-white sm:p-8">
-                <p className="text-xs font-bold tracking-widest text-[#c5f566]">
+            <MembershipBanner className="guide-banner rounded-3xl p-6 sm:p-8">
+                <p className="eyebrow text-xs font-bold tracking-widest">
                     SỬ DỤNG BADMINTON HUB
                 </p>
                 <h2 className="mt-3 text-3xl font-bold">
                     Mỗi tính năng, một việc rõ ràng.
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75">
+                <p className="mt-3 max-w-2xl text-sm leading-6">
                     Chọn vai trò để xem công dụng, nơi thao tác và cách dùng.
                     Quyền làm việc thực tế phụ thuộc tài khoản và chi nhánh được
                     phân công.
                 </p>
-            </div>
+            </MembershipBanner>
             <div
                 className="flex flex-wrap gap-2"
                 aria-label="Vai trò xem hướng dẫn"

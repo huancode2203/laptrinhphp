@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Icon, { type IconName } from "./Icon";
 import { ShuttleMark } from "./MembershipBadge";
-import { MembershipBackdrop } from "./MembershipCover";
+import MembershipBanner from "./MembershipBanner";
 import { useHub } from "./hub";
 
 export default function MembershipHeading({
@@ -13,7 +13,7 @@ export default function MembershipHeading({
 }: {
     eyebrow: string;
     title: ReactNode;
-    description: string;
+    description?: string;
     icon?: IconName;
     action?: ReactNode;
 }) {
@@ -21,18 +21,14 @@ export default function MembershipHeading({
     const badge = data?.user?.membership_badge;
     const paid = badge?.kind === "paid";
     return (
-        <div
-            className={
-                "page-heading member-page-heading tone-" +
-                (badge?.tone ?? "emerald") +
-                (paid ? " is-premium" : badge ? " is-earned" : " is-basic")
-            }
+        <MembershipBanner
+            badge={badge}
+            className="page-heading member-page-heading"
         >
-            <MembershipBackdrop badge={badge} />
             <div className="member-heading-copy">
                 <p className="eyebrow">{eyebrow}</p>
                 <h1 className="font-display">{title}</h1>
-                <p>{description}</p>
+                {description && <p>{description}</p>}
             </div>
             <div className="member-heading-aside">
                 {badge && (
@@ -51,6 +47,6 @@ export default function MembershipHeading({
                         </span>
                     ))}
             </div>
-        </div>
+        </MembershipBanner>
     );
 }

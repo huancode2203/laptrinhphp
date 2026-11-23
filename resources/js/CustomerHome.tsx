@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BRANCHES, day, money } from "./data";
 import { useHub } from "./hub";
 import SearchAssistant from "./SearchAssistant";
+import MembershipBanner from "./MembershipBanner";
 import Icon, { type IconName } from "./Icon";
 import { Logo } from "./Brand";
 export { Logo } from "./Brand";
@@ -68,7 +69,7 @@ export default function CustomerHome(p: Props) {
         ) ?? 0;
     return (
         <div className="sports-home">
-            <section className="home-hero home-container">
+            <MembershipBanner as="section" className="home-hero home-container">
                 <div className="hero-copy">
                     <span className="section-kicker">
                         <span className="kicker-dot" />
@@ -143,7 +144,7 @@ export default function CustomerHome(p: Props) {
                         </span>
                     </div>
                 </div>
-            </section>
+            </MembershipBanner>
             <div className="home-container home-search">
                 <SearchAssistant book={p.onAiBook} compact />
             </div>
@@ -395,7 +396,7 @@ export default function CustomerHome(p: Props) {
                         </div>
                     )}
                 </section>
-                <section className="home-community">
+                <MembershipBanner as="section" className="home-community">
                     <div className="community-promo-copy">
                         <span className="section-kicker">
                             CÓ ĐỒNG ĐỘI, CÓ CUỘC VUI
@@ -424,7 +425,7 @@ export default function CustomerHome(p: Props) {
                             CÙNG TIẾN BỘ ↗
                         </span>
                     </div>
-                </section>
+                </MembershipBanner>
                 <section className="home-explore">
                     <div className="section-heading">
                         <div>

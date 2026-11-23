@@ -1,4 +1,5 @@
 import { DateInput } from "./DateInput";
+import MembershipBanner from "./MembershipBanner";
 import UserName from "./MembershipBadge";
 import { appPath } from "./urls";
 import BookingResume from "./BookingResume";
@@ -48,7 +49,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
     if (!b) return <Empty />;
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
-            <div className="branch-hero relative mb-6 overflow-hidden p-8 text-white">
+            <MembershipBanner className="branch-hero relative mb-6 overflow-hidden p-8">
                 <div className="branch-detail-art">
                     <CourtIllustration />
                 </div>
@@ -87,7 +88,7 @@ function BranchDetail({ id, book }: { id: number; book: (d: Row) => void }) {
                         </a>
                     </div>
                 </div>
-            </div>
+            </MembershipBanner>
             <div className="grid gap-5 md:grid-cols-3">
                 <Card>
                     <h2 className="font-bold">Giờ mở cửa</h2>

@@ -1,5 +1,6 @@
 import { formatDate } from "./dates";
 import { DateInput } from "./DateInput";
+import MembershipBanner from "./MembershipBanner";
 import { useRef, useState } from "react";
 import Icon from "./Icon";
 import SearchAlternatives from "./SearchAlternatives";
@@ -107,7 +108,7 @@ export default function SearchAssistant({
             className={"assistant " + (compact ? "" : "my-5")}
             aria-label="Tìm sân theo nhu cầu"
         >
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <MembershipBanner className="assistant-banner flex flex-wrap items-center justify-between gap-3">
                 <div className="assistant-heading">
                     <span className="assistant-icon">
                         <Icon name="spark" size={25} />
@@ -122,7 +123,7 @@ export default function SearchAssistant({
                 <span className="assistant-label">
                     <Icon name="spark" size={13} /> Tìm theo nhu cầu
                 </span>
-            </div>
+            </MembershipBanner>
             <p className="mt-3 text-xs leading-6 text-slate-500">
                 Cho biết ngày, giờ và khu vực. Chúng tôi tìm sân còn trống phù
                 hợp với bạn.

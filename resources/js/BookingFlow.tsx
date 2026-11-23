@@ -4,6 +4,7 @@ import Icon from "./Icon";
 import CourtMatrix from "./CourtMatrix";
 import CustomerPicker from "./CustomerPicker";
 import PayosCheckout from "./PayosCheckout";
+import MembershipHeading from "./MembershipHeading";
 import { useEffect, useState } from "react";
 import { api, key, useHub } from "./hub";
 import { BRANCHES, day, localDateTime, money, type Row } from "./data";
@@ -505,14 +506,11 @@ export default function BookingFlow({
         );
     return (
         <div className="product-page mx-auto max-w-6xl p-5 md:p-10">
-            <div className="page-heading">
-                <div>
-                    <p className="eyebrow text-[#16a34a]">SẴN SÀNG LÊN SÂN</p>
-                    <h1 className="font-display text-3xl font-bold">
-                        Đặt sân của bạn
-                    </h1>
-                </div>
-            </div>
+            <MembershipHeading
+                eyebrow="SẴN SÀNG LÊN SÂN"
+                title="Đặt sân của bạn"
+                icon="calendar"
+            />
             <div className="booking-steps">
                 {[
                     "Chọn lịch",

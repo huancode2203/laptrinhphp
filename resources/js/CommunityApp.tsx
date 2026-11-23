@@ -4,6 +4,7 @@ import MediaPicker from "./MediaPicker";
 import Icon from "./Icon";
 import UserName from "./MembershipBadge";
 import MembershipHeading from "./MembershipHeading";
+import MembershipBanner from "./MembershipBanner";
 import AiChatCriteria from "./AiChatCriteria";
 import { useChatDelivery } from "./chatDelivery";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -1192,7 +1193,7 @@ export default function CommunityApp({
                     }}
                     className="post-detail-modal"
                 >
-                    <div className="post-detail-hero">
+                    <MembershipBanner className="post-detail-hero">
                         <span className="report-pill">
                             {post.type} · {post.skill_level}
                         </span>
@@ -1226,7 +1227,7 @@ export default function CommunityApp({
                                 </b>
                             </div>
                         </div>
-                    </div>
+                    </MembershipBanner>
                     <p className="post-detail-content whitespace-pre-wrap">
                         {post.content}
                     </p>
